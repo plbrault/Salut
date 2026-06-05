@@ -1,15 +1,59 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ language }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ config.title | default("Salut") }}</title>
+    <title>{{ page_title }}</title>
     <script src="/static/tailwindcss.js"></script>
     <script src="/static/htmx.min.js"></script>
+    <style>
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+        }
+        header h1 {
+            font-size: 2.5rem;
+            font-weight: bold;
+        }
+        header span {
+            font-size: 1.125rem;
+            font-weight: 500;
+            color: #6b7280;
+        }
+    </style>
 </head>
 <body class="bg-gray-100 p-8">
-    <h1 class="text-3xl font-bold mb-6">{{ config.title | default("Salut") }}</h1>
-    <div class="flex gap-6">
+    <header>
+        {{ page_header | safe }}
+    </header>
+    <script>
+        (function() {
+            var lang = document.documentElement.lang;
+            var now = new Date();
+
+            // Time emoji
+            var hour = now.getHours();
+            var emoji;
+            if (hour >= 6 && hour < 12) emoji = '\u2600\uFE0F';
+            else if (hour >= 12 && hour < 18) emoji = '\uD83C\uDF24\uFE0F';
+            else if (hour >= 18 && hour < 22) emoji = '\uD83C\uDF19';
+            else emoji = '\uD83C\uDF11';
+
+            // Localized datetime
+            var datetime = new Intl.DateTimeFormat(lang, {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: '2-digit'
+            }).format(now);
+
+            document.body.innerHTML = document.body.innerHTML
+                .replace(/\{\{time_emoji\}\}/g, emoji)
+                .replace(/\{\{datetime\}\}/g, datetime);
+        })();
+    </script>
+    <main class="flex gap-6 mt-8">
         {% for column in config.columns %}
         <div class="flex-1">
             {% for card in column.cards %}
@@ -20,6 +64,6 @@
             {% endfor %}
         </div>
         {% endfor %}
-    </div>
+    </main>
 </body>
 </html>

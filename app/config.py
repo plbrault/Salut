@@ -4,6 +4,11 @@ import yaml
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+LANGUAGE_DEFAULTS = {
+    "en": "en-US",
+    "fr": "fr-FR",
+}
+
 
 class ConfigError(Exception):
     def __init__(self, message):
@@ -32,10 +37,62 @@ def load_config():
     return config
 
 
-def validate_config(config, filename="config"):
-    if not isinstance(config, dict):
-        raise ConfigError(f"{filename}: config must be a mapping (key-value pairs).")
+def _validate_required_string(config, key, filename):
+    """Validate that a key exists and is a non-empty string."""
+    value = config.get(key)
+    if not value or not isinstance(value, str):
+        raise ConfigError(f"{filename}: '{key}' must be a non-empty string.")
 
+
+def _validate_user_info(config, filename):
+    """Validate user_info object and its required fields."""
+    user_info = config.get("user_info")
+    if not user_info or not isinstance(user_info, dict):
+        raise ConfigError(f"{filename}: 'user_info' must be a mapping.")
+
+    _validate_required_string(user_info, "short_name", f"{filename}.user_info")
+    _validate_required_string(user_info, "long_name", f"{filename}.user_info")
+
+
+def _validate_language(config, filename):
+    """Validate and normalize language code."""
+    language = config.get("language")
+    if not language or not isinstance(language, str):
+        raise ConfigError(f"{filename}: 'language' must be a non-empty string.")
+
+    if "-" in language:
+        parts = language.split("-")
+        if len(parts) != 2 or not all(parts):
+            raise ConfigError(f"{filename}: 'language' must be a valid BCP 47 tag.")
+    elif language not in LANGUAGE_DEFAULTS:
+        raise ConfigError(
+            f"{filename}: 'language' must be a BCP 47 tag or simple code "
+            f"({', '.join(LANGUAGE_DEFAULTS.keys())})."
+        )
+    else:
+        config["language"] = LANGUAGE_DEFAULTS[language]
+
+
+def _validate_card(card, col_idx, card_idx, filename):
+    """Validate a single card in a column."""
+    if not isinstance(card, dict):
+        raise ConfigError(
+            f"{filename}: columns[{col_idx}].cards[{card_idx}] must be a mapping."
+        )
+
+    if not card.get("title"):
+        raise ConfigError(
+            f"{filename}: columns[{col_idx}].cards[{card_idx}].title is required."
+        )
+
+    if not card.get("type"):
+        raise ConfigError(
+            f"{filename}: columns[{col_idx}].cards[{card_idx}].type is required."
+        )
+
+
+def _validate_columns(config, filename):
+    """Validate columns array and its cards."""
     columns = config.get("columns")
     if not columns or not isinstance(columns, list) or len(columns) == 0:
         raise ConfigError(f"{filename}: 'columns' must be a non-empty array.")
@@ -53,17 +110,15 @@ def validate_config(config, filename="config"):
             )
 
         for card_idx, card in enumerate(cards):
-            if not isinstance(card, dict):
-                raise ConfigError(
-                    f"{filename}: columns[{col_idx}].cards[{card_idx}] must be a mapping."
-                )
+            _validate_card(card, col_idx, card_idx, filename)
 
-            if not card.get("title"):
-                raise ConfigError(
-                    f"{filename}: columns[{col_idx}].cards[{card_idx}].title is required."
-                )
 
-            if not card.get("type"):
-                raise ConfigError(
-                    f"{filename}: columns[{col_idx}].cards[{card_idx}].type is required."
-                )
+def validate_config(config, filename="config"):
+    if not isinstance(config, dict):
+        raise ConfigError(f"{filename}: config must be a mapping (key-value pairs).")
+
+    _validate_required_string(config, "page_title", filename)
+    _validate_required_string(config, "page_header", filename)
+    _validate_language(config, filename)
+    _validate_user_info(config, filename)
+    _validate_columns(config, filename)

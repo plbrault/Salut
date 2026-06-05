@@ -6,6 +6,7 @@ from fastapi.templating import Jinja2Templates
 
 from app.config import load_config
 from app.database import init_database
+from app.template import resolve_config_vars
 
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -24,10 +25,17 @@ def startup():
 @app.get("/")
 def index(request: Request):
     config = app.state.config
+    page_title = resolve_config_vars(config.get("page_title", ""), config)
+    page_header = resolve_config_vars(config.get("page_header", ""), config)
     return templates.TemplateResponse(
         request,
         "index.html",
-        {"config": config},
+        {
+            "config": config,
+            "page_title": page_title,
+            "page_header": page_header,
+            "language": config.get("language", "en-US"),
+        },
     )
 
 
