@@ -8,12 +8,14 @@ The Salut starter page currently uses a single `title` field for both the HTML `
 - Allow users to personalize the page header with their name
 - Provide a dynamic time emoji based on time of day
 - Support template variables in the page header string
+- Support localized datetime display
+- Support HTML lang attribute from config
 - Simple, clean config schema (no legacy compatibility concerns)
 
 **Non-Goals:**
-- Support for arbitrary template variables (only `${user_info.short_name}` for config refs, `{{time_emoji}}` for server-injected)
-- Multiple language support for greetings
+- Support for arbitrary template variables (only `${user_info.short_name}` for config refs, `{{time_emoji}}` for client-side)
 - Custom emoji configuration
+- User-customizable header HTML structure
 
 ## Decisions
 
@@ -54,7 +56,7 @@ The Salut starter page currently uses a single `title` field for both the HTML `
 - `${}` for config, `#{}` for computed: Rejected because `#{}` is associated with Ruby/interpolation
 
 ### 3. Config validation
-**Decision:** Require `page_title`, `page_header`, `user_info.short_name`, and `user_info.long_name`.
+**Decision:** Require `page_title`, `page_header`, `language`, `user_info.short_name`, and `user_info.long_name`.
 
 **Rationale:**
 - All fields are needed for the feature to work
@@ -64,7 +66,7 @@ The Salut starter page currently uses a single `title` field for both the HTML `
 **Alternatives considered:**
 - Make fields optional with defaults: Rejected because it would hide config errors
 
-### 4. Context injection
+### 4. Template resolver
 **Decision:** Implement a template resolver in `app/template.py` that processes `${...}` syntax by resolving config references from the config dict. The `{{time_emoji}}` syntax is left for inline JavaScript to replace client-side.
 
 **Rationale:**
@@ -76,16 +78,58 @@ The Salut starter page currently uses a single `title` field for both the HTML `
 **Alternatives considered:**
 - Pass raw config and process in template: Rejected because it would complicate the template
 
+### 5. Language validation
+**Decision:** Accept BCP 47 tags (e.g., `en-US`, `fr-CA`) or simple language codes (`en`, `fr`) with automatic normalization to BCP 47 defaults.
+
+**Rationale:**
+- BCP 47 is the standard for language tags
+- Simple codes are more user-friendly
+- Defaults: `en` → `en-US`, `fr` → `fr-FR`
+
+### 6. Localized datetime
+**Decision:** Implement as a client-side JavaScript snippet using `Intl.DateTimeFormat` with the browser's language (from `<html lang>`).
+
+**Rationale:**
+- Always uses the user's local time and timezone
+- Uses the same language as the HTML lang attribute
+- Simple implementation, no server-side logic needed
+
+**Alternatives considered:**
+- Server-side datetime: Rejected because it uses server timezone, not user's local time
+
+### 7. Header styling
+**Decision:** Config `page_header` contains HTML structure but no CSS classes. Template wraps content in `<header>` and applies styling via a `<style>` block targeting semantic selectors (`header h1`, `header > *:not(h1)`).
+
+**Rationale:**
+- Tailwind can't scan YAML files for class names
+- Config stays focused on content, not presentation
+- CSS selectors work regardless of what HTML elements users put in page_header
+- Users can customize HTML structure (e.g., add `<nav>`, `<p>`) without worrying about styling
+
+**Alternatives considered:**
+- Tailwind classes in config: Rejected because Tailwind can't compile classes from YAML
+- Inline styles in template: Rejected because it would be less maintainable
+
+### 8. HTML lang attribute
+**Decision:** Set `<html lang="{{ language }}">` from the validated/normalized language config value.
+
+**Rationale:**
+- Proper HTML semantics
+- Helps browsers and screen readers
+- Consistent with the language config
+
 ## Risks / Trade-offs
 
 - (none — initial dev, no legacy users)
 - **Hardcoded emoji**: Users cannot customize the emoji. Mitigation: This is a non-goal for now, but can be added later.
+- **Server-side datetime**: Uses server timezone, not user's local time. Mitigation: Date rarely differs across timezones, and this is a single-user app.
 
 ## Example Config
 
 ```yaml
 page_title: Salut
-page_header: "Hi ${user_info.short_name} {{time_emoji}}"
+page_header: "<h1>Hi ${user_info.short_name} {{time_emoji}}</h1><span>{{datetime}}</span>"
+language: en
 user_info:
   short_name: Chris
   long_name: Chris P. Bacon
@@ -107,4 +151,34 @@ columns:
         units: metric
       - title: GitHub
         type: github
+```
+
+**Renders as:**
+```html
+<html lang="en-US">
+<head><title>Salut</title>
+    <style>
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+        }
+        header h1 {
+            font-size: 2.5rem;
+            font-weight: bold;
+        }
+        header span {
+            font-size: 1.125rem;
+            font-weight: 500;
+            color: #6b7280;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Hi Chris ☀️</h1> Friday, June 05, 2026
+    </header>
+    <!-- cards -->
+</body>
+</html>
 ```

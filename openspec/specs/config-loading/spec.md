@@ -27,7 +27,7 @@ The system SHALL load a YAML config file from the project root when the server s
 The system SHALL validate the parsed config has the required structure.
 
 #### Scenario: Valid config structure
-- **WHEN** the config has a `page_title` string, a `page_header` string, a `user_info` object with `short_name` and `long_name` strings, and a `columns` array with at least one column containing a `cards` array with at least one card, each card having `title` and `type`
+- **WHEN** the config has a `page_title` string, a `page_header` string, a `language` string, a `user_info` object with `short_name` and `long_name` strings, and a `columns` array with at least one column containing a `cards` array with at least one card, each card having `title` and `type`
 - **THEN** the config is accepted
 
 #### Scenario: Missing columns
@@ -63,6 +63,25 @@ The system SHALL require a `page_header` string field in the config.
 #### Scenario: Invalid page header type
 - **WHEN** the config has a `page_header` field that is not a string
 - **THEN** a validation error is raised indicating page_header must be a string
+
+### Requirement: Language is required
+The system SHALL require a `language` string field in the config.
+
+#### Scenario: Missing language
+- **WHEN** the config has no `language` field
+- **THEN** a validation error is raised indicating language is required
+
+#### Scenario: Invalid language type
+- **WHEN** the config has a `language` field that is not a string
+- **THEN** a validation error is raised indicating language must be a string
+
+#### Scenario: Invalid language code
+- **WHEN** the config has a `language` field that is not a valid BCP 47 tag or supported simple code
+- **THEN** a validation error is raised indicating language is invalid
+
+#### Scenario: Simple language code is normalized
+- **WHEN** the config has a `language` field with a simple code (e.g., `en`, `fr`)
+- **THEN** the language is normalized to its BCP 47 default (e.g., `en-US`, `fr-FR`)
 
 ### Requirement: User info is required
 The system SHALL require a `user_info` object with `short_name` and `long_name` string fields.

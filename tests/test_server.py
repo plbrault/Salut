@@ -24,6 +24,11 @@ class TestServer:
             response = client.get("/")
             assert "time_emoji" in response.text
 
+    def test_index_contains_datetime_script(self):
+        with TestClient(app) as client:
+            response = client.get("/")
+            assert "Intl.DateTimeFormat" in response.text
+
     def test_index_contains_htmx(self):
         with TestClient(app) as client:
             response = client.get("/")
@@ -37,9 +42,21 @@ class TestServer:
     def test_index_contains_columns(self):
         with TestClient(app) as client:
             response = client.get("/")
-            assert 'class="flex gap-6"' in response.text
+            assert 'class="flex gap-6 mt-8"' in response.text
 
-    def test_time_emoji_script_format(self):
+    def test_html_lang_attr(self):
         with TestClient(app) as client:
             response = client.get("/")
-            assert "new Date().getHours()" in response.text
+            assert '<html lang="en-US">' in response.text
+
+    def test_header_has_css_styling(self):
+        with TestClient(app) as client:
+            response = client.get("/")
+            assert "header h1" in response.text
+            assert "font-size: 2.5rem" in response.text
+
+    def test_page_header_rendered_with_safe(self):
+        with TestClient(app) as client:
+            response = client.get("/")
+            assert "<h1>" in response.text
+            assert "{{" not in response.text or "time_emoji" in response.text

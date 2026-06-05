@@ -1,5 +1,6 @@
 page_title: Salut
-page_header: "Hi ${user_info.short_name} {{time_emoji}}"
+page_header: "<h1>Hi ${user_info.short_name} {{time_emoji}}</h1><span>{{datetime}}</span>"
+language: en
 user_info:
   short_name: Chris
   long_name: Chris P. Bacon

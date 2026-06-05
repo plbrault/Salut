@@ -4,6 +4,11 @@ import yaml
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+LANGUAGE_DEFAULTS = {
+    "en": "en-US",
+    "fr": "fr-FR",
+}
+
 
 class ConfigError(Exception):
     def __init__(self, message):
@@ -47,6 +52,25 @@ def _validate_user_info(config, filename):
 
     _validate_required_string(user_info, "short_name", f"{filename}.user_info")
     _validate_required_string(user_info, "long_name", f"{filename}.user_info")
+
+
+def _validate_language(config, filename):
+    """Validate and normalize language code."""
+    language = config.get("language")
+    if not language or not isinstance(language, str):
+        raise ConfigError(f"{filename}: 'language' must be a non-empty string.")
+
+    if "-" in language:
+        parts = language.split("-")
+        if len(parts) != 2 or not all(parts):
+            raise ConfigError(f"{filename}: 'language' must be a valid BCP 47 tag.")
+    elif language not in LANGUAGE_DEFAULTS:
+        raise ConfigError(
+            f"{filename}: 'language' must be a BCP 47 tag or simple code "
+            f"({', '.join(LANGUAGE_DEFAULTS.keys())})."
+        )
+    else:
+        config["language"] = LANGUAGE_DEFAULTS[language]
 
 
 def _validate_card(card, col_idx, card_idx, filename):
@@ -95,5 +119,6 @@ def validate_config(config, filename="config"):
 
     _validate_required_string(config, "page_title", filename)
     _validate_required_string(config, "page_header", filename)
+    _validate_language(config, filename)
     _validate_user_info(config, filename)
     _validate_columns(config, filename)

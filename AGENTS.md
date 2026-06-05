@@ -4,6 +4,20 @@
 
 Salut is a single-user, self-hosted starter page with YAML-based configuration. Users customize their page via `config.yml` (or `starter.yaml` as default).
 
+## Workflow
+
+This project is **spec-driven**. All changes must be specified with OpenSpec before implementation.
+
+1. **Specify** — Create or update a change in `openspec/changes/` using the available skills:
+   - `/opsx-propose` — Propose a new change (creates all artifacts in one step)
+   - `/opsx-apply` — Implement tasks from an existing change
+   - `/opsx-archive` — Archive a completed change
+2. **Implement** — Follow the tasks defined in the change's `tasks.md`
+3. **Verify** — Run `pipenv run pytest` and `pipenv run pylint`
+4. **Sync** — Keep OpenSpec artifacts (proposal, design, specs, tasks) in sync with code changes
+
+**Never make code changes without a corresponding OpenSpec change.**
+
 ## Tech Stack
 
 - Python 3.14 + FastAPI

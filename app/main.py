@@ -30,7 +30,12 @@ def index(request: Request):
     return templates.TemplateResponse(
         request,
         "index.html",
-        {"config": config, "page_title": page_title, "page_header": page_header},
+        {
+            "config": config,
+            "page_title": page_title,
+            "page_header": page_header,
+            "language": config.get("language", "en-US"),
+        },
     )
 
 
