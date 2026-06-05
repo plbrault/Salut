@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Salut is a single-user, self-hosted starter page with YAML-based configuration. Users customize their page via `config.yml` (or `starter.yaml` as default).
+Salut is a single-user, self-hosted starter page with YAML-based configuration. Users customize their page via `config.yml` (or `starter.yml` as default).
 
 ## Workflow
 
@@ -56,3 +56,10 @@ This project is **spec-driven**. All changes must be specified with OpenSpec bef
 - No comments unless the solution is unusual
 - Follow existing patterns in the codebase
 - Keep functions small and focused
+
+### Server Testing
+
+Always test the actual server output when making server-side changes:
+- Run the server with `PORT=9001 pipenv run develop` (or another port)
+- Check both API responses and log output
+- Verify the feature works end-to-end in the browser or via curl

@@ -1,6 +1,6 @@
 # Configuration
 
-Salut is configured via a YAML file (`config.yml` or `starter.yaml`). The `config.yml` file takes precedence if both exist.
+Salut is configured via a YAML file (`config.yml` or `starter.yml`). The `config.yml` file takes precedence if both exist.
 
 ## Fields
 
@@ -85,7 +85,7 @@ Resolved server-side and passed to the template:
 
 | Variable | Description |
 |----------|-------------|
-| `{{ datetime }}` | Localized long-form date (e.g., "Friday, June 05, 2026") |
+| `{{ date }}` | Localized long-form date (e.g., "Friday, June 05, 2026") |
 
 ## Example
 

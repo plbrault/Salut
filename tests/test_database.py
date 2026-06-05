@@ -1,16 +1,16 @@
 import sqlite3
 
-from app.database import init_database
+from src.database import init_database
 
 
 class TestDatabase:
     def test_init_creates_database(self, tmp_path, monkeypatch):
-        monkeypatch.setattr("app.database.DATABASE_PATH", tmp_path / "test.db")
+        monkeypatch.setattr("src.database.DATABASE_PATH", tmp_path / "test.db")
         init_database()
         assert (tmp_path / "test.db").exists()
 
     def test_feed_items_table_exists(self, tmp_path, monkeypatch):
-        monkeypatch.setattr("app.database.DATABASE_PATH", tmp_path / "test.db")
+        monkeypatch.setattr("src.database.DATABASE_PATH", tmp_path / "test.db")
         init_database()
         conn = sqlite3.connect(tmp_path / "test.db")
         cursor = conn.execute(
@@ -20,7 +20,7 @@ class TestDatabase:
         conn.close()
 
     def test_wal_mode_enabled(self, tmp_path, monkeypatch):
-        monkeypatch.setattr("app.database.DATABASE_PATH", tmp_path / "test.db")
+        monkeypatch.setattr("src.database.DATABASE_PATH", tmp_path / "test.db")
         init_database()
         conn = sqlite3.connect(tmp_path / "test.db")
         cursor = conn.execute("PRAGMA journal_mode")
@@ -29,7 +29,7 @@ class TestDatabase:
         assert mode == "wal"
 
     def test_feed_items_schema(self, tmp_path, monkeypatch):
-        monkeypatch.setattr("app.database.DATABASE_PATH", tmp_path / "test.db")
+        monkeypatch.setattr("src.database.DATABASE_PATH", tmp_path / "test.db")
         init_database()
         conn = sqlite3.connect(tmp_path / "test.db")
         cursor = conn.execute("PRAGMA table_info(feed_items)")

@@ -40,8 +40,8 @@
             else if (hour >= 18 && hour < 22) emoji = '\uD83C\uDF19';
             else emoji = '\uD83C\uDF11';
 
-            // Localized datetime
-            var datetime = new Intl.DateTimeFormat(lang, {
+            // Localized date
+            var date = new Intl.DateTimeFormat(lang, {
                 weekday: 'long',
                 year: 'numeric',
                 month: 'long',
@@ -50,9 +50,28 @@
 
             document.body.innerHTML = document.body.innerHTML
                 .replace(/\{\{time_emoji\}\}/g, emoji)
-                .replace(/\{\{datetime\}\}/g, datetime);
+                .replace(/\{\{date\}\}/g, date);
         })();
     </script>
+    {% if dev_mode %}
+    <script>
+        (function() {
+            var lastVersion = null;
+            setInterval(function() {
+                fetch('/dev-reload').then(function(r) {
+                    return r.json();
+                }).then(function(data) {
+                    if (lastVersion !== null && data.version !== lastVersion) {
+                        location.reload();
+                    }
+                    lastVersion = data.version;
+                }).catch(function() {
+                    location.reload();
+                });
+            }, 1000);
+        })();
+    </script>
+    {% endif %}
     <main class="flex gap-6 mt-8">
         {% for column in config.columns %}
         <div class="flex-1">

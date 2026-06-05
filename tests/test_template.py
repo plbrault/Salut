@@ -1,4 +1,4 @@
-from app.template import resolve_config_vars
+from src.template import resolve_config_vars
 
 
 class TestResolveConfigVars:

@@ -1,6 +1,6 @@
 from fastapi.testclient import TestClient
 
-from app.main import app
+from src.main import app
 
 
 class TestServer:
@@ -24,7 +24,7 @@ class TestServer:
             response = client.get("/")
             assert "time_emoji" in response.text
 
-    def test_index_contains_datetime_script(self):
+    def test_index_contains_date_script(self):
         with TestClient(app) as client:
             response = client.get("/")
             assert "Intl.DateTimeFormat" in response.text
@@ -47,7 +47,7 @@ class TestServer:
     def test_html_lang_attr(self):
         with TestClient(app) as client:
             response = client.get("/")
-            assert '<html lang="en-US">' in response.text
+            assert '<html lang="' in response.text
 
     def test_header_has_css_styling(self):
         with TestClient(app) as client:

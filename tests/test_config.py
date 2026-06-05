@@ -1,14 +1,14 @@
 import pytest
 import yaml
 
-from app.config import ConfigError, load_config, validate_config
+from src.config import ConfigError, load_config, validate_config
 
 
 def _make_config(**overrides):
     """Create a valid config with optional overrides."""
     config = {
         "page_title": "Test",
-        "page_header": "<h1>Hi ${user_info.short_name} {{time_emoji}}</h1><span>{{datetime}}</span>",
+        "page_header": "<h1>Hi ${user_info.short_name} {{time_emoji}}</h1><span>{{date}}</span>",
         "language": "en",
         "user_info": {"short_name": "A", "long_name": "B"},
         "columns": [{"cards": [{"title": "A", "type": "link"}]}],
@@ -23,40 +23,40 @@ class TestLoadConfig:
         config_path = tmp_path / "config.yml"
         config_path.write_text(yaml.dump(config_data))
 
-        starter_path = tmp_path / "starter.yaml"
+        starter_path = tmp_path / "starter.yml"
         starter_path.write_text(yaml.dump(_make_config(page_title="Default")))
 
-        monkeypatch.setattr("app.config.BASE_DIR", tmp_path)
+        monkeypatch.setattr("src.config.BASE_DIR", tmp_path)
         result = load_config()
         assert result["page_title"] == "Test"
 
     def test_falls_back_to_starter_yaml(self, tmp_path, monkeypatch):
         config_data = _make_config(page_title="Fallback")
-        starter_path = tmp_path / "starter.yaml"
+        starter_path = tmp_path / "starter.yml"
         starter_path.write_text(yaml.dump(config_data))
 
-        monkeypatch.setattr("app.config.BASE_DIR", tmp_path)
+        monkeypatch.setattr("src.config.BASE_DIR", tmp_path)
         result = load_config()
         assert result["page_title"] == "Fallback"
 
     def test_raises_when_both_missing(self, tmp_path, monkeypatch):
-        monkeypatch.setattr("app.config.BASE_DIR", tmp_path)
+        monkeypatch.setattr("src.config.BASE_DIR", tmp_path)
         with pytest.raises(ConfigError, match="No config file found"):
             load_config()
 
     def test_raises_on_invalid_yaml(self, tmp_path, monkeypatch):
-        config_path = tmp_path / "starter.yaml"
+        config_path = tmp_path / "starter.yml"
         config_path.write_text(": invalid: yaml: {{{}}}}")
 
-        monkeypatch.setattr("app.config.BASE_DIR", tmp_path)
+        monkeypatch.setattr("src.config.BASE_DIR", tmp_path)
         with pytest.raises(ConfigError, match="Invalid YAML"):
             load_config()
 
     def test_raises_on_empty_config(self, tmp_path, monkeypatch):
-        config_path = tmp_path / "starter.yaml"
+        config_path = tmp_path / "starter.yml"
         config_path.write_text("")
 
-        monkeypatch.setattr("app.config.BASE_DIR", tmp_path)
+        monkeypatch.setattr("src.config.BASE_DIR", tmp_path)
         with pytest.raises(ConfigError, match="empty"):
             load_config()
 

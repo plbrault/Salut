@@ -17,9 +17,10 @@ pytest = "*"
 httpx2 = "*"
 
 [scripts]
-app = "python -m app.main"
+app = "python -m src.main --port $PORT"
+develop = "DEVELOPMENT=1 python -m src.main --port $PORT"
 pytest = "pytest"
-pylint = "pylint app/ tests/"
+pylint = "pylint src/ tests/"
 
 [requires]
 python_version = "3.14"
