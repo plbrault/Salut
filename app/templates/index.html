@@ -3,12 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ config.title | default("Salut") }}</title>
+    <title>{{ page_title }}</title>
     <script src="/static/tailwindcss.js"></script>
     <script src="/static/htmx.min.js"></script>
 </head>
 <body class="bg-gray-100 p-8">
-    <h1 class="text-3xl font-bold mb-6">{{ config.title | default("Salut") }}</h1>
+    <h1 class="text-3xl font-bold mb-6">{{ page_header }}</h1>
+    <script>
+        (function() {
+            var hour = new Date().getHours();
+            var emoji;
+            if (hour >= 6 && hour < 12) emoji = '☀️';
+            else if (hour >= 12 && hour < 18) emoji = '🌤️';
+            else if (hour >= 18 && hour < 22) emoji = '🌙';
+            else emoji = '🌑';
+            document.body.innerHTML = document.body.innerHTML.replace(/\{\{time_emoji\}\}/g, emoji);
+        })();
+    </script>
     <div class="flex gap-6">
         {% for column in config.columns %}
         <div class="flex-1">

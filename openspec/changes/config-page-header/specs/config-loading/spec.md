@@ -1,27 +1,4 @@
-## Purpose
-
-YAML configuration file loading with fallback pattern and schema validation.
-
-## Requirements
-
-### Requirement: YAML config is loaded on startup
-The system SHALL load a YAML config file from the project root when the server starts, using a fallback pattern.
-
-#### Scenario: User config exists
-- **WHEN** the server starts and `config.yml` exists with valid YAML
-- **THEN** the parsed config from `config.yml` is used
-
-#### Scenario: User config missing, default config exists
-- **WHEN** the server starts and `config.yml` does not exist but `starter.yaml` exists with valid YAML
-- **THEN** the parsed config from `starter.yaml` is used
-
-#### Scenario: Both config files missing
-- **WHEN** the server starts and neither `config.yml` nor `starter.yaml` exist
-- **THEN** the server starts with a clear error message
-
-#### Scenario: Config file has YAML syntax errors
-- **WHEN** the server starts and the active config file contains invalid YAML
-- **THEN** the server starts with a clear error message naming the parse error
+## MODIFIED Requirements
 
 ### Requirement: Config schema is validated
 The system SHALL validate the parsed config has the required structure.
@@ -41,6 +18,8 @@ The system SHALL validate the parsed config has the required structure.
 #### Scenario: Missing card type
 - **WHEN** a card has no `type` field
 - **THEN** a validation error is raised indicating the type is required
+
+## ADDED Requirements
 
 ### Requirement: Page title is required
 The system SHALL require a `page_title` string field in the config.

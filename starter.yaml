@@ -1,4 +1,8 @@
-title: Salut
+page_title: Salut
+page_header: "Hi ${user_info.short_name} {{time_emoji}}"
+user_info:
+  short_name: Chris
+  long_name: Chris P. Bacon
 
 columns:
   - cards:
