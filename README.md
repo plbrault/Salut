@@ -20,13 +20,13 @@ If using pyenv, the `.python-version` file will automatically select Python 3.14
 
 ## Configuration
 
-Copy `starter.yaml` to `config.yml` and edit it to customize your page:
+Copy `starter.yml` to `config.yml` and edit it to customize your page:
 
 ```bash
-cp starter.yaml config.yml
+cp starter.yml config.yml
 ```
 
-`config.yml` is gitignored so your customizations stay local. If `config.yml` is absent, the server uses `starter.yaml` as the default.
+`config.yml` is gitignored so your customizations stay local. If `config.yml` is absent, the server uses `starter.yml` as the default.
 
 ## Running
 
@@ -35,6 +35,22 @@ pipenv run app
 ```
 
 The server starts at `http://localhost:8000`.
+
+Use a custom port:
+
+```bash
+PORT=9001 pipenv run app
+```
+
+## Development
+
+For development with hot-reloading templates and config:
+
+```bash
+pipenv run develop
+```
+
+This watches for changes to `.yml`/`.yaml` config files and `.html` templates, automatically refreshing the browser.
 
 ## Testing
 

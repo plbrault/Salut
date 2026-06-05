@@ -12,11 +12,11 @@ The system SHALL load a YAML config file from the project root when the server s
 - **THEN** the parsed config from `config.yml` is used
 
 #### Scenario: User config missing, default config exists
-- **WHEN** the server starts and `config.yml` does not exist but `starter.yaml` exists with valid YAML
-- **THEN** the parsed config from `starter.yaml` is used
+- **WHEN** the server starts and `config.yml` does not exist but `starter.yml` exists with valid YAML
+- **THEN** the parsed config from `starter.yml` is used
 
 #### Scenario: Both config files missing
-- **WHEN** the server starts and neither `config.yml` nor `starter.yaml` exist
+- **WHEN** the server starts and neither `config.yml` nor `starter.yml` exist
 - **THEN** the server starts with a clear error message
 
 #### Scenario: Config file has YAML syntax errors

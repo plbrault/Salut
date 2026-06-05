@@ -19,10 +19,10 @@ class ConfigError(Exception):
 def load_config():
     config_path = BASE_DIR / "config.yml"
     if not config_path.exists():
-        config_path = BASE_DIR / "starter.yaml"
+        config_path = BASE_DIR / "starter.yml"
 
     if not config_path.exists():
-        raise ConfigError("No config file found. Create config.yml or starter.yaml.")
+        raise ConfigError("No config file found. Create config.yml or starter.yml.")
 
     with open(config_path, "r", encoding="utf-8") as f:
         try:
