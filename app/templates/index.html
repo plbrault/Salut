@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ config.title | default("Salut") }}</title>
+    <script src="/static/tailwindcss.js"></script>
+    <script src="/static/htmx.min.js"></script>
+</head>
+<body class="bg-gray-100 p-8">
+    <h1 class="text-3xl font-bold mb-6">{{ config.title | default("Salut") }}</h1>
+    <div class="flex gap-6">
+        {% for column in config.columns %}
+        <div class="flex-1">
+            {% for card in column.cards %}
+            <div class="bg-white rounded-lg border border-gray-200 p-4 mb-4">
+                <h3 class="text-lg font-semibold mb-2">{{ card.title }}</h3>
+                <p class="text-gray-500">{{ card.type }} card (coming soon)</p>
+            </div>
+            {% endfor %}
+        </div>
+        {% endfor %}
+    </div>
+</body>
+</html>

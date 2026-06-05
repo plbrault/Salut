@@ -1,0 +1,19 @@
+title: Salut
+
+columns:
+  - cards:
+      - title: News
+        type: newsfeed
+        feeds:
+          - https://news.ycombinator.com/rss
+        count: 5
+        schedule: "*/30 * * * *"
+      - title: Search
+        type: search
+  - cards:
+      - title: Weather
+        type: weather
+        city: Montreal
+        units: metric
+      - title: GitHub
+        type: github

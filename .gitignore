@@ -1,0 +1,9 @@
+config.yml
+__pycache__/
+*.pyc
+*.pyo
+*.db
+*.db-wal
+*.db-shm
+.env
+venv/
