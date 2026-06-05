@@ -2,6 +2,52 @@
 
 `Salut` means `Hi` in French. It is a self-hosted starter page featuring customizable content cards.
 
+## Prerequisites
+
+- Python 3.14 (recommended to use [pyenv](https://github.com/pyenv/pyenv) to manage Python versions)
+- [pipenv](https://pipenv.pypa.io/)
+- [GitHub CLI](https://cli.github.com/) (`gh`) — required for the GitHub notifications card
+
+## Installation
+
+```bash
+git clone <repo-url>
+cd salut
+pipenv install
+```
+
+If using pyenv, the `.python-version` file will automatically select Python 3.14 when you `cd` into the project directory.
+
+## Configuration
+
+Copy `starter.yaml` to `config.yml` and edit it to customize your page:
+
+```bash
+cp starter.yaml config.yml
+```
+
+`config.yml` is gitignored so your customizations stay local. If `config.yml` is absent, the server uses `starter.yaml` as the default.
+
+## Running
+
+```bash
+pipenv run app
+```
+
+The server starts at `http://localhost:8000`.
+
+## Testing
+
+```bash
+pipenv run pytest
+```
+
+## Linting
+
+```bash
+pipenv run pylint
+```
+
 ## License
 
 Copyright © 2026 Pier-Luc Brault <pier-luc@brault.me>

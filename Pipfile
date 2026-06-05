@@ -1,0 +1,25 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+fastapi = "*"
+uvicorn = {extras = ["standard"], version = "*"}
+jinja2 = "*"
+pyyaml = "*"
+feedparser = "*"
+apscheduler = "*"
+
+[dev-packages]
+pylint = "*"
+pytest = "*"
+httpx2 = "*"
+
+[scripts]
+app = "python -m app.main"
+pytest = "pytest"
+pylint = "pylint app/ tests/"
+
+[requires]
+python_version = "3.14"
