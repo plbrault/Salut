@@ -11,12 +11,16 @@ The server SHALL serve an index page at `GET /` using Jinja2 templates.
 - **WHEN** the index page is rendered
 - **THEN** the Jinja2 template receives the parsed YAML config as context
 
-### Requirement: Template includes HTMX
-The HTML template SHALL include the HTMX script tag for dynamic updates.
+### Requirement: Static assets are served
+The server SHALL serve static files (HTMX, Tailwind CSS) from the `static/` directory.
 
-#### Scenario: HTMX is available
+#### Scenario: HTMX is available locally
 - **WHEN** the page loads in a browser
-- **THEN** the HTMX library is loaded and available for use
+- **THEN** the HTMX library is loaded from `/static/htmx.min.js`
+
+#### Scenario: Tailwind CSS is available locally
+- **WHEN** the page loads in a browser
+- **THEN** Tailwind CSS is loaded from `/static/tailwindcss.js`
 
 ### Requirement: SQLite database is initialized
 The server SHALL create and initialize a SQLite database on startup.

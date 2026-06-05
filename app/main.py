@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from fastapi import FastAPI, Request
+from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from app.config import load_config
@@ -9,6 +10,7 @@ from app.database import init_database
 BASE_DIR = Path(__file__).resolve().parent
 
 app = FastAPI(title="Salut")
+app.mount("/static", StaticFiles(directory=BASE_DIR.parent / "static"), name="static")
 
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
 

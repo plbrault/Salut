@@ -5,7 +5,7 @@ on:
     branches: [main]
 
 jobs:
-  lint-and-test:
+  lint:
     runs-on: ubuntu-latest
 
     steps:
@@ -23,7 +23,24 @@ jobs:
         run: pipenv install --dev
 
       - name: Run pylint
-        run: pipenv run pylint app/ tests/
+        run: pipenv run pylint
+
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install pipenv
+        run: pip install pipenv
+
+      - name: Install dependencies
+        run: pipenv install --dev
 
       - name: Run pytest
         run: pipenv run pytest

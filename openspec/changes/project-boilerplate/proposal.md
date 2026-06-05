@@ -11,7 +11,7 @@ We need a project skeleton to build on. This change sets up the foundation so su
 - Create a minimal FastAPI server that loads a YAML config and renders a basic page
 - Server uses `config.yml` if present, otherwise falls back to `starter.yaml` (default config)
 - `config.yml` is gitignored so user customizations stay local
-- Set up Jinja2 templates with HTMX
+- Set up Jinja2 templates with HTMX and Tailwind CSS (hosted locally)
 - Initialize SQLite database with WAL mode
 - Create a sample `starter.yaml` with placeholder card definitions
 

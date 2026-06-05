@@ -9,7 +9,7 @@ This is the first implementation change for the Salut project. This change focus
 - Pylint configured for linting
 - Pytest configured for testing
 - FastAPI server that starts and serves a page
-- Jinja2 templates with HTMX wired up
+- Jinja2 templates with HTMX and Tailwind CSS wired up
 - YAML config loading with basic validation
 - SQLite database initialized with WAL mode
 - Sample `starter.yaml` with placeholder cards
@@ -32,7 +32,9 @@ salut/
     database.py      # SQLite setup
     templates/
       index.html     # Single page template with HTMX
-  static/            # CSS, images (future)
+  static/
+    htmx.min.js      # HTMX (v2.0.4, hosted locally)
+    tailwindcss.js   # Tailwind CSS play CDN (hosted locally)
   starter.yaml       # Default config (checked into git)
   config.yml         # User config (gitignored, overrides starter.yaml)
   Pipfile            # Dependencies
@@ -52,6 +54,11 @@ salut/
 - `apscheduler` — installed now, used in next change
 - `pylint` — linting (dev dependency)
 - `pytest` — testing (dev dependency)
+
+### Static assets: HTMX and Tailwind hosted locally
+HTMX and Tailwind CSS are downloaded to `static/` and served by FastAPI's `StaticFiles` middleware. No CDN dependencies — everything works offline and avoids external requests in production.
+
+**Alternative considered**: CDN for both. Rejected — adds external dependency, fails offline, and leaks usage data.
 
 ### Config loading: fallback pattern
 Check for `config.yml` first. If it exists, use it. Otherwise, fall back to `starter.yaml`. This lets users customize their config without modifying the tracked default. `config.yml` is gitignored.

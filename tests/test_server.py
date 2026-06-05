@@ -17,9 +17,14 @@ class TestServer:
     def test_index_contains_htmx(self):
         with TestClient(app) as client:
             response = client.get("/")
-            assert "htmx.org" in response.text
+            assert "htmx.min.js" in response.text
+
+    def test_index_contains_tailwind(self):
+        with TestClient(app) as client:
+            response = client.get("/")
+            assert "tailwindcss.js" in response.text
 
     def test_index_contains_columns(self):
         with TestClient(app) as client:
             response = client.get("/")
-            assert 'class="columns"' in response.text
+            assert 'class="flex gap-6"' in response.text
