@@ -2,6 +2,8 @@
 
 **Salut** means **Hi** in French. It is a self-hosted, fully configurable start page featuring customizable content cards.
 
+![Screenshot of Salut](.readme/salut_preview.png)
+
 ## Features
 
 * Single web page with no login (meant to be locally hosted)
