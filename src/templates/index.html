@@ -107,39 +107,6 @@
     <header>
         {{ page_header | safe }}
     </header>
-    <script>
-        (function() {
-            var lang = document.documentElement.lang;
-            var now = new Date();
-
-            // Time emoji
-            var hour = now.getHours();
-            var emoji;
-            if (hour >= 6 && hour < 12) emoji = '\u2600\uFE0F';
-            else if (hour >= 12 && hour < 18) emoji = '\uD83C\uDF24\uFE0F';
-            else if (hour >= 18 && hour < 22) emoji = '\uD83C\uDF19';
-            else emoji = '\uD83C\uDF11';
-
-            // Localized date
-            var date = new Intl.DateTimeFormat(lang, {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: '2-digit'
-            }).format(now);
-
-            // Theme toggle button
-            var theme = document.documentElement.dataset.theme || 'light';
-            var toggleHtml = '<button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">'
-                + (theme === 'dark' ? window.themeIcons.moon : window.themeIcons.sun)
-                + '</button>';
-
-            document.body.innerHTML = document.body.innerHTML
-                .replace(/\{\{time_emoji\}\}/g, emoji)
-                .replace(/\{\{date\}\}/g, date)
-                .replace(/\{\{theme_toggle\}\}/g, toggleHtml);
-        })();
-    </script>
     {% if dev_mode %}
     <script>
         (function() {
@@ -167,6 +134,60 @@
         </div>
         {% endfor %}
     </div>
+    <script>
+        (function() {
+            var lang = document.documentElement.lang;
+            var now = new Date();
+
+            // Time emoji
+            var hour = now.getHours();
+            var emoji;
+            if (hour >= 6 && hour < 12) emoji = '\u2600\uFE0F';
+            else if (hour >= 12 && hour < 18) emoji = '\uD83C\uDF24\uFE0F';
+            else if (hour >= 18 && hour < 22) emoji = '\uD83C\uDF19';
+            else emoji = '\uD83C\uDF11';
+
+            // Localized date
+            var date = new Intl.DateTimeFormat(lang, {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: '2-digit'
+            }).format(now);
+
+            // Theme toggle button
+            var theme = document.documentElement.dataset.theme || 'light';
+            var toggleHtml = '<button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">'
+                + (theme === 'dark' ? window.themeIcons.moon : window.themeIcons.sun)
+                + '</button>';
+
+            var replacements = {
+                '{{time_emoji}}': emoji,
+                '{{date}}': date,
+                '{{theme_toggle}}': toggleHtml
+            };
+
+            var walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+            var textNodes = [];
+            while (walker.nextNode()) textNodes.push(walker.currentNode);
+
+            textNodes.forEach(function(node) {
+                var text = node.textContent;
+                var changed = false;
+                for (var placeholder in replacements) {
+                    if (text.indexOf(placeholder) !== -1) {
+                        text = text.split(placeholder).join(replacements[placeholder]);
+                        changed = true;
+                    }
+                }
+                if (changed) {
+                    var span = document.createElement('span');
+                    span.innerHTML = text;
+                    node.parentNode.replaceChild(span, node);
+                }
+            });
+        })();
+    </script>
     <script>
         (function() {
             var MAX_COLS = {{ max_cols }};

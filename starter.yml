@@ -37,10 +37,10 @@ cards:
       schedule: "*/5 * * * *"
       max_items: 10
       images: true
-  - title: Example
+  - title: Welcome ${user_info.long_name} !
     plugin: html
     options:
-      html: "<p>This is an example card. You can add any HTML content here.</p>"
+      html: "<p>This is an example card, ${user_info.long_name}. You can add any HTML content here. {{theme_toggle}} </p>"
   - title: Links
     plugin: html
     options:
