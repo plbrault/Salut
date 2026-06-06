@@ -64,30 +64,15 @@ app.mount("/cache", StaticFiles(directory=CACHE_DIR), name="cache")
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
 
 
-def _compute_grid_layout(num_cols, cards):
-    cards_data = []
-    current_col = 1
-    current_row = 1
-
-    for card in cards:
-        colspan = card.get("colspan", 1)
-
-        if current_col + colspan - 1 > num_cols:
-            current_row += 1
-            current_col = 1
-
-        cards_data.append({
+def _render_cards(cards):
+    return [
+        {
             "title": card.get("title", ""),
-            "colspan": colspan,
-            "col": current_col,
-            "row": current_row,
+            "colspan": card.get("colspan", 1),
             "content": render_card(card, app.state.plugin_instances),
-        })
-
-        current_col += colspan
-
-    num_rows = current_row
-    return cards_data, num_cols, num_rows
+        }
+        for card in cards
+    ]
 
 
 @app.get("/")
@@ -96,10 +81,7 @@ def index(request: Request):
     page_title = resolve_config_vars(config.get("page_title", ""), config)
     page_header = resolve_config_vars(config.get("page_header", ""), config)
 
-    cards_data, num_cols, num_rows = _compute_grid_layout(
-        config.get("columns", 3),
-        config.get("cards", []),
-    )
+    cards_data = _render_cards(config.get("cards", []))
 
     return templates.TemplateResponse(
         request,
@@ -111,8 +93,7 @@ def index(request: Request):
             "language": config.get("language", "en-US"),
             "dev_mode": os.environ.get("DEVELOPMENT") is not None,
             "cards": cards_data,
-            "num_cols": num_cols,
-            "num_rows": num_rows,
+            "max_cols": config.get("columns", 3),
         },
     )
 
