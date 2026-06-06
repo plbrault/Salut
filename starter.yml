@@ -14,6 +14,7 @@ cards:
     options:
       provider: duckduckgo
       button_text: "Search"
+      placeholder_text: "Search on DuckDuckGo"
   - title: Welcome ${user_info.long_name} !
     plugin: html
     options:

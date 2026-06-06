@@ -38,6 +38,12 @@ class SearchPlugin(Plugin):
                 f"{filename}: cards[{card_idx}].options.button_text must be a string."
             )
 
+        placeholder_text = options.get("placeholder_text")
+        if placeholder_text is not None and not isinstance(placeholder_text, str):
+            raise ConfigError(
+                f"{filename}: cards[{card_idx}].options.placeholder_text must be a string."
+            )
+
         results_in_new_tab = options.get("results_in_new_tab")
         if results_in_new_tab is not None and not isinstance(results_in_new_tab, bool):
             raise ConfigError(
@@ -50,6 +56,7 @@ class SearchPlugin(Plugin):
     def render(self, options):
         provider = options.get("provider", "duckduckgo")
         button_text = options.get("button_text", "Search")
+        placeholder_text = options.get("placeholder_text", "Search")
         results_in_new_tab = options.get("results_in_new_tab", False)
         language = options.get("language", "en")
 
@@ -64,6 +71,7 @@ class SearchPlugin(Plugin):
             action_url=action_url,
             query_param=query_param,
             button_text=button_text,
+            placeholder_text=placeholder_text,
             results_in_new_tab=results_in_new_tab,
         )
 
