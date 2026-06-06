@@ -6,6 +6,7 @@ from src.plugin import Plugin
 from src.plugins.html import HtmlPlugin
 from src.plugins.rss import RssPlugin
 from src.plugins.rss.plugin import RssPlugin as RssPluginDirect
+from src.plugins.search import SearchPlugin
 from src.database import Database
 from src.config import validate_config, ConfigError
 
@@ -302,3 +303,192 @@ class TestMultipleRssCards:  # pylint: disable=too-few-public-methods
         assert inst1 is not None
         assert inst2 is not None
         assert inst1._card_id != inst2._card_id  # pylint: disable=protected-access
+
+
+class TestSearchPlugin:
+    def test_load_search_plugin(self):
+        cls = load_plugin_class("search")
+        assert cls is not None
+
+    def test_search_is_subclass_of_plugin(self):
+        assert issubclass(SearchPlugin, Plugin)
+
+    def test_search_card_requires_options(self):
+        config = {
+            "page_title": "Test",
+            "page_header": "Test",
+            "language": "en",
+            "user_info": {"short_name": "A", "long_name": "B"},
+            "columns": 3,
+            "cards": [{
+                "title": "Search",
+                "plugin": "search",
+            }]
+        }
+        try:
+            validate_config(config)
+            assert False, "Should have raised ConfigError"
+        except ConfigError as e:
+            assert "options is required" in str(e)
+
+    def test_search_card_requires_provider(self):
+        config = {
+            "page_title": "Test",
+            "page_header": "Test",
+            "language": "en",
+            "user_info": {"short_name": "A", "long_name": "B"},
+            "columns": 3,
+            "cards": [{
+                "title": "Search",
+                "plugin": "search",
+                "options": {}
+            }]
+        }
+        try:
+            validate_config(config)
+            assert False, "Should have raised ConfigError"
+        except ConfigError as e:
+            assert "provider" in str(e) or "options" in str(e)
+
+    def test_search_card_invalid_provider(self):
+        config = {
+            "page_title": "Test",
+            "page_header": "Test",
+            "language": "en",
+            "user_info": {"short_name": "A", "long_name": "B"},
+            "columns": 3,
+            "cards": [{
+                "title": "Search",
+                "plugin": "search",
+                "options": {"provider": "google"}
+            }]
+        }
+        try:
+            validate_config(config)
+            assert False, "Should have raised ConfigError"
+        except ConfigError as e:
+            assert "duckduckgo" in str(e)
+
+    def test_search_card_valid_config(self):
+        config = {
+            "page_title": "Test",
+            "page_header": "Test",
+            "language": "en",
+            "user_info": {"short_name": "A", "long_name": "B"},
+            "columns": 3,
+            "cards": [{
+                "title": "Search",
+                "plugin": "search",
+                "options": {"provider": "duckduckgo"}
+            }]
+        }
+        validate_config(config)
+
+    def test_search_render_with_default_button_text(self):
+        plugin = SearchPlugin()
+        result = plugin.render({"provider": "duckduckgo"})
+        assert "Search" in result
+        assert 'type="submit"' in result
+
+    def test_search_form_submits_to_duckduckgo(self):
+        plugin = SearchPlugin()
+        result = plugin.render({"provider": "duckduckgo"})
+        assert 'action="https://duckduckgo.com/"' in result
+
+    def test_search_render_with_custom_button_text(self):
+        plugin = SearchPlugin()
+        result = plugin.render({"provider": "duckduckgo", "button_text": "Go"})
+        assert "Go" in result
+        assert 'type="submit"' in result
+
+    def test_search_results_in_new_tab(self):
+        plugin = SearchPlugin()
+        result = plugin.render({"provider": "duckduckgo", "results_in_new_tab": True})
+        assert 'target="_blank"' in result
+
+    def test_search_results_in_same_tab_by_default(self):
+        plugin = SearchPlugin()
+        result = plugin.render({"provider": "duckduckgo"})
+        assert 'target="_blank"' not in result
+
+    def test_search_button_text_must_be_string(self):
+        config = {
+            "page_title": "Test",
+            "page_header": "Test",
+            "language": "en",
+            "user_info": {"short_name": "A", "long_name": "B"},
+            "columns": 3,
+            "cards": [{
+                "title": "Search",
+                "plugin": "search",
+                "options": {"provider": "duckduckgo", "button_text": 123}
+            }]
+        }
+        try:
+            validate_config(config)
+            assert False, "Should have raised ConfigError"
+        except ConfigError as e:
+            assert "button_text" in str(e)
+
+    def test_search_results_in_new_tab_must_be_boolean(self):
+        config = {
+            "page_title": "Test",
+            "page_header": "Test",
+            "language": "en",
+            "user_info": {"short_name": "A", "long_name": "B"},
+            "columns": 3,
+            "cards": [{
+                "title": "Search",
+                "plugin": "search",
+                "options": {"provider": "duckduckgo", "results_in_new_tab": "yes"}
+            }]
+        }
+        try:
+            validate_config(config)
+            assert False, "Should have raised ConfigError"
+        except ConfigError as e:
+            assert "results_in_new_tab" in str(e)
+
+    def test_search_wikipedia_provider(self):
+        config = {
+            "page_title": "Test",
+            "page_header": "Test",
+            "language": "en",
+            "user_info": {"short_name": "A", "long_name": "B"},
+            "columns": 3,
+            "cards": [{
+                "title": "Search",
+                "plugin": "search",
+                "options": {"provider": "wikipedia"}
+            }]
+        }
+        validate_config(config)
+
+    def test_search_wikipedia_with_custom_language(self):
+        plugin = SearchPlugin()
+        result = plugin.render({"provider": "wikipedia", "language": "fr"})
+        assert 'action="https://fr.wikipedia.org/w/index.php"' in result
+
+    def test_search_wikipedia_default_language(self):
+        plugin = SearchPlugin()
+        result = plugin.render({"provider": "wikipedia"})
+        assert 'action="https://en.wikipedia.org/w/index.php"' in result
+
+    def test_search_language_must_be_string(self):
+        config = {
+            "page_title": "Test",
+            "page_header": "Test",
+            "language": "en",
+            "user_info": {"short_name": "A", "long_name": "B"},
+            "columns": 3,
+            "cards": [{
+                "title": "Search",
+                "plugin": "search",
+                "options": {"provider": "wikipedia", "language": 123}
+            }]
+        }
+        try:
+            validate_config(config)
+            assert False, "Should have raised ConfigError"
+        except ConfigError as e:
+            assert "language" in str(e)

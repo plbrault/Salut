@@ -8,11 +8,12 @@ user_info:
 columns: 3
 
 cards:
-  - title: Welcome
-    plugin: html
+  - title: Web Search
+    plugin: search
     colspan: 3
     options:
-      html: "<p>Welcome to Salut! This is your personal starter page.</p>"
+      provider: duckduckgo
+      button_text: "Search"
   - title: World News
     plugin: rss
     options:
@@ -48,3 +49,9 @@ cards:
     plugin: html
     options:
       html: "<p>Edit config.yml to customize your page.</p>"
+  - title: Wikipedia
+    plugin: search
+    options:
+      provider: wikipedia
+      language: en
+      button_text: "Search Wikipedia"
