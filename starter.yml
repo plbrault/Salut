@@ -51,6 +51,10 @@ cards:
     plugin: html
     options:
       html: "<ul><li><a target='_blank' href='https://github.com'>GitHub</a></li><li><a target='_blank' href='https://news.ycombinator.com'>Hacker News</a></li><li><a target='_blank' href='https://www.reddit.com'>Reddit</a></li></ul>"
+  - title: Random Cat
+    plugin: html
+    options:
+      html: "<img src='https://cataas.com/cat?width=400' alt='Random cat' class='w-full rounded-lg'>"
   - title: About
     plugin: html
     options:
