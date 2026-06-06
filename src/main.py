@@ -35,6 +35,8 @@ async def lifespan(application):
     logging.root.setLevel(logging.INFO)
 
     db = Database()
+    db.delete()
+    db = Database()
     application.state.database = db
     application.state.config = load_config()
     application.state.secrets = load_secrets()

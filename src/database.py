@@ -45,3 +45,7 @@ class Database:
 
     def close(self):
         self._connection.close()
+
+    def delete(self):
+        self._connection.close()
+        self._path.unlink(missing_ok=True)
