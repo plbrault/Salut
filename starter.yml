@@ -69,8 +69,10 @@ cards:
     plugin: calendar
     options:
       calendars:
-        - url: "https://caldav.calconnect.org/public/holidays/"
-          auth_type: basic
+        - url: "https://www.officeholidays.com/ics/canada"
+          type: ics
+          name: "Holidays"
+          color: "#3b82f6"
       schedule: "*/30 * * * *"
       time_window_days: 30
       max_events: 10

@@ -2,15 +2,22 @@
     {% for event in events %}
     <div class="calendar-event">
         <div class="calendar-date">
-            {% if event.is_allday %}
-                <div class="calendar-date-day">{{ event.start[:10] }}</div>
-                <div class="calendar-date-time">All day</div>
-            {% else %}
-                <div class="calendar-date-day">{{ event.start[:10] }}</div>
+            <div class="calendar-date-day">{{ event.start[:10] }}</div>
+            {% if not event.is_allday %}
                 <div class="calendar-date-time">{{ event.start[11:16] }}</div>
             {% endif %}
         </div>
-        <div class="calendar-summary">{{ event.summary }}</div>
+        <div class="calendar-event-body">
+            <div class="calendar-summary">{{ event.summary }}</div>
+            {% if event.calendar_name %}
+                <div class="calendar-name">
+                    {% if event.calendar_color %}
+                        <span class="calendar-name-dot" style="background-color: {{ event.calendar_color }}"></span>
+                    {% endif %}
+                    {{ event.calendar_name }}
+                </div>
+            {% endif %}
+        </div>
     </div>
     {% endfor %}
 </div>

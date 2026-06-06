@@ -1032,7 +1032,7 @@ class TestCalendarPlugin:  # pylint: disable=protected-access
     def _valid_options(self, **overrides):
         opts = {
             "calendars": [
-                {"url": "https://caldav.example.com/cal1"}
+                {"url": "https://caldav.example.com/cal1", "name": "Test Cal"}
             ],
             "schedule": "*/30 * * * *",
         }
@@ -1134,7 +1134,7 @@ class TestCalendarPlugin:  # pylint: disable=protected-access
             "cards": [{
                 "title": "Calendar",
                 "plugin": "calendar",
-                "options": {"calendars": [{"url": "https://caldav.example.com/cal1"}]}
+                "options": {"calendars": [{"url": "https://caldav.example.com/cal1", "name": "Cal"}]}
             }]
         }
         try:
@@ -1173,7 +1173,7 @@ class TestCalendarPlugin:  # pylint: disable=protected-access
                 "title": "Calendar",
                 "plugin": "calendar",
                 "options": self._valid_options(
-                    calendars=[{"url": "https://caldav.example.com/cal1", "auth_type": "oauth"}]
+                    calendars=[{"url": "https://caldav.example.com/cal1", "name": "Cal", "auth_type": "oauth"}]
                 )
             }]
         }
@@ -1194,7 +1194,7 @@ class TestCalendarPlugin:  # pylint: disable=protected-access
                 "title": "Calendar",
                 "plugin": "calendar",
                 "options": self._valid_options(
-                    calendars=[{"url": "https://caldav.example.com/cal1", "auth_type": "bearer"}]
+                    calendars=[{"url": "https://caldav.example.com/cal1", "name": "Cal", "auth_type": "bearer"}]
                 )
             }]
         }
@@ -1203,6 +1203,65 @@ class TestCalendarPlugin:  # pylint: disable=protected-access
             assert False, "Should have raised ConfigError"
         except ConfigError as e:
             assert "bearer_token" in str(e)
+
+    def test_calendar_requires_name(self):
+        config = {
+            "page_title": "Test",
+            "page_header": "Test",
+            "language": "en",
+            "user_info": {"short_name": "A", "long_name": "B"},
+            "columns": 3,
+            "cards": [{
+                "title": "Calendar",
+                "plugin": "calendar",
+                "options": self._valid_options(
+                    calendars=[{"url": "https://caldav.example.com/cal1"}]
+                )
+            }]
+        }
+        try:
+            validate_config(config)
+            assert False, "Should have raised ConfigError"
+        except ConfigError as e:
+            assert "name" in str(e)
+
+    def test_calendar_valid_config_with_color(self):
+        config = {
+            "page_title": "Test",
+            "page_header": "Test",
+            "language": "en",
+            "user_info": {"short_name": "A", "long_name": "B"},
+            "columns": 3,
+            "cards": [{
+                "title": "Calendar",
+                "plugin": "calendar",
+                "options": self._valid_options(
+                    calendars=[{"url": "https://caldav.example.com/cal1", "name": "Work", "color": "#3b82f6"}]
+                )
+            }]
+        }
+        validate_config(config)
+
+    def test_calendar_invalid_color_format(self):
+        config = {
+            "page_title": "Test",
+            "page_header": "Test",
+            "language": "en",
+            "user_info": {"short_name": "A", "long_name": "B"},
+            "columns": 3,
+            "cards": [{
+                "title": "Calendar",
+                "plugin": "calendar",
+                "options": self._valid_options(
+                    calendars=[{"url": "https://caldav.example.com/cal1", "name": "Work", "color": "blue"}]
+                )
+            }]
+        }
+        try:
+            validate_config(config)
+            assert False, "Should have raised ConfigError"
+        except ConfigError as e:
+            assert "color" in str(e)
 
     def test_calendar_invalid_time_window_days(self):
         config = {
@@ -1276,6 +1335,61 @@ class TestCalendarPlugin:  # pylint: disable=protected-access
         }
         validate_config(config)
 
+    def test_calendar_valid_config_with_ics_type(self):
+        config = {
+            "page_title": "Test",
+            "page_header": "Test",
+            "language": "en",
+            "user_info": {"short_name": "A", "long_name": "B"},
+            "columns": 3,
+            "cards": [{
+                "title": "Calendar",
+                "plugin": "calendar",
+                "options": self._valid_options(
+                    calendars=[{"url": "https://example.com/cal.ics", "type": "ics", "name": "ICS Cal"}]
+                )
+            }]
+        }
+        validate_config(config)
+
+    def test_calendar_invalid_type(self):
+        config = {
+            "page_title": "Test",
+            "page_header": "Test",
+            "language": "en",
+            "user_info": {"short_name": "A", "long_name": "B"},
+            "columns": 3,
+            "cards": [{
+                "title": "Calendar",
+                "plugin": "calendar",
+                "options": self._valid_options(
+                    calendars=[{"url": "https://example.com/cal", "type": "webcal", "name": "Cal"}]
+                )
+            }]
+        }
+        try:
+            validate_config(config)
+            assert False, "Should have raised ConfigError"
+        except ConfigError as e:
+            assert "type" in str(e)
+
+    def test_calendar_auth_type_none_is_valid(self):
+        config = {
+            "page_title": "Test",
+            "page_header": "Test",
+            "language": "en",
+            "user_info": {"short_name": "A", "long_name": "B"},
+            "columns": 3,
+            "cards": [{
+                "title": "Calendar",
+                "plugin": "calendar",
+                "options": self._valid_options(
+                    calendars=[{"url": "https://example.com/cal", "auth_type": "none", "name": "Cal"}]
+                )
+            }]
+        }
+        validate_config(config)
+
     def test_calendar_valid_config_with_multiple_calendars(self):
         config = {
             "page_title": "Test",
@@ -1288,8 +1402,10 @@ class TestCalendarPlugin:  # pylint: disable=protected-access
                 "plugin": "calendar",
                 "options": self._valid_options(
                     calendars=[
-                        {"url": "https://caldav.example.com/cal1"},
-                        {"url": "https://caldav.example.com/cal2", "auth_type": "bearer", "bearer_token": "xxx"},
+                        {"url": "https://caldav.example.com/cal1", "name": "Cal1"},
+                        {"url": "https://caldav.example.com/cal2",
+                         "name": "Cal2", "auth_type": "bearer",
+                         "bearer_token": "xxx"},
                     ]
                 )
             }]
@@ -1425,10 +1541,10 @@ class TestCalendarPlugin:  # pylint: disable=protected-access
         db = Mock()
         sched = Mock()
         card1 = {"plugin": "calendar", "options": self._valid_options(
-            calendars=[{"url": "https://cal1.example.com"}]
+            calendars=[{"url": "https://cal1.example.com", "name": "Cal1"}]
         )}
         card2 = {"plugin": "calendar", "options": self._valid_options(
-            calendars=[{"url": "https://cal2.example.com"}]
+            calendars=[{"url": "https://cal2.example.com", "name": "Cal2"}]
         )}
         inst1 = setup_card(card1, db, sched)
         inst2 = setup_card(card2, db, sched)

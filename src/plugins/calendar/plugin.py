@@ -1,13 +1,18 @@
 import hashlib
 import json
+import re
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import caldav
+import requests
+from icalendar import Calendar
 
 from src.config import ConfigError
 from src.plugin import Plugin
+
+HEX_COLOR_RE = re.compile(r'^#[0-9a-fA-F]{6}$')
 
 
 class CalendarPlugin(Plugin):
@@ -73,9 +78,20 @@ class CalendarPlugin(Plugin):
             raise ConfigError(f"{prefix} must be a mapping.")
         if not cal.get("url"):
             raise ConfigError(f"{prefix}.url is required.")
-        auth_type = cal.get("auth_type", "basic")
-        if auth_type not in ("basic", "bearer"):
-            raise ConfigError(f"{prefix}.auth_type must be 'basic' or 'bearer'.")
+        if not cal.get("name") or not isinstance(cal["name"], str):
+            raise ConfigError(f"{prefix}.name is required and must be a string.")
+        color = cal.get("color")
+        if color is not None:
+            if not isinstance(color, str) or not HEX_COLOR_RE.match(color):
+                raise ConfigError(
+                    f"{prefix}.color must be a hex color string (e.g., '#3b82f6')."
+                )
+        cal_type = cal.get("type", "caldav")
+        if cal_type not in ("caldav", "ics"):
+            raise ConfigError(f"{prefix}.type must be 'caldav' or 'ics'.")
+        auth_type = cal.get("auth_type", "none")
+        if auth_type not in ("none", "basic", "bearer"):
+            raise ConfigError(f"{prefix}.auth_type must be 'none', 'basic', or 'bearer'.")
         if auth_type == "bearer" and not cal.get("bearer_token"):
             raise ConfigError(
                 f"{prefix}.bearer_token is required when auth_type is 'bearer'."
@@ -168,10 +184,16 @@ class CalendarPlugin(Plugin):
         )
 
     def _fetch_single_calendar(self, cal_config, start, end):
+        cal_type = cal_config.get("type", "caldav")
+        if cal_type == "ics":
+            return self._fetch_ics(cal_config, start, end)
+        return self._fetch_caldav(cal_config, start, end)
+
+    def _fetch_caldav(self, cal_config, start, end):
         url = cal_config["url"]
-        auth_type = cal_config.get("auth_type", "basic")
+        auth_type = cal_config.get("auth_type", "none")
         try:
-            self._logger.info("Fetching calendar: %s", url)
+            self._logger.info("Fetching CalDAV calendar: %s", url)
             client = self._create_caldav_client(url, cal_config, auth_type)
             principal = client.principal()
             calendars = principal.calendars()
@@ -182,9 +204,21 @@ class CalendarPlugin(Plugin):
 
             cal = calendars[0]
             events = cal.date_search(start, end)
-            return self._parse_events(events)
+            return self._parse_caldav_events(events, cal_config)
         except Exception as e:  # pylint: disable=broad-except
-            self._logger.warning("Failed to fetch calendar: %s — %s", url, e)
+            self._logger.warning("Failed to fetch CalDAV calendar: %s — %s", url, e)
+            return []
+
+    def _fetch_ics(self, cal_config, start, end):
+        url = cal_config["url"]
+        try:
+            self._logger.info("Fetching ICS calendar: %s", url)
+            response = requests.get(url, timeout=10)
+            response.raise_for_status()
+            cal = Calendar.from_ical(response.text)
+            return self._parse_ics_events(cal, start, end, cal_config)
+        except Exception as e:  # pylint: disable=broad-except
+            self._logger.warning("Failed to fetch ICS calendar: %s — %s", url, e)
             return []
 
     def _create_caldav_client(self, url, cal_config, auth_type):
@@ -192,11 +226,13 @@ class CalendarPlugin(Plugin):
             bearer_token = cal_config.get("bearer_token", "")
             http_headers = {"Authorization": f"Bearer {bearer_token}"}
             return caldav.DAVClient(url=url, headers=http_headers)
-        username = cal_config.get("username", "")
-        password = cal_config.get("password", "")
-        return caldav.DAVClient(url=url, username=username, password=password)
+        if auth_type == "basic":
+            username = cal_config.get("username", "")
+            password = cal_config.get("password", "")
+            return caldav.DAVClient(url=url, username=username, password=password)
+        return caldav.DAVClient(url=url)
 
-    def _parse_events(self, events):
+    def _parse_caldav_events(self, events, cal_config):
         result = []
         for event in events:
             try:
@@ -205,21 +241,59 @@ class CalendarPlugin(Plugin):
                 dtstart = vevent.dtstart.value if hasattr(vevent, 'dtstart') else None
 
                 is_allday = isinstance(dtstart, datetime) is False if dtstart else True
-
-                if dtstart:
-                    start_str = dtstart.isoformat() if isinstance(dtstart, datetime) else dtstart.isoformat()
-                else:
-                    start_str = ""
+                start_str = dtstart.isoformat() if dtstart else ""
 
                 result.append({
                     "summary": summary,
                     "start": start_str,
                     "is_allday": is_allday,
+                    "calendar_name": cal_config["name"],
+                    "calendar_color": cal_config.get("color"),
                 })
             except (AttributeError, ValueError) as e:
-                self._logger.warning("Failed to parse event: %s", e)
+                self._logger.warning("Failed to parse CalDAV event: %s", e)
 
-        self._logger.info("Got %d events from calendar", len(result))
+        self._logger.info("Got %d events from CalDAV calendar", len(result))
+        return result
+
+    def _parse_ics_events(self, cal, start, end, cal_config):
+        result = []
+        for component in cal.walk():
+            if component.name != "VEVENT":
+                continue
+            try:
+                summary = str(component.get("SUMMARY", ""))
+                dtstart = component.get("DTSTART")
+
+                if dtstart is None:
+                    continue
+
+                dtstart_val = dtstart.dt
+                is_allday = not isinstance(dtstart_val, datetime)
+                start_str = dtstart_val.isoformat()
+
+                start_dt = datetime.fromisoformat(start_str) if start_str else None
+                if start_dt:
+                    if is_allday:
+                        start_aware = start_dt.replace(tzinfo=timezone.utc)
+                    elif start_dt.tzinfo is None:
+                        start_aware = start_dt.replace(tzinfo=timezone.utc)
+                    else:
+                        start_aware = start_dt
+                    if start_aware < start or start_aware > end:
+                        continue
+
+                result.append({
+                    "summary": summary,
+                    "start": start_str,
+                    "is_allday": is_allday,
+                    "calendar_name": cal_config["name"],
+                    "calendar_color": cal_config.get("color"),
+                })
+            except (AttributeError, ValueError) as e:
+                self._logger.warning("Failed to parse ICS event: %s", e)
+
+        self._logger.info("Got %d events from ICS calendar", len(result))
         return result
 
     def _store_events(self, events):
@@ -251,7 +325,13 @@ class CalendarPlugin(Plugin):
             ),
             ".calendar-date-day": "font-weight: 600; color: var(--text);",
             ".calendar-date-time": "font-size: 0.75rem;",
+            ".calendar-event-body": "display: flex; flex-direction: column; gap: 0.125rem; min-width: 0;",
             ".calendar-summary": "font-size: 0.875rem; color: var(--text);",
+            ".calendar-name": "font-size: 0.75rem; color: var(--text-muted);",
+            ".calendar-name-dot": (
+                "display: inline-block; width: 0.5rem; height: 0.5rem;"
+                " border-radius: 50%; margin-right: 0.25rem; vertical-align: middle;"
+            ),
             ".calendar-empty": (
                 "text-align: center; padding: 1rem;"
                 " color: var(--text-muted); font-size: 0.875rem;"

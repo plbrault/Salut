@@ -12,6 +12,7 @@ feedparser = "*"
 apscheduler = "*"
 requests = "*"
 caldav = "*"
+icalendar = "*"
 
 [dev-packages]
 pylint = "*"
