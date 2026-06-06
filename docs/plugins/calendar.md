@@ -24,7 +24,7 @@ Each item in `calendars` is an object with:
 | `link_url` | string | no | - | URL to open when an event from this calendar is clicked |
 | `auth_type` | string | no | `"none"` | Authentication: `"none"`, `"basic"`, or `"bearer"` |
 | `username` | string | no | - | Username for basic auth |
-| `password` | string | no | - | Password for basic auth (use `${secrets...}` syntax) |
+| `password` | string | no | - | Password for basic auth (use `${secrets.key}` syntax) |
 | `bearer_token` | string | no | - | Bearer token for auth (required when `auth_type: bearer`) |
 
 ## Example

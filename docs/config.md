@@ -77,6 +77,31 @@ Salut is configured via a YAML file (`config.yml` or `starter.yml`). The `config
 - **Type:** integer (optional, default: 1)
 - **Description:** Number of columns this card spans
 
+## Secrets
+
+`secrets.yml` is an optional file for storing sensitive values like passwords and tokens. Reference them in your config using `${secrets.key}` syntax:
+
+```yaml
+# secrets.yml
+calendar_password: "my-s3cur3-p@ss"
+```
+
+```yaml
+# config.yml
+cards:
+  - title: Calendar
+    plugin: calendar
+    options:
+      calendars:
+        - url: https://caldav.example.com/user/cal1/
+          name: Personal
+          auth_type: basic
+          username: user
+          password: ${secrets.calendar_password}
+```
+
+If a secret key is not found, the variable resolves to an empty string.
+
 ## Template Syntax
 
 ### Config Variables (`${...}`)
@@ -87,6 +112,8 @@ Resolved server-side from the config file. Works in any string value (titles, op
 |----------|-------------|
 | `${user_info.short_name}` | User's short name |
 | `${user_info.long_name}` | User's full name |
+| `${secrets.key}` | Value from `secrets.yml` (see [Secrets](#secrets)) |
+| `${i18n.key}` | Translated string from i18n files |
 
 ### Client-Side Variables (`{{...}}`)
 
