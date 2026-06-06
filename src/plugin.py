@@ -24,7 +24,8 @@ class Plugin(ABC):
     def validate_options(options, card_idx, filename):
         """Validate plugin-specific options. Raise ConfigError if invalid."""
 
-    def parse_schedule(self, schedule):
+    @staticmethod
+    def parse_schedule(schedule):
         return CronTrigger.from_crontab(schedule)
 
     @staticmethod
