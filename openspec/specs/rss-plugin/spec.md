@@ -84,6 +84,18 @@ The system SHALL provide an `RssPlugin` class extending `Plugin` that fetches RS
 - **WHEN** an RSS feed does not provide a channel title
 - **THEN** the rendered item displays the domain name (without `www.`) as the source
 
+#### Scenario: RSS plugin deduplicates feed items by link
+- **WHEN** multiple feeds return items with the same `link` URL
+- **THEN** only one instance of each item is kept (the first after sorting by published date descending)
+
+#### Scenario: RSS plugin fetches feeds atomically
+- **WHEN** `RssPlugin._fetch_feeds()` is called
+- **THEN** it wraps the DELETE and INSERT operations in a database transaction to prevent race conditions
+
+#### Scenario: RSS plugin enforces unique feed items per card
+- **WHEN** a feed item with a duplicate `link` is inserted for a card
+- **THEN** the database constraint prevents the duplicate from being stored
+
 ### Requirement: Each card gets its own setup
 The system SHALL call `setup_card` for every card, even when multiple cards use the same plugin. Each card requires its own feed fetching and scheduler registration.
 

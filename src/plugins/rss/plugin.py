@@ -65,7 +65,8 @@ class RssPlugin(Plugin):
                 feed_url TEXT NOT NULL,
                 image_url TEXT,
                 feed_title TEXT,
-                fetched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                fetched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(card_id, link)
             )
             """
         )
@@ -111,36 +112,44 @@ class RssPlugin(Plugin):
 
     def _fetch_feeds(self, feeds, max_items=10, fetch_images=False):
         self._logger.info("Fetching RSS feeds for card %s (%d feeds)", self._card_id, len(feeds))
-        self._delete_feed_items(self._card_id)
 
-        with ThreadPoolExecutor() as executor:
-            results = list(executor.map(
-                lambda url: self._fetch_single_feed(url, fetch_images), feeds
-            ))
+        self._database.begin_transaction()
+        try:
+            self._delete_feed_items(self._card_id)
 
-        all_items = [item for items in results for item in items]
+            with ThreadPoolExecutor() as executor:
+                results = list(executor.map(
+                    lambda url: self._fetch_single_feed(url, fetch_images), feeds
+                ))
 
-        all_items.sort(key=lambda x: x["published"], reverse=True)
-        all_items = all_items[:max_items]
-        self._logger.info("Total items after sort/truncate: %d", len(all_items))
+            all_items = [item for items in results for item in items]
 
-        if fetch_images:
-            self._logger.info("Downloading images...")
-            self._download_images(all_items)
+            all_items.sort(key=lambda x: x["published"], reverse=True)
+            all_items = self._deduplicate_items(all_items)
+            all_items = all_items[:max_items]
+            self._logger.info("Total items after sort/dedup/truncate: %d", len(all_items))
 
-        for item in all_items:
-            self._insert_feed_item(
-                card_id=self._card_id,
-                url=item["url"],
-                title=item["title"],
-                link=item["link"],
-                published=item["published"],
-                feed_url=item["feed_url"],
-                image_url=item["image_url"],
-                feed_title=item["feed_title"],
-            )
+            if fetch_images:
+                self._logger.info("Downloading images...")
+                self._download_images(all_items)
 
-        self._logger.info("Finished fetching RSS feeds for card %s", self._card_id)
+            for item in all_items:
+                self._insert_feed_item(
+                    card_id=self._card_id,
+                    url=item["url"],
+                    title=item["title"],
+                    link=item["link"],
+                    published=item["published"],
+                    feed_url=item["feed_url"],
+                    image_url=item["image_url"],
+                    feed_title=item["feed_title"],
+                )
+
+            self._database.commit_transaction()
+            self._logger.info("Finished fetching RSS feeds for card %s", self._card_id)
+        except Exception:
+            self._database.execute("ROLLBACK")
+            raise
 
     def _fetch_single_feed(self, feed_url, fetch_images):
         try:
@@ -252,7 +261,7 @@ class RssPlugin(Plugin):
     def _insert_feed_item(self, **kwargs):
         self._database.execute(
             """
-            INSERT INTO feed_items (card_id, url, title, link, published, feed_url, image_url, feed_title)
+            INSERT OR REPLACE INTO feed_items (card_id, url, title, link, published, feed_url, image_url, feed_title)
             VALUES (:card_id, :url, :title, :link, :published, :feed_url, :image_url, :feed_title)
             """,
             kwargs,
@@ -263,3 +272,14 @@ class RssPlugin(Plugin):
             "SELECT * FROM feed_items WHERE card_id = ? ORDER BY published DESC",
             (card_id,),
         )
+
+    @staticmethod
+    def _deduplicate_items(items):
+        seen_links = set()
+        deduplicated = []
+        for item in items:
+            link = item.get("link", "")
+            if link not in seen_links:
+                seen_links.add(link)
+                deduplicated.append(item)
+        return deduplicated

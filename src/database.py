@@ -10,13 +10,23 @@ class Database:
         self._connection = sqlite3.connect(self._path, check_same_thread=False)
         self._connection.execute("PRAGMA journal_mode=WAL")
         self._connection.row_factory = sqlite3.Row
+        self._in_transaction = False
 
     def execute(self, sql, params=None):
         if params:
             self._connection.execute(sql, params)
         else:
             self._connection.execute(sql)
+        if not self._in_transaction:
+            self._connection.commit()
+
+    def begin_transaction(self):
+        self._in_transaction = True
+        self._connection.execute("BEGIN")
+
+    def commit_transaction(self):
         self._connection.commit()
+        self._in_transaction = False
 
     def fetch_one(self, sql, params=None):
         if params:
