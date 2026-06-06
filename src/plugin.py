@@ -4,8 +4,13 @@ from pathlib import Path
 from apscheduler.triggers.cron import CronTrigger
 from jinja2 import Environment, FileSystemLoader
 
+from src.i18n import _load_translations
+
 
 class Plugin(ABC):
+    def __init__(self):
+        self._translations = {}
+
     @staticmethod
     def card_style_rules() -> dict[str, str]:
         """Return CSS rules for this plugin's card class.
@@ -43,3 +48,18 @@ class Plugin(ABC):
         return Environment(
             loader=FileSystemLoader(Path(plugin_dir))
         ).get_template(template_name)
+
+    def load_i18n(self, language):
+        """Load plugin-specific i18n translations with English fallback."""
+        module_parts = type(self).__module__.split(".")
+        plugin_name = module_parts[-2]
+        i18n_dir = Path(__file__).resolve().parent / "plugins" / plugin_name / "i18n"
+        self._translations = _load_translations(i18n_dir, language)
+
+    def t(self, key):
+        """Return translated string for key, or key name as fallback."""
+        return self._translations.get(key, key)
+
+    def set_translations(self, translations):
+        """Set translations directly (for testing)."""
+        self._translations = translations

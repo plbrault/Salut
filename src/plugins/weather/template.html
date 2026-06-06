@@ -10,9 +10,9 @@
     </div>
     <div class="weather-details">
         <div class="weather-detail">📍 {{ location_name }}</div>
-        <div class="weather-detail">Feels like {{ feels_like }}{{ temp_unit }}</div>
-        <div class="weather-detail">💧 {{ humidity }}% humidity</div>
-        <div class="weather-detail">💨 {{ wind }} km/h wind</div>
+        <div class="weather-detail">{{ feels_like_label }} {{ feels_like }}{{ temp_unit }}</div>
+        <div class="weather-detail">💧 {{ humidity }}{{ humidity_label }}</div>
+        <div class="weather-detail">💨 {{ wind }} {{ wind_label }}</div>
     </div>
 </div>
 <div class="weather-provider">

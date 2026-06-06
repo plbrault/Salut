@@ -41,6 +41,7 @@ WMO_ICONS = {
 
 class WeatherPlugin(Plugin):
     def __init__(self):
+        super().__init__()
         self._database = None
         self._logger = None
         self._card_id = None
@@ -110,12 +111,6 @@ class WeatherPlugin(Plugin):
                 f"{filename}: cards[{card_idx}].options.link_url must be a string."
             )
 
-        provider_link_prefix = options.get("provider_link_prefix")
-        if provider_link_prefix is not None and not isinstance(provider_link_prefix, str):
-            raise ConfigError(
-                f"{filename}: cards[{card_idx}].options.provider_link_prefix must be a string."
-            )
-
     @staticmethod
     def init_schema(database):
         database.execute(
@@ -156,18 +151,17 @@ class WeatherPlugin(Plugin):
             (card_id,),
         )
         if not row:
-            return '<p style="color: var(--text-muted)">Weather data unavailable.</p>'
+            return f'<p style="color: var(--text-muted)">{self.t("unavailable")}</p>'
 
         data = json.loads(row["data"])
         current = data.get("current", {})
         weather_code = current.get("weather_code", 0)
         is_day = current.get("is_day", 1)
-        icon, description = WMO_ICONS.get(weather_code, ("🌡️", "Unknown"))
+        icon, description = WMO_ICONS.get(weather_code, ("🌡️", self.t("unknown")))
         if weather_code == 0:
             icon = "☀️" if is_day else "🌙"
 
         temp_unit = "°C" if options.get("units", "celsius") == "celsius" else "°F"
-        provider_prefix = options.get("provider_link_prefix", "Provided by")
         html = self._template.render(
             location_name=options.get("location_name", ""),
             icon=icon,
@@ -177,7 +171,10 @@ class WeatherPlugin(Plugin):
             humidity=current.get("relative_humidity_2m"),
             wind=current.get("wind_speed_10m"),
             temp_unit=temp_unit,
-            provider_prefix=provider_prefix,
+            feels_like_label=self.t("feels_like"),
+            humidity_label=self.t("humidity"),
+            wind_label=self.t("wind"),
+            provider_prefix=self.t("provided_by"),
         )
 
         link_url = options.get("link_url")

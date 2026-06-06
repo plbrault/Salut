@@ -1,0 +1,8 @@
+{
+  "feels_like": "Feels like",
+  "humidity": "% humidity",
+  "wind": "km/h wind",
+  "provided_by": "Provided by",
+  "unavailable": "Weather data unavailable.",
+  "unknown": "Unknown"
+}

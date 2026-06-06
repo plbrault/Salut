@@ -117,3 +117,22 @@ The system SHALL require a `user_info` object with `short_name` and `long_name` 
 #### Scenario: Invalid long name type
 - **WHEN** the config has a `user_info.long_name` field that is not a string
 - **THEN** a validation error is raised indicating user_info.long_name must be a string
+
+### Requirement: Config variable resolution
+The system SHALL resolve `${...}` template variables in config values from three sources: config values, secrets, and i18n translations.
+
+#### Scenario: Config variable resolved
+- **WHEN** a config value contains `${page_title}` and the config has `page_title: "My Page"`
+- **THEN** the variable is resolved to `"My Page"`
+
+#### Scenario: Secret variable resolved
+- **WHEN** a config value contains `${secrets.api_key}` and `secrets.yml` has `api_key: "abc123"`
+- **THEN** the variable is resolved to `"abc123"`
+
+#### Scenario: i18n variable resolved
+- **WHEN** a config value contains `${i18n.hi}` and the global translations contain `"hi": "Salut"`
+- **THEN** the variable is resolved to `"Salut"`
+
+#### Scenario: i18n variable with missing key
+- **WHEN** a config value contains `${i18n.unknown}` and no translation exists for that key
+- **THEN** the variable is resolved to the key name `"unknown"`

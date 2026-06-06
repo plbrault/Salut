@@ -6,6 +6,7 @@ from src.plugin import Plugin
 
 class SearchPlugin(Plugin):
     def __init__(self):
+        super().__init__()
         self._template = self.load_template(Path(__file__).resolve().parent, "template.html")
 
     @staticmethod
@@ -55,8 +56,8 @@ class SearchPlugin(Plugin):
 
     def render(self, options):
         provider = options.get("provider", "duckduckgo")
-        button_text = options.get("button_text", "Search")
-        placeholder_text = options.get("placeholder_text", "Search")
+        button_text = options.get("button_text") or self.t("search")
+        placeholder_text = options.get("placeholder_text") or self.t("search")
         results_in_new_tab = options.get("results_in_new_tab", False)
         language = options.get("language", "en")
 

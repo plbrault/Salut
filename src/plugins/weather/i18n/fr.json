@@ -1,0 +1,8 @@
+{
+  "feels_like": "Ressenti",
+  "humidity": "% humidité",
+  "wind": "km/h de vent",
+  "provided_by": "Fourni par",
+  "unavailable": "Données météo indisponibles.",
+  "unknown": "Inconnu"
+}
