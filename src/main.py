@@ -12,7 +12,7 @@ from fastapi.templating import Jinja2Templates
 
 from src.config import load_config
 from src.database import Database
-from src.template import resolve_config_vars
+from src.template import resolve_all_config_vars
 from src.plugins import setup_card, render_card, init_plugins_schemas
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -80,10 +80,11 @@ def _render_cards(cards):
 @app.get("/")
 def index(request: Request):
     config = app.state.config
-    page_title = resolve_config_vars(config.get("page_title", ""), config)
-    page_header = resolve_config_vars(config.get("page_header", ""), config)
+    resolved_config = resolve_all_config_vars(config)
+    page_title = resolved_config.get("page_title", "")
+    page_header = resolved_config.get("page_header", "")
 
-    cards_data = _render_cards(config.get("cards", []))
+    cards_data = _render_cards(resolved_config.get("cards", []))
 
     plugin_style_rules = ""
     for name, instance in app.state.plugin_instances.items():
@@ -95,13 +96,13 @@ def index(request: Request):
         request,
         "index.html",
         {
-            "config": config,
+            "config": resolved_config,
             "page_title": page_title,
             "page_header": page_header,
-            "language": config.get("language", "en-US"),
+            "language": resolved_config.get("language", "en-US"),
             "dev_mode": os.environ.get("DEVELOPMENT") is not None,
             "cards": cards_data,
-            "max_cols": config.get("columns", 3),
+            "max_cols": resolved_config.get("columns", 3),
             "plugin_style_rules": plugin_style_rules,
         },
     )

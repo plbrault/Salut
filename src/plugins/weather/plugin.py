@@ -156,7 +156,7 @@ class WeatherPlugin(Plugin):
             (card_id,),
         )
         if not row:
-            return '<p class="text-gray-500">Weather data unavailable.</p>'
+            return '<p style="color: var(--text-muted)">Weather data unavailable.</p>'
 
         data = json.loads(row["data"])
         current = data.get("current", {})
@@ -245,11 +245,11 @@ class WeatherPlugin(Plugin):
                 "display: flex; flex-direction: column; gap: 0.25rem;"
                 " align-items: center;"
             ),
-            ".weather-detail": "font-size: 0.875rem; color: #6b7280;",
+            ".weather-detail": "font-size: 0.875rem; color: var(--text-muted);",
             ".weather-provider": (
                 "width: 100%; margin-top: 0.75rem;"
-                " font-size: 0.75rem; color: #9ca3af;"
+                " font-size: 0.75rem; color: var(--text-faint);"
             ),
-            ".weather-provider a": "color: #9ca3af; text-decoration: none;",
+            ".weather-provider a": "color: var(--text-faint); text-decoration: none;",
             ".weather-provider a:hover": "text-decoration: underline;",
         }

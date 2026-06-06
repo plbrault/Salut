@@ -6,7 +6,50 @@
     <title>{{ page_title }}</title>
     <script src="/static/tailwindcss.js"></script>
     <script src="/static/htmx.min.js"></script>
+    <script>
+        (function() {
+            var stored = localStorage.getItem('theme');
+            var theme = stored || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            document.documentElement.dataset.theme = theme;
+
+            window.toggleTheme = function() {
+                var current = document.documentElement.dataset.theme;
+                var next = current === 'dark' ? 'light' : 'dark';
+                document.documentElement.dataset.theme = next;
+                localStorage.setItem('theme', next);
+                var btn = document.querySelector('.theme-toggle');
+                if (btn) btn.innerHTML = next === 'dark' ? window.themeIcons.moon : window.themeIcons.sun;
+            };
+
+            window.themeIcons = {
+                sun: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>',
+                moon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>'
+            };
+        })();
+    </script>
     <style>
+        :root {
+            --bg: #f3f4f6;
+            --card-bg: white;
+            --text: #111827;
+            --text-muted: #6b7280;
+            --text-faint: #9ca3af;
+            --border: #e5e7eb;
+            --link: #2563eb;
+            --link-hover: #1d4ed8;
+            --code-bg: #f3f4f6;
+        }
+        [data-theme="dark"] {
+            --bg: #111827;
+            --card-bg: #1f2937;
+            --text: #f9fafb;
+            --text-muted: #9ca3af;
+            --text-faint: #6b7280;
+            --border: #374151;
+            --link: #60a5fa;
+            --link-hover: #93bbfd;
+            --code-bg: #283548;
+        }
         header {
             display: flex;
             justify-content: space-between;
@@ -15,11 +58,12 @@
         header h1 {
             font-size: 2.5rem;
             font-weight: bold;
+            color: var(--text);
         }
         header span {
             font-size: 1.125rem;
             font-weight: 500;
-            color: #6b7280;
+            color: var(--text-muted);
         }
         #container {
             position: relative;
@@ -27,11 +71,30 @@
         }
         .card {
             position: absolute;
-            background: white;
+            background: var(--card-bg);
             border-radius: 0.5rem;
-            border: 1px solid #e5e7eb;
+            border: 1px solid var(--border);
             padding: 1rem;
             box-sizing: border-box;
+            color: var(--text);
+        }
+        .card h3 {
+            color: var(--text);
+        }
+        .theme-toggle {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0.25rem;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            transition: background-color 0.2s;
+        }
+        .theme-toggle:hover {
+            background-color: var(--border);
         }
     </style>
     {% if plugin_style_rules %}
@@ -40,36 +103,10 @@
     </style>
     {% endif %}
 </head>
-<body class="bg-gray-100 p-8">
+<body class="p-8" style="background: var(--bg);">
     <header>
         {{ page_header | safe }}
     </header>
-    <script>
-        (function() {
-            var lang = document.documentElement.lang;
-            var now = new Date();
-
-            // Time emoji
-            var hour = now.getHours();
-            var emoji;
-            if (hour >= 6 && hour < 12) emoji = '\u2600\uFE0F';
-            else if (hour >= 12 && hour < 18) emoji = '\uD83C\uDF24\uFE0F';
-            else if (hour >= 18 && hour < 22) emoji = '\uD83C\uDF19';
-            else emoji = '\uD83C\uDF11';
-
-            // Localized date
-            var date = new Intl.DateTimeFormat(lang, {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: '2-digit'
-            }).format(now);
-
-            document.body.innerHTML = document.body.innerHTML
-                .replace(/\{\{time_emoji\}\}/g, emoji)
-                .replace(/\{\{date\}\}/g, date);
-        })();
-    </script>
     {% if dev_mode %}
     <script>
         (function() {
@@ -97,6 +134,39 @@
         </div>
         {% endfor %}
     </div>
+    <script>
+        (function() {
+            var lang = document.documentElement.lang;
+            var now = new Date();
+
+            // Time emoji
+            var hour = now.getHours();
+            var emoji;
+            if (hour >= 6 && hour < 12) emoji = '\u2600\uFE0F';
+            else if (hour >= 12 && hour < 18) emoji = '\uD83C\uDF24\uFE0F';
+            else if (hour >= 18 && hour < 22) emoji = '\uD83C\uDF19';
+            else emoji = '\uD83C\uDF11';
+
+            // Localized date
+            var date = new Intl.DateTimeFormat(lang, {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: '2-digit'
+            }).format(now);
+
+            // Theme toggle button
+            var theme = document.documentElement.dataset.theme || 'light';
+            var toggleHtml = '<button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">'
+                + (theme === 'dark' ? window.themeIcons.moon : window.themeIcons.sun)
+                + '</button>';
+
+            document.body.innerHTML = document.body.innerHTML
+                .replace(/\{\{time_emoji\}\}/g, emoji)
+                .replace(/\{\{date\}\}/g, date)
+                .replace(/\{\{theme_toggle\}\}/g, toggleHtml);
+        })();
+    </script>
     <script>
         (function() {
             var MAX_COLS = {{ max_cols }};
