@@ -24,7 +24,7 @@ def init_plugins_schemas(database):
             plugin_class.init_schema(database)
 
 
-def setup_card(card, database, scheduler):
+def setup_card(card, database, scheduler, language="en"):
     plugin_name = card.get("plugin")
     options = card.get("options", {})
     plugin_class = load_plugin_class(plugin_name)
@@ -33,6 +33,7 @@ def setup_card(card, database, scheduler):
     logger = logging.getLogger(f"src.plugins.{plugin_name}")
     logger.setLevel(logging.INFO)
     instance = plugin_class()
+    instance.load_i18n(language)
     instance.setup(options, database, scheduler, logger)
     return instance
 

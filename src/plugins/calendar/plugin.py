@@ -17,6 +17,7 @@ HEX_COLOR_RE = re.compile(r'^#[0-9a-fA-F]{6}$')
 
 class CalendarPlugin(Plugin):
     def __init__(self):
+        super().__init__()
         self._database = None
         self._logger = None
         self._card_id = None
@@ -133,7 +134,7 @@ class CalendarPlugin(Plugin):
             (card_id,),
         )
         if not row:
-            return '<p style="color: var(--text-muted)">No upcoming events.</p>'
+            return f'<p style="color: var(--text-muted)">{self.t("no_events")}</p>'
 
         events = json.loads(row["events"])
         max_events = options.get("max_events", 10)
@@ -142,7 +143,7 @@ class CalendarPlugin(Plugin):
         events = events[:max_events]
 
         if not events:
-            return '<p style="color: var(--text-muted)">No upcoming events.</p>'
+            return f'<p style="color: var(--text-muted)">{self.t("no_events")}</p>'
 
         html = self._template.render(events=events)
 

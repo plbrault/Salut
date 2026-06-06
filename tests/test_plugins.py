@@ -13,6 +13,7 @@ from src.plugins.weather.plugin import WMO_ICONS
 from src.plugins.calendar import CalendarPlugin
 from src.database import Database
 from src.config import validate_config, ConfigError
+from src.i18n import _load_translations
 
 
 class TestPluginLoading:
@@ -413,6 +414,8 @@ class TestSearchPlugin:
 
     def test_search_render_with_default_button_text(self):
         plugin = SearchPlugin()
+        i18n_dir = Path(__file__).resolve().parent.parent / "src" / "plugins" / "search" / "i18n"
+        plugin.set_translations(_load_translations(i18n_dir, "en"))
         result = plugin.render({"provider": "duckduckgo"})
         assert "Search" in result
         assert 'type="submit"' in result
@@ -529,6 +532,8 @@ class TestSearchPluginPlaceholder:
 
     def test_search_render_with_default_placeholder_text(self):
         plugin = SearchPlugin()
+        i18n_dir = Path(__file__).resolve().parent.parent / "src" / "plugins" / "search" / "i18n"
+        plugin.set_translations(_load_translations(i18n_dir, "en"))
         result = plugin.render({"provider": "duckduckgo"})
         assert 'placeholder="Search"' in result
 
@@ -1445,6 +1450,8 @@ class TestCalendarPlugin:  # pylint: disable=protected-access
         db = Database(tmp_path / "test.db")
         CalendarPlugin.init_schema(db)
         plugin = CalendarPlugin()
+        i18n_dir = Path(__file__).resolve().parent.parent / "src" / "plugins" / "calendar" / "i18n"
+        plugin.set_translations(_load_translations(i18n_dir, "en"))
         plugin._database = db
         plugin._card_id = "test"
         result = plugin.render(self._valid_options())
@@ -1478,6 +1485,8 @@ class TestCalendarPlugin:  # pylint: disable=protected-access
         CalendarPlugin.init_schema(db)
         options = self._valid_options()
         plugin = CalendarPlugin()
+        i18n_dir = Path(__file__).resolve().parent.parent / "src" / "plugins" / "calendar" / "i18n"
+        plugin.set_translations(_load_translations(i18n_dir, "en"))
         plugin._database = db
         plugin._card_id = plugin._compute_card_id(options)
         db.execute(

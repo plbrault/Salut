@@ -12,6 +12,7 @@ from fastapi.templating import Jinja2Templates
 
 from src.config import load_config, load_secrets
 from src.database import Database
+from src.i18n import load_global_i18n
 from src.template import resolve_all_config_vars
 from src.plugins import setup_card, render_card, init_plugins_schemas
 
@@ -37,6 +38,12 @@ async def lifespan(application):
     application.state.database = db
     application.state.config = load_config()
     application.state.secrets = load_secrets()
+
+    language = application.state.config.get("language", "en")
+    if isinstance(language, str) and "-" in language:
+        language = language.split("-")[0]
+    application.state.i18n = load_global_i18n(language)
+
     if os.environ.get("DEVELOPMENT"):
         logging.getLogger("uvicorn.access").addFilter(_dev_reload_filter)
 
@@ -45,14 +52,16 @@ async def lifespan(application):
     if not scheduler.running:
         scheduler.start()
 
-    resolved_config = resolve_all_config_vars(app.state.config, app.state.secrets)
+    resolved_config = resolve_all_config_vars(
+        app.state.config, app.state.secrets, app.state.i18n
+    )
     app.state.config = resolved_config
 
     plugin_instances = {}
     for card in app.state.config.get("cards", []):
         plugin_name = card.get("plugin")
         if plugin_name:
-            instance = setup_card(card, db, scheduler)
+            instance = setup_card(card, db, scheduler, language)
             if instance is not None and plugin_name not in plugin_instances:
                 plugin_instances[plugin_name] = instance
     application.state.plugin_instances = plugin_instances

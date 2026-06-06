@@ -43,7 +43,6 @@ The system SHALL accept the following options for weather cards:
 | `units` | string | no | `"celsius"` | Temperature units: `"celsius"` or `"fahrenheit"` |
 | `language` | string | no | `"en"` | Language for weather descriptions |
 | `link_url` | string | no | - | URL to open when the card is clicked |
-| `provider_link_prefix` | string | no | `"Provided by"` | Text before the provider link (for translation) |
 
 #### Scenario: Valid config
 - **WHEN** a card has `plugin: weather` with `provider: open-meteo`, `latitude`, `longitude`, `location_name`, and `schedule`
@@ -83,10 +82,6 @@ The system SHALL accept the following options for weather cards:
 
 #### Scenario: Invalid link_url type
 - **WHEN** a weather card has `link_url` that is not a string
-- **THEN** a configuration error is raised
-
-#### Scenario: Invalid provider_link_prefix type
-- **WHEN** a weather card has `provider_link_prefix` that is not a string
 - **THEN** a configuration error is raised
 
 ### Requirement: Weather card link
@@ -139,12 +134,8 @@ The weather plugin SHALL implement `card_style_rules` with styling appropriate f
 - **THEN** it returns a dict with rules for the weather card layout (temperature display, icon sizing, etc.)
 
 ### Requirement: Weather card provider attribution
-The weather card SHALL display a provider attribution link at the bottom of the card, linking to `https://open-meteo.com/`. The text format is `"{prefix} Open-Meteo"`, where `{prefix}` defaults to `"Provided by"` and is overridable via the `provider_link_prefix` option.
+The weather card SHALL display a provider attribution link at the bottom of the card, linking to `https://open-meteo.com/`. The text is translated using the `weather.provided_by` i18n key, resulting in `"{translated_prefix} Open-Meteo"`.
 
-#### Scenario: Default attribution text
-- **WHEN** a weather card has no `provider_link_prefix` option
-- **THEN** the card displays "Provided by Open-Meteo" with a link to open-meteo.com
-
-#### Scenario: Custom attribution prefix
-- **WHEN** a weather card has `provider_link_prefix: "Données de"`
-- **THEN** the card displays "Données de Open-Meteo" with a link to open-meteo.com
+#### Scenario: Provider attribution
+- **WHEN** a weather card is rendered
+- **THEN** the card displays a translated "Provided by" or equivalent text followed by "Open-Meteo" with a link to open-meteo.com
