@@ -88,6 +88,10 @@ The system SHALL provide an `RssPlugin` class extending `Plugin` that fetches RS
 - **WHEN** multiple feeds return items with the same `link` URL
 - **THEN** only one instance of each item is kept (the first after sorting by published date descending)
 
+#### Scenario: RSS plugin sorts items without dates to the end
+- **WHEN** some feed items have no `published` date
+- **THEN** items with dates are sorted most recent first, and items without dates appear at the end
+
 #### Scenario: RSS plugin fetches feeds atomically
 - **WHEN** `RssPlugin._fetch_feeds()` is called
 - **THEN** it wraps the DELETE and INSERT operations in a database transaction to prevent race conditions

@@ -125,7 +125,7 @@ class RssPlugin(Plugin):
 
             all_items = [item for items in results for item in items]
 
-            all_items.sort(key=lambda x: x["published"], reverse=True)
+            all_items.sort(key=lambda x: (x["published"] != "", x["published"]), reverse=True)
             all_items = self._deduplicate_items(all_items)
             all_items = all_items[:max_items]
             self._logger.info("Total items after sort/dedup/truncate: %d", len(all_items))

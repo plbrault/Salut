@@ -5,74 +5,69 @@ user_info:
   short_name: Chris
   long_name: Chris P. Bacon
 
-columns: 3
+columns: 4
 
 cards:
+  - title: Welcome to your start page!
+    colspan: 4
+    plugin: html
+    options:
+      html: "Get started by coping <code>starter.yml</code> to <code>config.yml</code> and customizing it to your liking. Check out the <a target='_blank' href='https://github.com/plbrault/Salut/blob/main/docs/config.md'>documentation</a> for more information."
   - title: Web Search
     plugin: search
-    colspan: 2
+    colspan: 3
     options:
       provider: duckduckgo
-      button_text: "Search"
       placeholder_text: "Search on DuckDuckGo"
-  - title: Welcome ${user_info.long_name} !
-    plugin: html
-    options:
-      html: "<p>This is an example card. You can add any HTML content here.</p>"
-  - title: World News
-    plugin: rss
-    options:
-      feeds:
-        - http://feeds.bbci.co.uk/news/world/rss.xml
-        - https://rss.nytimes.com/services/xml/rss/nyt/World.xml
-        - https://www.theguardian.com/world/rss
-        - http://rss.cnn.com/rss/edition_world.rss
-        - https://www.cbc.ca/webfeed/rss/rss-world
-      schedule: "*/5 * * * *"
-      max_items: 10
-      images: true
-  - title: Tech News
-    plugin: rss
-    options:
-      feeds:
-        - https://feeds.arstechnica.com/arstechnica/index
-        - https://www.theverge.com/rss/index.xml
-        - https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml
-        - https://www.wired.com/feed/rss
-      schedule: "*/5 * * * *"
-      max_items: 10
-      images: true
-  - title: Links
-    plugin: html
-    options:
-      html: "<ul><li><a href='https://github.com'>GitHub</a></li><li><a href='https://news.ycombinator.com'>Hacker News</a></li></ul>"
-  - title: Tips
-    plugin: html
-    options:
-      html: "<p>Edit config.yml to customize your page.</p>"
   - title: Wikipedia
     plugin: search
     options:
       provider: wikipedia
       language: en
-      button_text: "Search Wikipedia"
+      placeholder_text: "Search on Wikipedia"
   - title: Weather
     plugin: weather
     options:
       provider: open-meteo
       latitude: 45.50884
       longitude: -73.58781
-      location_name: "Montréal (Québec)"
+      location_name: "Montreal"
       schedule: "0 */2 * * *"
       link_url: "https://www.theweathernetwork.com/en/city/ca/quebec/montreal/current"
-  - title: Calendar
+  - title: Tech News
+    plugin: rss
+    colspan: 2
+    options:
+      feeds:
+        - https://hnrss.org/frontpage
+        - https://feeds.arstechnica.com/arstechnica/technology-lab
+        - https://feeds.arstechnica.com/arstechnica/gadgets
+        - https://www.tomshardware.com/feeds.xml
+        - https://rss.slashdot.org/Slashdot/slashdotMain
+      schedule: "*/5 * * * *"
+      max_items: 20
+      images: true
+  - title: Links
+    plugin: html
+    options:
+      html: "<ul><li><a target='_blank' href='https://github.com'>GitHub</a></li><li><a target='_blank' href='https://news.ycombinator.com'>Hacker News</a></li><li><a target='_blank' href='https://www.reddit.com'>Reddit</a></li></ul>"
+  - title: Random Cat Picture
+    plugin: html
+    options:
+      html: "<a href='https://cataas.com/cat?width=400' target='_blank' rel='noopener'><img src='https://cataas.com/cat?width=400' alt='Random cat' class='w-full rounded-lg' onload='window.dispatchEvent(new Event(\"resize\"))'></a><p class='text-xs mt-2 text-center' style='color: var(--text-muted)'>Powered by <a href='https://cataas.com' target='_blank' rel='noopener' style='color: var(--link)'>CATAAS</a></p>"
+  - title: Upcoming Holidays
     plugin: calendar
     options:
       calendars:
         - url: "https://www.officeholidays.com/ics/canada"
           type: ics
-          name: "Holidays"
-          color: "#3b82f6"
+          name: "Canadian Holidays"
+          color: "#ef4444"
       schedule: "*/30 * * * *"
       time_window_days: 30
       max_events: 10
+  - title: About
+    plugin: html
+    options:
+      html: "<div class='flex flex-col gap-3'><p class='text-sm leading-relaxed' style='color: var(--text)'>This start page is powered by <a target='_blank' href='https://github.com/plbrault/Salut' style='color: var(--link)'>Salut</a>.</p><p class='text-xs leading-relaxed' style='color: var(--text-muted)'>Salut is developed by <a target='_blank' href='https://plbrault.com' style='color: var(--link)'>Pier-Luc Brault</a> and is published under the <a target='_blank' href='https://www.gnu.org/licenses/agpl-3.0.html' style='color: var(--link)'>AGPLv3 license</a>.</p></div>"
+
