@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
+from pathlib import Path
 
 from apscheduler.triggers.cron import CronTrigger
+from jinja2 import Environment, FileSystemLoader
 
 
 class Plugin(ABC):
@@ -14,3 +16,9 @@ class Plugin(ABC):
 
     def parse_schedule(self, schedule):
         return CronTrigger.from_crontab(schedule)
+
+    @staticmethod
+    def load_template(plugin_dir, template_name):
+        return Environment(
+            loader=FileSystemLoader(Path(plugin_dir))
+        ).get_template(template_name)

@@ -120,21 +120,21 @@ def _validate_rss_card(card, card_idx, filename):
             f"{filename}: cards[{card_idx}].options.feeds must be a non-empty list."
         )
 
-    refresh = options.get("refresh")
-    if not refresh:
+    schedule = options.get("schedule")
+    if not schedule:
         raise ConfigError(
-            f"{filename}: cards[{card_idx}].options.refresh is required (cron expression)."
+            f"{filename}: cards[{card_idx}].options.schedule is required (cron expression)."
         )
 
-    if not isinstance(refresh, str):
+    if not isinstance(schedule, str):
         raise ConfigError(
-            f"{filename}: cards[{card_idx}].options.refresh must be a string."
+            f"{filename}: cards[{card_idx}].options.schedule must be a string."
         )
 
-    parts = refresh.strip().split()
+    parts = schedule.strip().split()
     if len(parts) not in (5, 6):
         raise ConfigError(
-            f"{filename}: cards[{card_idx}].options.refresh must be a valid cron expression (5 or 6 fields)."
+            f"{filename}: cards[{card_idx}].options.schedule must be a valid cron expression (5 or 6 fields)."
         )
 
 

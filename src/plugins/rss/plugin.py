@@ -3,6 +3,7 @@ import json
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import urlparse
 
 import feedparser
 import requests
@@ -17,6 +18,7 @@ class RssPlugin(Plugin):
         self._database = None
         self._logger = None
         self._card_id = None
+        self._template = self.load_template(Path(__file__).resolve().parent, "template.html")
 
     def setup(self, options, database, scheduler, logger):
         self._database = database
@@ -26,13 +28,13 @@ class RssPlugin(Plugin):
         feeds = options.get("feeds", [])
         max_items = options.get("max_items", 10)
         fetch_images = options.get("images", False)
-        refresh = options.get("refresh", "0 */6 * * *")
+        schedule = options.get("schedule", "0 */6 * * *")
 
         if feeds:
             self._fetch_feeds(feeds, max_items, fetch_images)
             scheduler.add_job(
                 self._fetch_feeds,
-                trigger=self.parse_schedule(refresh),
+                trigger=self.parse_schedule(schedule),
                 args=[feeds, max_items, fetch_images],
                 id=f"rss_{self._card_id}",
                 replace_existing=True,
@@ -45,20 +47,17 @@ class RssPlugin(Plugin):
         if not items:
             return ""
 
-        html = '<ul class="space-y-2">'
+        feed_items = []
         for item in items:
-            title = item["title"]
-            link = item["link"]
-            image_url = item.get("image_url", "")
+            source = urlparse(item["feed_url"]).hostname.replace("www.", "")
+            feed_items.append({
+                "title": item["title"],
+                "link": item["link"],
+                "image_url": item.get("image_url", ""),
+                "source": source,
+            })
 
-            html += '<li class="flex items-start gap-2">'
-            if image_url:
-                html += f'<img src="{image_url}" alt="" class="w-10 h-10 rounded object-cover flex-shrink-0">'
-            html += f'<a href="{link}" target="_blank" rel="noopener" class="text-blue-600 hover:underline">{title}</a>'
-            html += '</li>'
-        html += '</ul>'
-
-        return html
+        return self._template.render(items=feed_items)
 
     def _fetch_feeds(self, feeds, max_items=10, fetch_images=False):
         self._logger.info("Fetching RSS feeds for card %s (%d feeds)", self._card_id, len(feeds))

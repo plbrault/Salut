@@ -138,7 +138,7 @@ class TestRssPlugin:
         except ConfigError as e:
             assert "options" in str(e)
 
-    def test_rss_card_requires_refresh(self):
+    def test_rss_card_requires_schedule(self):
         config = {
             "page_title": "Test",
             "page_header": "Test",
