@@ -1,0 +1,20 @@
+<div class="weather-body">
+    <div class="weather-current">
+        <div class="flex items-center gap-3">
+            <span class="weather-icon">{{ icon }}</span>
+            <div>
+                <div class="weather-temp">{{ temp }}{{ temp_unit }}</div>
+                <div class="text-sm text-gray-500">{{ description }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="weather-details">
+        <div class="weather-detail">📍 {{ location_name }}</div>
+        <div class="weather-detail">Feels like {{ feels_like }}{{ temp_unit }}</div>
+        <div class="weather-detail">💧 {{ humidity }}% humidity</div>
+        <div class="weather-detail">💨 {{ wind }} km/h wind</div>
+    </div>
+</div>
+<div class="weather-provider">
+    <a href="https://open-meteo.com/" target="_blank" rel="noopener">{{ provider_prefix }} Open-Meteo</a>
+</div>

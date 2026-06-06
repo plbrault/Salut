@@ -1,4 +1,4 @@
-page_title: Salut
+page_title: Salut 👋
 page_header: "<h1>Hi ${user_info.short_name} {{time_emoji}}</h1><span>{{date}}</span>"
 language: en
 user_info:
@@ -55,3 +55,12 @@ cards:
       provider: wikipedia
       language: en
       button_text: "Search Wikipedia"
+  - title: Weather
+    plugin: weather
+    options:
+      provider: open-meteo
+      latitude: 45.50884
+      longitude: -73.58781
+      location_name: "Montréal (Québec)"
+      schedule: "0 */2 * * *"
+      link_url: "https://www.theweathernetwork.com/en/city/ca/quebec/montreal/current"
