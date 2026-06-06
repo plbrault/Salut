@@ -34,6 +34,11 @@
             box-sizing: border-box;
         }
     </style>
+    {% if plugin_style_rules %}
+    <style>
+        {{ plugin_style_rules }}
+    </style>
+    {% endif %}
 </head>
 <body class="bg-gray-100 p-8">
     <header>
@@ -86,7 +91,7 @@
     {% endif %}
     <div id="container">
         {% for card in cards %}
-        <div class="card" data-colspan="{{ card.colspan }}">
+        <div class="card {{ card.css_class }}" data-colspan="{{ card.colspan }}">
             <h3 class="text-lg font-semibold mb-2">{{ card.title }}</h3>
             {{ card.content | safe }}
         </div>

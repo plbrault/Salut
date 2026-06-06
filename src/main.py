@@ -65,11 +65,13 @@ templates = Jinja2Templates(directory=BASE_DIR / "templates")
 
 
 def _render_cards(cards):
+    instances = app.state.plugin_instances
     return [
         {
             "title": card.get("title", ""),
             "colspan": card.get("colspan", 1),
-            "content": render_card(card, app.state.plugin_instances),
+            "content": render_card(card, instances),
+            "css_class": f"{card['plugin']}-card" if card.get("plugin") else "",
         }
         for card in cards
     ]
@@ -83,6 +85,12 @@ def index(request: Request):
 
     cards_data = _render_cards(config.get("cards", []))
 
+    plugin_style_rules = ""
+    for name, instance in app.state.plugin_instances.items():
+        rules = getattr(type(instance), "card_style_rules", lambda: {})()
+        for selector, declarations in rules.items():
+            plugin_style_rules += f".{name}-card {selector} {{ {declarations} }}\n"
+
     return templates.TemplateResponse(
         request,
         "index.html",
@@ -94,6 +102,7 @@ def index(request: Request):
             "dev_mode": os.environ.get("DEVELOPMENT") is not None,
             "cards": cards_data,
             "max_cols": config.get("columns", 3),
+            "plugin_style_rules": plugin_style_rules,
         },
     )
 

@@ -5,7 +5,7 @@ Plugin-based card rendering system for the starter page. Cards use plugins to re
 ## Requirements
 
 ### Requirement: Plugins render card content
-The system SHALL load plugins from `src/plugins/` and use them to render card content.
+The system SHALL load plugins from `src/plugins/` and use them to render card content. Each plugin SHALL expose `card_style_rules` as part of its interface.
 
 #### Scenario: Plugin is loaded and executed
 - **WHEN** a card specifies `plugin: html` with `options`
@@ -23,8 +23,12 @@ The system SHALL load plugins from `src/plugins/` and use them to render card co
 - **WHEN** the server starts
 - **THEN** the system calls `plugin_class.init_schema(database)` for each plugin before calling `setup`
 
+#### Scenario: Plugin provides card style rules
+- **WHEN** a plugin is queried for `card_style_rules`
+- **THEN** its class returns a dict mapping sub-selectors to CSS declarations
+
 ### Requirement: HTML plugin renders arbitrary HTML
-The system SHALL provide an `html` plugin that renders HTML from the card's `options.html` field.
+The system SHALL provide an `html` plugin that renders HTML from the card's `options.html` field. The HTML plugin SHALL implement `card_style_rules` with sensible default styling.
 
 #### Scenario: HTML plugin renders content
 - **WHEN** a card has `plugin: html` and `options: { html: "<p>Hello</p>" }`
@@ -33,6 +37,10 @@ The system SHALL provide an `html` plugin that renders HTML from the card's `opt
 #### Scenario: HTML plugin with no html option
 - **WHEN** a card has `plugin: html` but no `options.html` field
 - **THEN** the card renders empty content
+
+#### Scenario: HTML plugin card style rules
+- **WHEN** the HTML plugin's `card_style_rules` is queried
+- **THEN** it returns a dict with rules for common HTML elements (images, links, paragraphs, lists, headings, code blocks)
 
 ### Requirement: Cards support colspan
 The system SHALL support a `colspan` field on cards to span multiple columns.

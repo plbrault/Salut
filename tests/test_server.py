@@ -1,6 +1,10 @@
+from unittest.mock import patch
+
 from fastapi.testclient import TestClient
 
 from src.main import app
+from src.plugins.html import HtmlPlugin
+from src.plugins.search import SearchPlugin
 
 
 class TestServer:
@@ -60,3 +64,31 @@ class TestServer:
             response = client.get("/")
             assert "<h1>" in response.text
             assert "{{" not in response.text or "time_emoji" in response.text
+
+    def test_card_divs_have_plugin_css_class(self):
+        with patch("src.main.setup_card") as real_setup:
+            def fake_setup(card, _db, _scheduler):
+                name = card.get("plugin")
+                if name == "html":
+                    return HtmlPlugin()
+                if name == "search":
+                    return SearchPlugin()
+                return None
+            real_setup.side_effect = fake_setup
+            with TestClient(app) as client:
+                response = client.get("/")
+                assert "card html-card" in response.text
+
+    def test_plugin_style_rules_rendered(self):
+        with patch("src.main.setup_card") as real_setup:
+            def fake_setup(card, _db, _scheduler):
+                name = card.get("plugin")
+                if name == "html":
+                    return HtmlPlugin()
+                if name == "search":
+                    return SearchPlugin()
+                return None
+            real_setup.side_effect = fake_setup
+            with TestClient(app) as client:
+                response = client.get("/")
+                assert ".html-card" in response.text

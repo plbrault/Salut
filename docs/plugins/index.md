@@ -4,8 +4,9 @@ Plugins render card content. Each plugin lives in `src/plugins/<name>/` and exte
 
 ## Plugin Architecture
 
-Each plugin is a class that extends `Plugin` with these methods:
+Each plugin is a class that extends `Plugin` with these methods and properties:
 
+- `card_style_rules()` — Static method returning a `dict[str, str]` mapping sub-selectors to CSS declarations. Keys are relative to the card's CSS class (e.g. `"img"` becomes `.html-card img`). Returns an empty dict by default; override only if custom styling is needed.
 - `setup(options, database, scheduler, logger)` — Initialize the plugin for a card. Called once at startup.
 - `render(options)` — Return HTML string for the card.
 - `validate_options(options, card_idx, filename)` — Validate plugin-specific options. Raise `ConfigError` if invalid.
@@ -107,6 +108,12 @@ Create a directory under `src/plugins/` with an `__init__.py` and a plugin class
 from src.plugin import Plugin
 
 class MyPlugin(Plugin):
+    @staticmethod
+    def card_style_rules() -> dict[str, str]:
+        return {
+            "img": "max-width: 100%; height: auto;",
+        }
+
     def setup(self, options, database, scheduler, logger):
         pass
 

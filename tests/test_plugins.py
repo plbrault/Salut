@@ -25,6 +25,22 @@ class TestPluginLoading:
         assert cls is None
 
 
+class TestPluginCardStyleRules:
+    def test_html_card_style_rules_returns_dict(self):
+        assert isinstance(HtmlPlugin.card_style_rules(), dict)
+
+    def test_rss_card_style_rules_returns_dict(self):
+        assert isinstance(RssPlugin.card_style_rules(), dict)
+
+    def test_search_card_style_rules_returns_dict(self):
+        assert isinstance(SearchPlugin.card_style_rules(), dict)
+
+    def test_all_plugins_have_card_style_rules(self):
+        for plugin_cls in [HtmlPlugin, RssPlugin, SearchPlugin]:
+            assert hasattr(plugin_cls, "card_style_rules")
+            assert callable(plugin_cls.card_style_rules)
+
+
 class TestHtmlPlugin:
     def test_renders_html(self):
         plugin = HtmlPlugin()
