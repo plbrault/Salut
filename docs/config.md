@@ -42,23 +42,35 @@ Salut is configured via a YAML file (`config.yml` or `starter.yml`). The `config
 
 ### columns
 
+- **Type:** integer (required)
+- **Description:** Number of columns in the page layout
+- **Example:** `3`
+
+### cards
+
 - **Type:** array (required)
-- **Description:** Page layout columns containing cards
+- **Description:** Flat list of cards that auto-flow left-to-right across columns
 
-#### columns[].cards
-
-- **Type:** array (required)
-- **Description:** Cards within a column
-
-#### columns[].cards[].title
+#### cards[].title
 
 - **Type:** string (required)
 - **Description:** Card display title
 
-#### columns[].cards[].type
+#### cards[].plugin
 
 - **Type:** string (required)
-- **Description:** Card type (e.g., `newsfeed`, `search`, `weather`, `github`)
+- **Description:** Plugin name to render card content (see [Plugins](plugins/))
+- **Example:** `html`
+
+#### cards[].options
+
+- **Type:** object (optional)
+- **Description:** Plugin-specific options
+
+#### cards[].colspan
+
+- **Type:** integer (optional, default: 1)
+- **Description:** Number of columns this card spans
 
 ## Template Syntax
 
@@ -91,27 +103,26 @@ Resolved server-side and passed to the template:
 
 ```yaml
 page_title: Salut
-page_header: "Hi ${user_info.short_name} {{time_emoji}}"
+page_header: "<h1>Hi ${user_info.short_name} {{time_emoji}}</h1><span>{{date}}</span>"
 language: en
 user_info:
   short_name: Chris
   long_name: Chris P. Bacon
 
-columns:
-  - cards:
-      - title: News
-        type: newsfeed
-        feeds:
-          - https://news.ycombinator.com/rss
-        count: 5
-        schedule: "*/30 * * * *"
-      - title: Search
-        type: search
-  - cards:
-      - title: Weather
-        type: weather
-        city: Montreal
-        units: metric
-      - title: GitHub
-        type: github
+columns: 3
+
+cards:
+  - title: Welcome
+    plugin: html
+    options:
+      html: "<p>Welcome to Salut!</p>"
+  - title: Links
+    plugin: html
+    options:
+      html: "<ul><li><a href='https://github.com'>GitHub</a></li></ul>"
+  - title: About
+    plugin: html
+    colspan: 2
+    options:
+      html: "<p>Salut means Hi in French.</p>"
 ```

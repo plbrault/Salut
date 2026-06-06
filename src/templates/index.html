@@ -72,15 +72,11 @@
         })();
     </script>
     {% endif %}
-    <main class="flex gap-6 mt-8">
-        {% for column in config.columns %}
-        <div class="flex-1">
-            {% for card in column.cards %}
-            <div class="bg-white rounded-lg border border-gray-200 p-4 mb-4">
-                <h3 class="text-lg font-semibold mb-2">{{ card.title }}</h3>
-                <p class="text-gray-500">{{ card.type }} card (coming soon)</p>
-            </div>
-            {% endfor %}
+    <main class="grid gap-6 mt-8" style="grid-template-columns: repeat({{ num_cols }}, 1fr);">
+        {% for card in cards %}
+        <div class="bg-white rounded-lg border border-gray-200 p-4 mb-4" style="grid-column: {{ card.col }} / span {{ card.colspan }}; grid-row: {{ card.row }}; align-self: start;">
+            <h3 class="text-lg font-semibold mb-2">{{ card.title }}</h3>
+            {{ card.content | safe }}
         </div>
         {% endfor %}
     </main>

@@ -28,6 +28,8 @@ cp starter.yml config.yml
 
 `config.yml` is gitignored so your customizations stay local. If `config.yml` is absent, the server uses `starter.yml` as the default.
 
+See [docs/config.md](docs/config.md) for the full configuration reference, and [docs/plugins/](docs/plugins/) for available plugins.
+
 ## Running
 
 ```bash

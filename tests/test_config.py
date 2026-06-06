@@ -11,7 +11,8 @@ def _make_config(**overrides):
         "page_header": "<h1>Hi ${user_info.short_name} {{time_emoji}}</h1><span>{{date}}</span>",
         "language": "en",
         "user_info": {"short_name": "A", "long_name": "B"},
-        "columns": [{"cards": [{"title": "A", "type": "link"}]}],
+        "columns": 3,
+        "cards": [{"title": "A", "plugin": "html", "options": {"html": "<p>Test</p>"}}],
     }
     config.update(overrides)
     return config
@@ -140,14 +141,26 @@ class TestValidateColumns:
         with pytest.raises(ConfigError, match="columns"):
             validate_config(_make_config(columns=None))
 
-    def test_empty_columns(self):
+    def test_non_integer_columns(self):
+        with pytest.raises(ConfigError, match="positive integer"):
+            validate_config(_make_config(columns="three"))
+
+    def test_zero_columns(self):
+        with pytest.raises(ConfigError, match="positive integer"):
+            validate_config(_make_config(columns=0))
+
+    def test_missing_cards(self):
+        with pytest.raises(ConfigError, match="cards"):
+            validate_config(_make_config(cards=None))
+
+    def test_empty_cards(self):
         with pytest.raises(ConfigError, match="non-empty"):
-            validate_config(_make_config(columns=[]))
+            validate_config(_make_config(cards=[]))
 
     def test_missing_card_title(self):
         with pytest.raises(ConfigError, match="title is required"):
-            validate_config(_make_config(columns=[{"cards": [{"type": "link"}]}]))
+            validate_config(_make_config(cards=[{"plugin": "html"}]))
 
-    def test_missing_card_type(self):
-        with pytest.raises(ConfigError, match="type is required"):
-            validate_config(_make_config(columns=[{"cards": [{"title": "A"}]}]))
+    def test_missing_card_plugin(self):
+        with pytest.raises(ConfigError, match="plugin is required"):
+            validate_config(_make_config(cards=[{"title": "A"}]))
