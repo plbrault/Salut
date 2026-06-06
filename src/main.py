@@ -1,36 +1,59 @@
 import os
 import hashlib
 import logging
+from contextlib import asynccontextmanager
 from pathlib import Path
 
+from apscheduler.schedulers.background import BackgroundScheduler
 from fastapi import FastAPI, Request, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from src.config import load_config
-from src.database import init_database
+from src import database
 from src.template import resolve_config_vars
-from src.plugins import render_card
+from src.plugins import setup_card, render_card
 
 BASE_DIR = Path(__file__).resolve().parent
+CACHE_DIR = BASE_DIR.parent / "cache"
 
 
 def _dev_reload_filter(record):
     return "/dev-reload" not in record.getMessage()
 
 
-app = FastAPI(title="Salut")
-app.mount("/static", StaticFiles(directory=BASE_DIR.parent / "static"), name="static")
-
-templates = Jinja2Templates(directory=BASE_DIR / "templates")
+scheduler = BackgroundScheduler()
 
 
-@app.on_event("startup")
-def startup():
-    init_database()
-    app.state.config = load_config()
+@asynccontextmanager
+async def lifespan(application):
+    logging.root.setLevel(logging.INFO)
+    database.init_database()
+    application.state.config = load_config()
     if os.environ.get("DEVELOPMENT"):
         logging.getLogger("uvicorn.access").addFilter(_dev_reload_filter)
+
+    if not scheduler.running:
+        scheduler.start()
+
+    plugin_instances = {}
+    for card in application.state.config.get("cards", []):
+        plugin_name = card.get("plugin")
+        if plugin_name and plugin_name not in plugin_instances:
+            instance = setup_card(card, database, scheduler)
+            if instance is not None:
+                plugin_instances[plugin_name] = instance
+    application.state.plugin_instances = plugin_instances
+
+    yield
+
+
+app = FastAPI(title="Salut", lifespan=lifespan)
+app.mount("/static", StaticFiles(directory=BASE_DIR.parent / "static"), name="static")
+CACHE_DIR.mkdir(parents=True, exist_ok=True)
+app.mount("/cache", StaticFiles(directory=CACHE_DIR), name="cache")
+
+templates = Jinja2Templates(directory=BASE_DIR / "templates")
 
 
 def _compute_grid_layout(num_cols, cards):
@@ -50,7 +73,7 @@ def _compute_grid_layout(num_cols, cards):
             "colspan": colspan,
             "col": current_col,
             "row": current_row,
-            "content": render_card(card),
+            "content": render_card(card, app.state.plugin_instances),
         })
 
         current_col += colspan

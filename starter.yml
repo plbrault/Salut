@@ -30,3 +30,15 @@ cards:
     colspan: 2
     options:
       html: "<p>Salut means Hi in French. This card spans two columns.</p>"
+  - title: World News
+    plugin: rss
+    options:
+      feeds:
+        - http://feeds.bbci.co.uk/news/world/rss.xml
+        - https://rss.nytimes.com/services/xml/rss/nyt/World.xml
+        - https://www.theguardian.com/world/rss
+        - http://rss.cnn.com/rss/edition_world.rss
+        - https://www.cbc.ca/webfeed/rss/rss-world
+      refresh: "0 */2 * * *"
+      max_items: 10
+      images: true

@@ -7,3 +7,4 @@ __pycache__/
 *.db-shm
 .env
 venv/
+cache/

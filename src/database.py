@@ -25,5 +25,45 @@ def init_database():
         )
         """
     )
+    try:
+        connection.execute("ALTER TABLE feed_items ADD COLUMN card_id TEXT NOT NULL DEFAULT ''")
+    except sqlite3.OperationalError:
+        pass
+    try:
+        connection.execute("ALTER TABLE feed_items ADD COLUMN image_url TEXT")
+    except sqlite3.OperationalError:
+        pass
     connection.commit()
     connection.close()
+
+
+def delete_feed_items(card_id):
+    connection = get_database()
+    connection.execute("DELETE FROM feed_items WHERE card_id = ?", (card_id,))
+    connection.commit()
+    connection.close()
+
+
+def insert_feed_item(**kwargs):
+    connection = get_database()
+    connection.execute(
+        """
+        INSERT INTO feed_items (card_id, url, title, link, published, feed_url, image_url)
+        VALUES (:card_id, :url, :title, :link, :published, :feed_url, :image_url)
+        """,
+        kwargs,
+    )
+    connection.commit()
+    connection.close()
+
+
+def get_feed_items(card_id):
+    connection = get_database()
+    connection.row_factory = sqlite3.Row
+    cursor = connection.execute(
+        "SELECT * FROM feed_items WHERE card_id = ? ORDER BY published DESC",
+        (card_id,),
+    )
+    items = [dict(row) for row in cursor.fetchall()]
+    connection.close()
+    return items

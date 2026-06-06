@@ -102,6 +102,41 @@ def _validate_card(card, card_idx, filename):
                 f"{filename}: cards[{card_idx}].colspan must be a positive integer."
             )
 
+    if card.get("plugin") == "rss":
+        _validate_rss_card(card, card_idx, filename)
+
+
+def _validate_rss_card(card, card_idx, filename):
+    """Validate RSS-specific card options."""
+    options = card.get("options", {})
+    if not options:
+        raise ConfigError(
+            f"{filename}: cards[{card_idx}].options is required for RSS plugin."
+        )
+
+    feeds = options.get("feeds")
+    if not feeds or not isinstance(feeds, list) or len(feeds) == 0:
+        raise ConfigError(
+            f"{filename}: cards[{card_idx}].options.feeds must be a non-empty list."
+        )
+
+    refresh = options.get("refresh")
+    if not refresh:
+        raise ConfigError(
+            f"{filename}: cards[{card_idx}].options.refresh is required (cron expression)."
+        )
+
+    if not isinstance(refresh, str):
+        raise ConfigError(
+            f"{filename}: cards[{card_idx}].options.refresh must be a string."
+        )
+
+    parts = refresh.strip().split()
+    if len(parts) not in (5, 6):
+        raise ConfigError(
+            f"{filename}: cards[{card_idx}].options.refresh must be a valid cron expression (5 or 6 fields)."
+        )
+
 
 def _validate_cards(config, filename):
     """Validate cards list."""
