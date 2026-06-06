@@ -132,3 +132,25 @@ class TestServer:
             response = client.get("/")
             assert ".card h3" in response.text
             assert "var(--text)" in response.text
+
+    def test_favicon_rendered_when_present(self):
+        with TestClient(app) as client:
+            original = app.state.config.copy()
+            app.state.config = {**original, "favicon": "👋"}
+            try:
+                response = client.get("/")
+                assert 'rel="icon"' in response.text
+                assert "👋" in response.text
+                assert "data:image/svg+xml" in response.text
+            finally:
+                app.state.config = original
+
+    def test_favicon_not_rendered_when_absent(self):
+        with TestClient(app) as client:
+            original = app.state.config.copy()
+            app.state.config = {k: v for k, v in original.items() if k != "favicon"}
+            try:
+                response = client.get("/")
+                assert 'rel="icon"' not in response.text
+            finally:
+                app.state.config = original

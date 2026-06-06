@@ -51,3 +51,14 @@ The system SHALL replace all `{{...}}` placeholders in the rendered page HTML us
 #### Scenario: Unknown variable preserved
 - **WHEN** the page contains `{{unknown_var}}`
 - **THEN** the placeholder is preserved as-is in the output
+
+### Requirement: Favicon value is available in template context
+The system SHALL pass the resolved `favicon` config value (if present) to the HTML template as a context variable.
+
+#### Scenario: Favicon in template
+- **WHEN** the config has `favicon: "👋"` and the page is rendered
+- **THEN** the template receives `favicon` with value `"👋"`
+
+#### Scenario: No favicon in template
+- **WHEN** the config has no `favicon` field and the page is rendered
+- **THEN** the template receives no `favicon` variable (falsy in Jinja2)
