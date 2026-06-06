@@ -1,0 +1,15 @@
+<form action="{{ action_url }}" method="GET"{% if results_in_new_tab %} target="_blank"{% endif %} style="display: flex; gap: 0.5rem;">
+    <input
+        type="text"
+        name="{{ query_param }}"
+        placeholder="{{ button_text }}"
+        style="flex: 1; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; font-size: 0.875rem;"
+        required
+    />
+    <button
+        type="submit"
+        style="padding: 0.5rem 1rem; background-color: #3b82f6; color: white; border: none; border-radius: 0.375rem; font-size: 0.875rem; cursor: pointer;"
+    >
+        {{ button_text }}
+    </button>
+</form>

@@ -67,6 +67,37 @@ cards:
 
 Images are cached locally in `cache/rss/<card_id>/` and served as static files.
 
+### search
+
+Renders a search bar that submits to a search engine or Wikipedia.
+
+**Options:**
+
+| Option | Type | Required | Default | Description |
+|--------|------|----------|---------|-------------|
+| `provider` | string | yes | - | Search provider: `"duckduckgo"` or `"wikipedia"` |
+| `button_text` | string | no | "Search" | Text displayed on the search button and input placeholder |
+| `results_in_new_tab` | boolean | no | false | Open search results in a new browser tab |
+| `language` | string | no | "en" | Language code for Wikipedia (e.g., `"fr"`, `"de"`) |
+
+**Examples:**
+
+```yaml
+cards:
+  - title: Web Search
+    plugin: search
+    options:
+      provider: duckduckgo
+      button_text: "Search"
+
+  - title: Wikipedia
+    plugin: search
+    options:
+      provider: wikipedia
+      language: fr
+      button_text: "Wikipedia"
+```
+
 ## Writing a Plugin
 
 Create a directory under `src/plugins/` with an `__init__.py` and a plugin class:
