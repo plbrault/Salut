@@ -7,3 +7,7 @@ class HtmlPlugin(Plugin):
 
     def render(self, options):
         return options.get("html", "")
+
+    @staticmethod
+    def validate_options(options, card_idx, filename):
+        pass

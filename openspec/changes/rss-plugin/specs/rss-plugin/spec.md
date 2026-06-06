@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: Plugin abstract base class
-The system SHALL provide an abstract `Plugin` base class in `src/plugins/base.py` with `setup` and `render` methods.
+The system SHALL provide an abstract `Plugin` base class in `src/plugin.py` with `setup`, `render`, and `validate_options` methods.
 
 #### Scenario: Plugin class has setup method
 - **WHEN** a plugin class extends `Plugin`
@@ -10,6 +10,10 @@ The system SHALL provide an abstract `Plugin` base class in `src/plugins/base.py
 #### Scenario: Plugin class has render method
 - **WHEN** a plugin class extends `Plugin`
 - **THEN** it implements `render(self, options) → str` returning an HTML string
+
+#### Scenario: Plugin class has validate_options method
+- **WHEN** a plugin class extends `Plugin`
+- **THEN** it implements `validate_options(options, card_idx, filename)` as a static method to validate plugin-specific options
 
 ### Requirement: Plugins are loaded as classes
 The system SHALL load plugins by importing their class from `src/plugins/<name>/plugin.py` and instantiating it.
@@ -48,6 +52,29 @@ The system SHALL provide an `RssPlugin` class extending `Plugin` that fetches RS
 - **WHEN** a card has `plugin: rss` with items in the database
 - **THEN** the rendered card contains a list of feed items
 
+#### Scenario: RSS plugin validates options
+- **WHEN** `RssPlugin.validate_options()` is called
+- **THEN** it checks that `feeds` is a non-empty list and `schedule` is a valid cron expression
+
+#### Scenario: RSS plugin renders items using template
+- **WHEN** `RssPlugin.render()` is called
+- **THEN** it renders items using a Jinja2 template at `src/plugins/rss/template.html`
+
+#### Scenario: RSS plugin displays feed title as source
+- **WHEN** an RSS feed provides a channel title
+- **THEN** the rendered item displays the feed title as the source instead of the domain name
+
+#### Scenario: RSS plugin falls back to domain when no feed title
+- **WHEN** an RSS feed does not provide a channel title
+- **THEN** the rendered item displays the domain name (without `www.`) as the source
+
+### Requirement: Each card gets its own setup
+The system SHALL call `setup_card` for every card, even when multiple cards use the same plugin. Each card requires its own feed fetching and scheduler registration.
+
+#### Scenario: Multiple cards with same plugin
+- **WHEN** two cards both have `plugin: rss`
+- **THEN** the system calls `setup_card` for each card independently, and each card fetches its own feeds
+
 ### Requirement: Main is plugin-agnostic
 `main.py` SHALL NOT contain any plugin-specific logic. It SHALL iterate over cards, load each plugin via the generic interface, and call `setup` and `render`.
 
@@ -58,3 +85,16 @@ The system SHALL provide an `RssPlugin` class extending `Plugin` that fetches RS
 #### Scenario: Plugin-agnostic card processing
 - **WHEN** the server starts
 - **THEN** `main.py` loops over cards, instantiates each plugin, and calls `setup`
+
+## MODIFIED Requirements
+
+### Requirement: Config validation is plugin-agnostic
+Config validation SHALL delegate plugin-specific option validation to each plugin's `validate_options` method rather than hardcoding plugin-specific logic.
+
+#### Scenario: Config validates plugin options via plugin class
+- **WHEN** a card has a valid plugin name
+- **THEN** config validation calls `plugin_class.validate_options(options, card_idx, filename)`
+
+#### Scenario: Unknown plugin skips option validation
+- **WHEN** a card has an unknown plugin name
+- **THEN** config validation skips plugin-specific option validation

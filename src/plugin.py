@@ -14,6 +14,11 @@ class Plugin(ABC):
     def render(self, options):
         """Return HTML string for the card."""
 
+    @staticmethod
+    @abstractmethod
+    def validate_options(options, card_idx, filename):
+        """Validate plugin-specific options. Raise ConfigError if invalid."""
+
     def parse_schedule(self, schedule):
         return CronTrigger.from_crontab(schedule)
 

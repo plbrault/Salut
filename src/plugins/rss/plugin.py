@@ -8,6 +8,7 @@ from urllib.parse import urlparse
 import feedparser
 import requests
 
+from src.config import ConfigError
 from src.plugin import Plugin
 
 CACHE_DIR = Path(__file__).resolve().parent.parent.parent.parent / "cache" / "rss"
@@ -19,6 +20,36 @@ class RssPlugin(Plugin):
         self._logger = None
         self._card_id = None
         self._template = self.load_template(Path(__file__).resolve().parent, "template.html")
+
+    @staticmethod
+    def validate_options(options, card_idx, filename):
+        if not options:
+            raise ConfigError(
+                f"{filename}: cards[{card_idx}].options is required for RSS plugin."
+            )
+
+        feeds = options.get("feeds")
+        if not feeds or not isinstance(feeds, list) or len(feeds) == 0:
+            raise ConfigError(
+                f"{filename}: cards[{card_idx}].options.feeds must be a non-empty list."
+            )
+
+        schedule = options.get("schedule")
+        if not schedule:
+            raise ConfigError(
+                f"{filename}: cards[{card_idx}].options.schedule is required (cron expression)."
+            )
+
+        if not isinstance(schedule, str):
+            raise ConfigError(
+                f"{filename}: cards[{card_idx}].options.schedule must be a string."
+            )
+
+        parts = schedule.strip().split()
+        if len(parts) not in (5, 6):
+            raise ConfigError(
+                f"{filename}: cards[{card_idx}].options.schedule must be a valid cron expression (5 or 6 fields)."
+            )
 
     def setup(self, options, database, scheduler, logger):
         self._database = database

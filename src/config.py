@@ -2,6 +2,8 @@ from pathlib import Path
 
 import yaml
 
+from src.plugins import load_plugin_class
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 LANGUAGE_DEFAULTS = {
@@ -102,40 +104,9 @@ def _validate_card(card, card_idx, filename):
                 f"{filename}: cards[{card_idx}].colspan must be a positive integer."
             )
 
-    if card.get("plugin") == "rss":
-        _validate_rss_card(card, card_idx, filename)
-
-
-def _validate_rss_card(card, card_idx, filename):
-    """Validate RSS-specific card options."""
-    options = card.get("options", {})
-    if not options:
-        raise ConfigError(
-            f"{filename}: cards[{card_idx}].options is required for RSS plugin."
-        )
-
-    feeds = options.get("feeds")
-    if not feeds or not isinstance(feeds, list) or len(feeds) == 0:
-        raise ConfigError(
-            f"{filename}: cards[{card_idx}].options.feeds must be a non-empty list."
-        )
-
-    schedule = options.get("schedule")
-    if not schedule:
-        raise ConfigError(
-            f"{filename}: cards[{card_idx}].options.schedule is required (cron expression)."
-        )
-
-    if not isinstance(schedule, str):
-        raise ConfigError(
-            f"{filename}: cards[{card_idx}].options.schedule must be a string."
-        )
-
-    parts = schedule.strip().split()
-    if len(parts) not in (5, 6):
-        raise ConfigError(
-            f"{filename}: cards[{card_idx}].options.schedule must be a valid cron expression (5 or 6 fields)."
-        )
+    plugin_class = load_plugin_class(card.get("plugin"))
+    if plugin_class is not None:
+        plugin_class.validate_options(card.get("options", {}), card_idx, filename)
 
 
 def _validate_cards(config, filename):
