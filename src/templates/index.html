@@ -28,6 +28,13 @@
         })();
     </script>
     <style>
+        @font-face {
+            font-family: 'Inter';
+            font-style: normal;
+            font-weight: 100 900;
+            font-display: swap;
+            src: url('/static/fonts/Inter-Variable.woff2') format('woff2');
+        }
         :root {
             --bg: #f3f4f6;
             --card-bg: white;
@@ -56,6 +63,7 @@
             align-items: baseline;
         }
         header h1 {
+            font-family: 'Inter', sans-serif;
             font-size: 2.5rem;
             font-weight: bold;
             color: var(--text);
@@ -79,6 +87,7 @@
             color: var(--text);
         }
         .card h3 {
+            font-family: 'Inter', sans-serif;
             color: var(--text);
         }
         .theme-toggle {
@@ -103,7 +112,7 @@
     </style>
     {% endif %}
 </head>
-<body class="p-8" style="background: var(--bg);">
+<body class="p-8" style="background: var(--bg); font-family: 'Inter', sans-serif;">
     <header>
         {{ page_header | safe }}
     </header>
