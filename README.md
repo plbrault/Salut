@@ -1,36 +1,41 @@
-# Salut
+# `Salut` - Self-Hosted Start Page
 
-`Salut` means `Hi` in French. It is a self-hosted starter page featuring customizable content cards.
+**Salut** means **Hi** in French. It is a self-hosted, fully configurable start page featuring customizable content cards.
 
-## Prerequisites
+## Features
 
-- Python 3.14 (recommended to use [pyenv](https://github.com/pyenv/pyenv) to manage Python versions)
-- [pipenv](https://pipenv.pypa.io/)
-- [GitHub CLI](https://cli.github.com/) (`gh`) — required for the GitHub notifications card
+* Single web page with no login (meant to be locally hosted)
+* YAML-based configuration
+* Internationalization support (English and French currently supported)
+* Layout consisting of cards based on plugins:
 
-## Installation
+    * [Calendar](docs/plugins/calendar.md)
+    * [HTML](docs/plugins/html.md)
+    * [RSS](docs/plugins/rss.md)
+    * [Search](docs/plugins/search.md) (currently supports DuckDuckGo and Wikipedia)
+    * [Weather](docs/plugins/weather.md) (uses [Open-Meteo](https://open-meteo.com/))
+
+## Getting Started
+
+### Prerequisites
+
+* Git
+* Python 3.14+
+* [pipenv](https://pipenv.pypa.io/)
+
+### Installation
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/plbrault/salut.git
 cd salut
 pipenv install
 ```
 
-If using pyenv, the `.python-version` file will automatically select Python 3.14 when you `cd` into the project directory.
+### Configuration
 
-## Configuration
+Copy `salut/starter.yml` to `salut/config.yml` and edit it to customize your page. Refer to the [documentation](docs/config.md) for available configuration options.
 
-Copy `starter.yml` to `config.yml` and edit it to customize your page:
-
-```bash
-cp starter.yml config.yml
-```
-
-`config.yml` is gitignored so your customizations stay local. If `config.yml` is absent, the server uses `starter.yml` as the default.
-
-See [docs/config.md](docs/config.md) for the full configuration reference, and [docs/plugins/](docs/plugins/) for available plugins.
-
-## Running
+### Running
 
 ```bash
 pipenv run app
@@ -38,9 +43,9 @@ pipenv run app
 
 The server starts at `http://localhost:8000`.
 
-**Note:** The database is ephemeral — it is recreated on each server start. All cached data (RSS feeds, weather, calendar events) is re-fetched automatically.
+**Note:** The application uses an ephemeral SQLite database. It is recreated on each server start. All cached data (RSS feeds, weather, calendar events, etc) is re-fetched automatically.
 
-Use a custom port:
+To use a custom port:
 
 ```bash
 PORT=9001 pipenv run app
@@ -48,25 +53,31 @@ PORT=9001 pipenv run app
 
 ## Development
 
-For development with hot-reloading templates and config:
+### Commands
+
+Start the server with hot-reloading:
 
 ```bash
 pipenv run develop
 ```
 
-This watches for changes to `.yml`/`.yaml` config files and `.html` templates, automatically refreshing the browser.
-
-## Testing
+Run unit tests:
 
 ```bash
 pipenv run pytest
 ```
 
-## Linting
+Run linter:
 
 ```bash
 pipenv run pylint
 ```
+
+## Contributing
+
+Pull requests for new plugins, bugfixes or backward-compatible improvements are welcome.
+
+If you use AI, please ensure your agent follows all instructions in `AGENTS.md`. You are encouraged to use [OpenSpec](https://github.com/Fission-AI/OpenSpec) skills to specify your changes in the repository's `openspec/specs` folder.
 
 ## License
 
