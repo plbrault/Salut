@@ -6,7 +6,7 @@
 
 * Single web page with no login (meant to be locally hosted)
 * YAML-based configuration
-* Internationalization support (English and French currently supported)
+* Internationalization (English and French currently supported)
 * Layout consisting of cards based on plugins:
 
     * [Calendar](docs/plugins/calendar.md)
@@ -33,7 +33,7 @@ pipenv install
 
 ### Configuration
 
-Copy `salut/starter.yml` to `salut/config.yml` and edit it to customize your page. Refer to the [documentation](docs/config.md) for available configuration options.
+Copy `starter.yml` to `config.yml` and edit it to customize your page. Refer to the [documentation](docs/config.md) for available configuration options.
 
 ### Running
 
@@ -43,7 +43,7 @@ pipenv run app
 
 The server starts at `http://localhost:8000`.
 
-**Note:** The application uses an ephemeral SQLite database. It is recreated on each server start. All cached data (RSS feeds, weather, calendar events, etc) is re-fetched automatically.
+**Note:** The application uses an ephemeral SQLite database. It is recreated on each server start. All cached data (RSS feeds, weather, calendar events, etc.) is re-fetched automatically.
 
 To use a custom port:
 
@@ -75,7 +75,7 @@ pipenv run pylint
 
 ## Contributing
 
-Pull requests for new plugins, bugfixes or backward-compatible improvements are welcome.
+Pull requests for new plugins, bugfixes, or backward-compatible improvements are welcome.
 
 If you use AI, please ensure your agent follows all instructions in `AGENTS.md`. You are encouraged to use [OpenSpec](https://github.com/Fission-AI/OpenSpec) skills to specify your changes in the repository's `openspec/specs` folder.
 
