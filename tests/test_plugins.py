@@ -950,3 +950,36 @@ class TestWeatherPlugin:  # pylint: disable=too-many-public-methods
         assert inst1 is not None
         assert inst2 is not None
         assert inst1._card_id != inst2._card_id  # pylint: disable=protected-access
+
+
+class TestPluginDarkMode:
+    def test_rss_template_no_hardcoded_colors(self):
+        template_path = Path(__file__).resolve().parent.parent / "src" / "plugins" / "rss" / "template.html"
+        content = template_path.read_text()
+        assert "text-gray-" not in content
+        assert "border-gray-" not in content
+        assert "bg-gray-" not in content
+
+    def test_weather_template_no_hardcoded_colors(self):
+        template_path = Path(__file__).resolve().parent.parent / "src" / "plugins" / "weather" / "template.html"
+        content = template_path.read_text()
+        assert "text-gray-" not in content
+
+    def test_weather_style_rules_use_css_variables(self):
+        rules = WeatherPlugin.card_style_rules()
+        assert "var(--text-muted)" in rules[".weather-detail"]
+        assert "var(--text-faint)" in rules[".weather-provider"]
+        assert "var(--text-faint)" in rules[".weather-provider a"]
+
+    def test_html_style_rules_use_css_variables(self):
+        rules = HtmlPlugin.card_style_rules()
+        assert "var(--link)" in rules["a"]
+        assert "var(--link-hover)" in rules["a:hover"]
+        assert "var(--code-bg)" in rules["code"]
+        assert "var(--code-bg)" in rules["pre"]
+
+    def test_search_template_no_hardcoded_border(self):
+        template_path = Path(__file__).resolve().parent.parent / "src" / "plugins" / "search" / "template.html"
+        content = template_path.read_text()
+        assert "#d1d5db" not in content
+        assert "var(--border)" in content

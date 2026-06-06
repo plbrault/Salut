@@ -92,3 +92,43 @@ class TestServer:
             with TestClient(app) as client:
                 response = client.get("/")
                 assert ".html-card" in response.text
+
+    def test_theme_toggle_replaced_in_html(self):
+        with TestClient(app) as client:
+            response = client.get("/")
+            assert "theme-toggle" in response.text
+            assert "toggleTheme()" in response.text
+
+    def test_theme_detection_script_present(self):
+        with TestClient(app) as client:
+            response = client.get("/")
+            assert "prefers-color-scheme" in response.text
+            assert "localStorage.getItem('theme')" in response.text
+
+    def test_theme_css_custom_properties(self):
+        with TestClient(app) as client:
+            response = client.get("/")
+            assert "--bg:" in response.text
+            assert "--card-bg:" in response.text
+            assert '[data-theme="dark"]' in response.text
+
+    def test_theme_toggle_icons_defined(self):
+        with TestClient(app) as client:
+            response = client.get("/")
+            assert "themeIcons" in response.text
+            assert "sun:" in response.text
+            assert "moon:" in response.text
+
+    def test_dark_mode_css_variables_present(self):
+        with TestClient(app) as client:
+            response = client.get("/")
+            assert "--link:" in response.text
+            assert "--link-hover:" in response.text
+            assert "--code-bg:" in response.text
+            assert "--text-faint:" in response.text
+
+    def test_card_title_uses_theme_color(self):
+        with TestClient(app) as client:
+            response = client.get("/")
+            assert ".card h3" in response.text
+            assert "var(--text)" in response.text

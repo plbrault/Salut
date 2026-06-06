@@ -1,4 +1,4 @@
-from src.template import resolve_config_vars
+from src.template import resolve_config_vars, resolve_all_config_vars
 
 
 class TestResolveConfigVars:
@@ -55,3 +55,41 @@ class TestResolveConfigVars:
         config = {"name": None}
         result = resolve_config_vars("${name}", config)
         assert result == "${name}"
+
+
+class TestResolveAllConfigVars:
+    def test_resolves_in_card_title(self):
+        config = {
+            "cards": [{"title": "Hello ${name}", "plugin": "html"}]
+        }
+        result = resolve_all_config_vars(config)
+        assert result["cards"][0]["title"] == "Hello ${name}"
+
+    def test_resolves_in_card_option(self):
+        config = {
+            "user": "Chris",
+            "cards": [{"title": "T", "plugin": "html", "options": {"greeting": "Hi ${user}"}}],
+        }
+        result = resolve_all_config_vars(config)
+        assert result["cards"][0]["options"]["greeting"] == "Hi Chris"
+
+    def test_resolves_in_nested_dict(self):
+        config = {"a": {"b": "Hello ${name}"}, "name": "World"}
+        result = resolve_all_config_vars(config)
+        assert result["a"]["b"] == "Hello World"
+
+    def test_resolves_in_list(self):
+        config = {"items": ["${name}", "literal"], "name": "Chris"}
+        result = resolve_all_config_vars(config)
+        assert result["items"] == ["Chris", "literal"]
+
+    def test_preserves_non_string_values(self):
+        config = {"count": 42, "flag": True}
+        result = resolve_all_config_vars(config)
+        assert result["count"] == 42
+        assert result["flag"] is True
+
+    def test_preserves_unknown_vars(self):
+        config = {"cards": [{"title": "${unknown}", "plugin": "html"}]}
+        result = resolve_all_config_vars(config)
+        assert result["cards"][0]["title"] == "${unknown}"

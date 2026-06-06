@@ -1,5 +1,5 @@
 page_title: Salut 👋
-page_header: "<h1>Hi ${user_info.short_name} {{time_emoji}}</h1><span>{{date}}</span>"
+page_header: "<h1>Hi ${user_info.short_name} {{time_emoji}}</h1><span>{{date}} {{theme_toggle}}</span>"
 language: en
 user_info:
   short_name: Chris
