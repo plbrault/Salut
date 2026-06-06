@@ -16,6 +16,7 @@ CACHE_DIR = Path(__file__).resolve().parent.parent.parent.parent / "cache" / "rs
 
 class RssPlugin(Plugin):
     def __init__(self):
+        super().__init__()
         self._database = None
         self._logger = None
         self._card_id = None
