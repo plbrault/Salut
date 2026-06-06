@@ -7,7 +7,7 @@ This capability provides a search bar card that allows users to search the web d
 ## Requirements
 
 ### Requirement: Search bar rendering
-The system SHALL render a search bar with a configurable button text.
+The system SHALL render a search bar with a configurable button text and a configurable input placeholder text.
 
 #### Scenario: Custom button text
 - **WHEN** a search card has `button_text` option set to "Go"
@@ -16,6 +16,18 @@ The system SHALL render a search bar with a configurable button text.
 #### Scenario: Default button text
 - **WHEN** a search card has no `button_text` option
 - **THEN** the search button displays "Search"
+
+#### Scenario: Custom placeholder text
+- **WHEN** a search card has `placeholder_text` option set to "Search the web..."
+- **THEN** the input placeholder displays "Search the web..."
+
+#### Scenario: Default placeholder text
+- **WHEN** a search card has no `placeholder_text` option
+- **THEN** the input placeholder displays "Search"
+
+#### Scenario: Independent placeholder and button text
+- **WHEN** a search card has `placeholder_text` set to "Type here..." and `button_text` set to "Go"
+- **THEN** the input placeholder displays "Type here..." and the button displays "Go"
 
 ### Requirement: Search provider support
 The system SHALL support DuckDuckGo and Wikipedia as search providers.

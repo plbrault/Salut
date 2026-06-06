@@ -520,6 +520,43 @@ class TestSearchPlugin:
             assert "language" in str(e)
 
 
+class TestSearchPluginPlaceholder:
+    def test_search_render_with_custom_placeholder_text(self):
+        plugin = SearchPlugin()
+        result = plugin.render({"provider": "duckduckgo", "placeholder_text": "Search the web..."})
+        assert 'placeholder="Search the web..."' in result
+
+    def test_search_render_with_default_placeholder_text(self):
+        plugin = SearchPlugin()
+        result = plugin.render({"provider": "duckduckgo"})
+        assert 'placeholder="Search"' in result
+
+    def test_search_independent_placeholder_and_button_text(self):
+        plugin = SearchPlugin()
+        result = plugin.render({"provider": "duckduckgo", "placeholder_text": "Type here...", "button_text": "Go"})
+        assert 'placeholder="Type here..."' in result
+        assert "Go" in result
+
+    def test_search_placeholder_text_must_be_string(self):
+        config = {
+            "page_title": "Test",
+            "page_header": "Test",
+            "language": "en",
+            "user_info": {"short_name": "A", "long_name": "B"},
+            "columns": 3,
+            "cards": [{
+                "title": "Search",
+                "plugin": "search",
+                "options": {"provider": "duckduckgo", "placeholder_text": 123}
+            }]
+        }
+        try:
+            validate_config(config)
+            assert False, "Should have raised ConfigError"
+        except ConfigError as e:
+            assert "placeholder_text" in str(e)
+
+
 class TestWeatherPlugin:  # pylint: disable=too-many-public-methods
     def _valid_options(self, **overrides):
         opts = {
