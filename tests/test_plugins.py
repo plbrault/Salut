@@ -155,7 +155,7 @@ class TestRssPlugin:
             validate_config(config)
             assert False, "Should have raised ConfigError"
         except ConfigError as e:
-            assert "refresh" in str(e)
+            assert "schedule" in str(e)
 
     def test_rss_card_valid_config(self):
         config = {
@@ -169,7 +169,7 @@ class TestRssPlugin:
                 "plugin": "rss",
                 "options": {
                     "feeds": ["http://example.com/rss"],
-                    "refresh": "0 */6 * * *"
+                    "schedule": "0 */6 * * *"
                 }
             }]
         }
