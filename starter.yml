@@ -10,10 +10,14 @@ columns: 3
 cards:
   - title: Web Search
     plugin: search
-    colspan: 3
+    colspan: 2
     options:
       provider: duckduckgo
       button_text: "Search"
+  - title: Welcome ${user_info.long_name} !
+    plugin: html
+    options:
+      html: "<p>This is an example card. You can add any HTML content here.</p>"
   - title: World News
     plugin: rss
     options:
@@ -37,10 +41,6 @@ cards:
       schedule: "*/5 * * * *"
       max_items: 10
       images: true
-  - title: Welcome ${user_info.long_name} !
-    plugin: html
-    options:
-      html: "<p>This is an example card, ${user_info.long_name}. You can add any HTML content here. {{theme_toggle}} </p>"
   - title: Links
     plugin: html
     options:
