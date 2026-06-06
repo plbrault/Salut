@@ -4,6 +4,7 @@ import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+import uvicorn
 from apscheduler.schedulers.background import BackgroundScheduler
 from fastapi import FastAPI, Request, Response
 from fastapi.staticfiles import StaticFiles
@@ -27,7 +28,11 @@ scheduler = BackgroundScheduler()
 
 @asynccontextmanager
 async def lifespan(application):
+    handler = logging.StreamHandler()
+    handler.setFormatter(uvicorn.logging.DefaultFormatter("%(levelprefix)s %(message)s", use_colors=True))
+    logging.root.addHandler(handler)
     logging.root.setLevel(logging.INFO)
+
     database.init_database()
     application.state.config = load_config()
     if os.environ.get("DEVELOPMENT"):
@@ -123,7 +128,6 @@ def dev_reload(response: Response):
 
 if __name__ == "__main__":
     import sys
-    import uvicorn
 
     port = 8000
     if "--port" in sys.argv:
