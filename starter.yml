@@ -51,10 +51,10 @@ cards:
     plugin: html
     options:
       html: "<ul><li><a target='_blank' href='https://github.com'>GitHub</a></li><li><a target='_blank' href='https://news.ycombinator.com'>Hacker News</a></li><li><a target='_blank' href='https://www.reddit.com'>Reddit</a></li></ul>"
-  - title: Random Cat
+  - title: Random Cat Picture
     plugin: html
     options:
-      html: "<a href='https://cataas.com/cat?width=400' target='_blank' rel='noopener'><img src='https://cataas.com/cat?width=400' alt='Random cat' class='w-full rounded-lg' onload='window.dispatchEvent(new Event(\"resize\"))'></a>"
+      html: "<a href='https://cataas.com/cat?width=400' target='_blank' rel='noopener'><img src='https://cataas.com/cat?width=400' alt='Random cat' class='w-full rounded-lg' onload='window.dispatchEvent(new Event(\"resize\"))'></a><p class='text-xs mt-2 text-center' style='color: var(--text-muted)'>Powered by <a href='https://cataas.com' target='_blank' rel='noopener' style='color: var(--link)'>CATAAS</a></p>"
   - title: About
     plugin: html
     options:
