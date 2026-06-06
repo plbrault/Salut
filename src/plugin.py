@@ -16,6 +16,11 @@ class Plugin(ABC):
 
     @staticmethod
     @abstractmethod
+    def setup_database(database):
+        """Initialize database tables for this plugin. Called once at startup."""
+
+    @staticmethod
+    @abstractmethod
     def validate_options(options, card_idx, filename):
         """Validate plugin-specific options. Raise ConfigError if invalid."""
 

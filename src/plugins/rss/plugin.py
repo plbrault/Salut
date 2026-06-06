@@ -51,6 +51,31 @@ class RssPlugin(Plugin):
                 f"{filename}: cards[{card_idx}].options.schedule must be a valid cron expression (5 or 6 fields)."
             )
 
+    @staticmethod
+    def setup_database(database):
+        database.execute(
+            """
+            CREATE TABLE IF NOT EXISTS feed_items (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                url TEXT NOT NULL,
+                title TEXT NOT NULL,
+                link TEXT NOT NULL,
+                published TEXT,
+                feed_url TEXT NOT NULL,
+                fetched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+        )
+        for column, definition in [
+            ("card_id", "TEXT NOT NULL DEFAULT ''"),
+            ("image_url", "TEXT"),
+            ("feed_title", "TEXT"),
+        ]:
+            try:
+                database.execute(f"ALTER TABLE feed_items ADD COLUMN {column} {definition}")
+            except Exception:  # pylint: disable=broad-except
+                pass
+
     def setup(self, options, database, scheduler, logger):
         self._database = database
         self._logger = logger
@@ -73,7 +98,7 @@ class RssPlugin(Plugin):
 
     def render(self, options):
         card_id = self._compute_card_id(options)
-        items = self._database.get_feed_items(card_id)
+        items = self._get_feed_items(card_id)
 
         if not items:
             return ""
@@ -92,7 +117,7 @@ class RssPlugin(Plugin):
 
     def _fetch_feeds(self, feeds, max_items=10, fetch_images=False):
         self._logger.info("Fetching RSS feeds for card %s (%d feeds)", self._card_id, len(feeds))
-        self._database.delete_feed_items(self._card_id)
+        self._delete_feed_items(self._card_id)
 
         with ThreadPoolExecutor() as executor:
             results = list(executor.map(
@@ -110,7 +135,7 @@ class RssPlugin(Plugin):
             self._download_images(all_items)
 
         for item in all_items:
-            self._database.insert_feed_item(
+            self._insert_feed_item(
                 card_id=self._card_id,
                 url=item["url"],
                 title=item["title"],
@@ -206,8 +231,8 @@ class RssPlugin(Plugin):
             filepath.write_bytes(response.content)
             item["image_url"] = f"/cache/rss/{self._card_id}/{filename}"
             self._logger.info("Saved image to %s", filepath)
-        except Exception:  # pylint: disable=broad-except
-            self._logger.warning("Failed to download image: %s", item["image_url"])
+        except Exception as e:  # pylint: disable=broad-except
+            self._logger.warning("Failed to download image: %s — %s", item["image_url"], e)
 
     @staticmethod
     def _get_extension(url, content_type):
@@ -226,3 +251,21 @@ class RssPlugin(Plugin):
         if url.endswith(".png"):
             return ".png"
         return ".jpg"
+
+    def _delete_feed_items(self, card_id):
+        self._database.execute("DELETE FROM feed_items WHERE card_id = ?", (card_id,))
+
+    def _insert_feed_item(self, **kwargs):
+        self._database.execute(
+            """
+            INSERT INTO feed_items (card_id, url, title, link, published, feed_url, image_url, feed_title)
+            VALUES (:card_id, :url, :title, :link, :published, :feed_url, :image_url, :feed_title)
+            """,
+            kwargs,
+        )
+
+    def _get_feed_items(self, card_id):
+        return self._database.fetch_all(
+            "SELECT * FROM feed_items WHERE card_id = ? ORDER BY published DESC",
+            (card_id,),
+        )

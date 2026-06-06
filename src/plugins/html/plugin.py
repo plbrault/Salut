@@ -11,3 +11,7 @@ class HtmlPlugin(Plugin):
     @staticmethod
     def validate_options(options, card_idx, filename):
         pass
+
+    @staticmethod
+    def setup_database(database):
+        pass

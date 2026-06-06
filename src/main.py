@@ -11,9 +11,9 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from src.config import load_config
-from src import database
+from src.database import Database
 from src.template import resolve_config_vars
-from src.plugins import setup_card, render_card
+from src.plugins import setup_card, render_card, setup_plugins_database
 
 BASE_DIR = Path(__file__).resolve().parent
 CACHE_DIR = BASE_DIR.parent / "cache"
@@ -33,10 +33,13 @@ async def lifespan(application):
     logging.root.addHandler(handler)
     logging.root.setLevel(logging.INFO)
 
-    database.init_database()
+    db = Database()
+    application.state.database = db
     application.state.config = load_config()
     if os.environ.get("DEVELOPMENT"):
         logging.getLogger("uvicorn.access").addFilter(_dev_reload_filter)
+
+    setup_plugins_database(db)
 
     if not scheduler.running:
         scheduler.start()
@@ -45,7 +48,7 @@ async def lifespan(application):
     for card in app.state.config.get("cards", []):
         plugin_name = card.get("plugin")
         if plugin_name:
-            instance = setup_card(card, database, scheduler)
+            instance = setup_card(card, db, scheduler)
             if instance is not None and plugin_name not in plugin_instances:
                 plugin_instances[plugin_name] = instance
     application.state.plugin_instances = plugin_instances

@@ -6,9 +6,8 @@ from src.plugin import Plugin
 from src.plugins.html import HtmlPlugin
 from src.plugins.rss import RssPlugin
 from src.plugins.rss.plugin import RssPlugin as RssPluginDirect
-from src import database
+from src.database import Database
 from src.config import validate_config, ConfigError
-from src.database import init_database
 
 
 class TestPluginLoading:
@@ -44,6 +43,9 @@ class TestHtmlPlugin:
     def test_setup_is_noop(self):
         plugin = HtmlPlugin()
         plugin.setup({}, None, None, None)
+
+    def test_setup_database_is_noop(self, tmp_path):
+        HtmlPlugin.setup_database(Database(tmp_path / "test.db"))
 
 
 class TestRenderCard:
@@ -176,22 +178,25 @@ class TestRssPlugin:
         }
         validate_config(config)
 
-    def test_rss_render_empty_when_no_items(self):
-        init_database()
+    def test_rss_render_empty_when_no_items(self, tmp_path):
+        db = Database(tmp_path / "test.db")
+        RssPlugin.setup_database(db)
         plugin = RssPlugin()
-        plugin.setup({}, database, None, Mock())
-        database.delete_feed_items(plugin._card_id)
+        plugin.setup({}, db, None, Mock())
+        plugin._delete_feed_items(plugin._card_id)  # pylint: disable=protected-access
         result = plugin.render({})
         assert result == ""
+        db.close()
 
-    def test_rss_render_with_items(self):
-        init_database()
+    def test_rss_render_with_items(self, tmp_path):
+        db = Database(tmp_path / "test.db")
+        RssPlugin.setup_database(db)
         options = {"feeds": ["http://example.com/rss"]}
         plugin = RssPlugin()
-        plugin.setup(options, database, MagicMock(), Mock())
-        database.delete_feed_items(plugin._card_id)
-        database.insert_feed_item(
-            card_id=plugin._card_id,
+        plugin.setup(options, db, MagicMock(), Mock())
+        plugin._delete_feed_items(plugin._card_id)  # pylint: disable=protected-access
+        plugin._insert_feed_item(  # pylint: disable=protected-access
+            card_id=plugin._card_id,  # pylint: disable=protected-access
             url="http://example.com/rss",
             title="Test Article",
             link="http://example.com/article",
@@ -204,15 +209,17 @@ class TestRssPlugin:
         assert "Test Article" in result
         assert "Example Feed" in result
         assert 'href="http://example.com/article"' in result
+        db.close()
 
-    def test_rss_render_strips_www_from_source(self):
-        init_database()
+    def test_rss_render_strips_www_from_source(self, tmp_path):
+        db = Database(tmp_path / "test.db")
+        RssPlugin.setup_database(db)
         options = {"feeds": ["https://www.example.com/rss"]}
         plugin = RssPlugin()
-        plugin.setup(options, database, MagicMock(), Mock())
-        database.delete_feed_items(plugin._card_id)
-        database.insert_feed_item(
-            card_id=plugin._card_id,
+        plugin.setup(options, db, MagicMock(), Mock())
+        plugin._delete_feed_items(plugin._card_id)  # pylint: disable=protected-access
+        plugin._insert_feed_item(  # pylint: disable=protected-access
+            card_id=plugin._card_id,  # pylint: disable=protected-access
             url="https://www.example.com/rss",
             title="Test",
             link="https://www.example.com/article",
@@ -224,15 +231,17 @@ class TestRssPlugin:
         result = plugin.render(options)
         assert "example.com" in result
         assert ">example.com<" in result
+        db.close()
 
-    def test_rss_render_prefers_feed_title(self):
-        init_database()
+    def test_rss_render_prefers_feed_title(self, tmp_path):
+        db = Database(tmp_path / "test.db")
+        RssPlugin.setup_database(db)
         options = {"feeds": ["https://www.example.com/rss"]}
         plugin = RssPlugin()
-        plugin.setup(options, database, MagicMock(), Mock())
-        database.delete_feed_items(plugin._card_id)
-        database.insert_feed_item(
-            card_id=plugin._card_id,
+        plugin.setup(options, db, MagicMock(), Mock())
+        plugin._delete_feed_items(plugin._card_id)  # pylint: disable=protected-access
+        plugin._insert_feed_item(  # pylint: disable=protected-access
+            card_id=plugin._card_id,  # pylint: disable=protected-access
             url="https://www.example.com/rss",
             title="Test",
             link="https://www.example.com/article",
@@ -244,15 +253,17 @@ class TestRssPlugin:
         result = plugin.render(options)
         assert "My Cool Blog" in result
         assert ">My Cool Blog<" in result
+        db.close()
 
-    def test_rss_render_with_image(self):
-        init_database()
+    def test_rss_render_with_image(self, tmp_path):
+        db = Database(tmp_path / "test.db")
+        RssPlugin.setup_database(db)
         options = {"feeds": ["http://example.com/rss"]}
         plugin = RssPlugin()
-        plugin.setup(options, database, MagicMock(), Mock())
-        database.delete_feed_items(plugin._card_id)
-        database.insert_feed_item(
-            card_id=plugin._card_id,
+        plugin.setup(options, db, MagicMock(), Mock())
+        plugin._delete_feed_items(plugin._card_id)  # pylint: disable=protected-access
+        plugin._insert_feed_item(  # pylint: disable=protected-access
+            card_id=plugin._card_id,  # pylint: disable=protected-access
             url="http://example.com/rss",
             title="Test",
             link="http://example.com/article",
@@ -263,9 +274,10 @@ class TestRssPlugin:
         )
         result = plugin.render(options)
         assert "/cache/rss/abc123/0.jpg" in result
+        db.close()
 
 
-class TestLoadTemplate:
+class TestLoadTemplate:  # pylint: disable=too-few-public-methods
     def test_load_template_returns_template(self):
         template_dir = Path(__file__).resolve().parent.parent / "src" / "plugins" / "rss"
         template = Plugin.load_template(template_dir, "template.html")
@@ -273,7 +285,7 @@ class TestLoadTemplate:
         assert result.strip() != ""
 
 
-class TestMultipleRssCards:
+class TestMultipleRssCards:  # pylint: disable=too-few-public-methods
     def test_each_card_gets_its_own_setup(self):
         db = Mock()
         sched = Mock()
@@ -289,4 +301,4 @@ class TestMultipleRssCards:
         inst2 = setup_card(card2, db, sched)
         assert inst1 is not None
         assert inst2 is not None
-        assert inst1._card_id != inst2._card_id
+        assert inst1._card_id != inst2._card_id  # pylint: disable=protected-access

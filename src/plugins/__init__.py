@@ -16,6 +16,14 @@ def load_plugin_class(name):
     return None
 
 
+def setup_plugins_database(database):
+    plugin_names = ["html", "rss"]
+    for name in plugin_names:
+        plugin_class = load_plugin_class(name)
+        if plugin_class is not None:
+            plugin_class.setup_database(database)
+
+
 def setup_card(card, database, scheduler):
     plugin_name = card.get("plugin")
     options = card.get("options", {})
