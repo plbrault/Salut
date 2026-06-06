@@ -43,13 +43,13 @@ pipenv run app
 
 The server starts at `http://localhost:8000`.
 
-**Note:** The application uses an ephemeral SQLite database. It is recreated on each server start. All cached data (RSS feeds, weather, calendar events, etc.) is re-fetched automatically.
-
 To use a custom port:
 
 ```bash
 PORT=9001 pipenv run app
 ```
+
+**Note:** The application uses an ephemeral SQLite database. It is recreated on each server start. All cached data (RSS feeds, weather, calendar events, etc.) is re-fetched automatically.
 
 ## Development
 
