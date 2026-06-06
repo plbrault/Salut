@@ -16,6 +16,12 @@ Salut is configured via a YAML file (`config.yml` or `starter.yml`). The `config
 - **Description:** Greeting text displayed in the page header. Supports template variables for dynamic content. The template wraps this in a styled `<header>` element with an `<h1>` tag.
 - **Default:** `Hi ${user_info.short_name} {{time_emoji}}`
 
+### favicon
+
+- **Type:** string (optional)
+- **Description:** Emoji used as the browser tab favicon. Rendered as an inline SVG data URI.
+- **Example:** `👋`
+
 ### language
 
 - **Type:** string (required)

@@ -136,3 +136,18 @@ The system SHALL resolve `${...}` template variables in config values from three
 #### Scenario: i18n variable with missing key
 - **WHEN** a config value contains `${i18n.unknown}` and no translation exists for that key
 - **THEN** the variable is resolved to the key name `"unknown"`
+
+### Requirement: Favicon is optional
+The system SHALL accept an optional `favicon` string field in the config.
+
+#### Scenario: Favicon provided
+- **WHEN** the config has `favicon: "👋"`
+- **THEN** the favicon value is passed to the template context as a string
+
+#### Scenario: Favicon omitted
+- **WHEN** the config has no `favicon` field
+- **THEN** no favicon value is passed to the template context
+
+#### Scenario: Invalid favicon type
+- **WHEN** the config has a `favicon` field that is not a string
+- **THEN** a validation error is raised indicating favicon must be a string

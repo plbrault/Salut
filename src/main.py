@@ -115,6 +115,7 @@ def index(request: Request):
             "config": resolved_config,
             "page_title": page_title,
             "page_header": page_header,
+            "favicon": resolved_config.get("favicon"),
             "language": resolved_config.get("language", "en-US"),
             "dev_mode": os.environ.get("DEVELOPMENT") is not None,
             "cards": cards_data,
