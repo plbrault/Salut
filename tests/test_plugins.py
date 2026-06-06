@@ -1301,25 +1301,6 @@ class TestCalendarPlugin:  # pylint: disable=protected-access
         except ConfigError as e:
             assert "max_events" in str(e)
 
-    def test_calendar_invalid_link_url_type(self):
-        config = {
-            "page_title": "Test",
-            "page_header": "Test",
-            "language": "en",
-            "user_info": {"short_name": "A", "long_name": "B"},
-            "columns": 3,
-            "cards": [{
-                "title": "Calendar",
-                "plugin": "calendar",
-                "options": self._valid_options(link_url=123)
-            }]
-        }
-        try:
-            validate_config(config)
-            assert False, "Should have raised ConfigError"
-        except ConfigError as e:
-            assert "link_url" in str(e)
-
     def test_calendar_valid_config(self):
         config = {
             "page_title": "Test",
@@ -1425,7 +1406,11 @@ class TestCalendarPlugin:  # pylint: disable=protected-access
                 "options": self._valid_options(
                     time_window_days=14,
                     max_events=5,
-                    link_url="https://example.com/cal"
+                    calendars=[{
+                        "url": "https://caldav.example.com/cal1",
+                        "name": "Test Cal",
+                        "link_url": "https://example.com/cal"
+                    }]
                 )
             }]
         }
@@ -1503,40 +1488,6 @@ class TestCalendarPlugin:  # pylint: disable=protected-access
         assert "No upcoming events" in result
         db.close()
 
-    def test_render_with_link_url(self, tmp_path):
-        db = Database(tmp_path / "test.db")
-        CalendarPlugin.init_schema(db)
-        options = self._valid_options(link_url="https://example.com/cal")
-        plugin = CalendarPlugin()
-        plugin._database = db
-        plugin._card_id = plugin._compute_card_id(options)
-        events = [{"summary": "Event", "start": "2026-06-10T14:00:00", "is_allday": False}]
-        db.execute(
-            "INSERT INTO calendar_events (card_id, events) VALUES (?, ?)",
-            (plugin._card_id, json.dumps(events)),
-        )
-        result = plugin.render(options)
-        assert '<a href="https://example.com/cal"' in result
-        assert 'target="_blank"' in result
-        db.close()
-
-    def test_render_without_link_url(self, tmp_path):
-        db = Database(tmp_path / "test.db")
-        CalendarPlugin.init_schema(db)
-        options = self._valid_options()
-        plugin = CalendarPlugin()
-        plugin._database = db
-        plugin._card_id = plugin._compute_card_id(options)  # pylint: disable=protected-access
-        events = [{"summary": "Event", "start": "2026-06-10T14:00:00", "is_allday": False}]
-        db.execute(
-            "INSERT INTO calendar_events (card_id, events) VALUES (?, ?)",
-            (plugin._card_id, json.dumps(events)),  # pylint: disable=protected-access
-        )
-        result = plugin.render(options)
-        assert 'class="block text-inherit no-underline"' not in result
-        assert "Event" in result
-        db.close()
-
     def test_each_calendar_card_gets_its_own_id(self):
         db = Mock()
         sched = Mock()
@@ -1551,6 +1502,96 @@ class TestCalendarPlugin:  # pylint: disable=protected-access
         assert inst1 is not None
         assert inst2 is not None
         assert inst1._card_id != inst2._card_id  # pylint: disable=protected-access
+
+    def test_calendar_valid_config_with_link_url(self):
+        config = {
+            "page_title": "Test",
+            "page_header": "Test",
+            "language": "en",
+            "user_info": {"short_name": "A", "long_name": "B"},
+            "columns": 3,
+            "cards": [{
+                "title": "Calendar",
+                "plugin": "calendar",
+                "options": self._valid_options(
+                    calendars=[{
+                        "url": "https://caldav.example.com/cal1",
+                        "name": "Cal",
+                        "link_url": "https://example.com/cal"
+                    }]
+                )
+            }]
+        }
+        validate_config(config)
+
+    def test_calendar_invalid_link_url_type(self):
+        config = {
+            "page_title": "Test",
+            "page_header": "Test",
+            "language": "en",
+            "user_info": {"short_name": "A", "long_name": "B"},
+            "columns": 3,
+            "cards": [{
+                "title": "Calendar",
+                "plugin": "calendar",
+                "options": self._valid_options(
+                    calendars=[{
+                        "url": "https://caldav.example.com/cal1",
+                        "name": "Cal",
+                        "link_url": 123
+                    }]
+                )
+            }]
+        }
+        try:
+            validate_config(config)
+            assert False, "Should have raised ConfigError"
+        except ConfigError as e:
+            assert "link_url" in str(e)
+
+    def test_render_event_with_calendar_link_url(self, tmp_path):
+        db = Database(tmp_path / "test.db")
+        CalendarPlugin.init_schema(db)
+        options = self._valid_options()
+        plugin = CalendarPlugin()
+        plugin._database = db
+        plugin._card_id = plugin._compute_card_id(options)
+        events = [{
+            "summary": "Event",
+            "start": "2026-06-10T14:00:00",
+            "is_allday": False,
+            "calendar_link_url": "https://example.com/cal"
+        }]
+        db.execute(
+            "INSERT INTO calendar_events (card_id, events) VALUES (?, ?)",
+            (plugin._card_id, json.dumps(events)),
+        )
+        result = plugin.render(options)
+        assert '<a href="https://example.com/cal"' in result
+        assert 'target="_blank"' in result
+        assert "Event" in result
+        db.close()
+
+    def test_render_event_without_calendar_link_url(self, tmp_path):
+        db = Database(tmp_path / "test.db")
+        CalendarPlugin.init_schema(db)
+        options = self._valid_options()
+        plugin = CalendarPlugin()
+        plugin._database = db
+        plugin._card_id = plugin._compute_card_id(options)
+        events = [{
+            "summary": "Event",
+            "start": "2026-06-10T14:00:00",
+            "is_allday": False
+        }]
+        db.execute(
+            "INSERT INTO calendar_events (card_id, events) VALUES (?, ?)",
+            (plugin._card_id, json.dumps(events)),
+        )
+        result = plugin.render(options)
+        assert "<a " not in result
+        assert "Event" in result
+        db.close()
 
 
 class TestCalendarPluginDarkMode:  # pylint: disable=too-few-public-methods

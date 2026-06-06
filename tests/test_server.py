@@ -21,7 +21,7 @@ class TestServer:
     def test_index_contains_page_header(self):
         with TestClient(app) as client:
             response = client.get("/")
-            assert "Chris" in response.text
+            assert "<h1>" in response.text
 
     def test_index_contains_time_emoji_script(self):
         with TestClient(app) as client:

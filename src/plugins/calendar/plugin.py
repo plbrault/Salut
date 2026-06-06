@@ -65,11 +65,6 @@ class CalendarPlugin(Plugin):
                     f"{filename}: cards[{card_idx}].options.max_events must be a positive integer."
                 )
 
-        link_url = options.get("link_url")
-        if link_url is not None and not isinstance(link_url, str):
-            raise ConfigError(
-                f"{filename}: cards[{card_idx}].options.link_url must be a string."
-            )
 
     @staticmethod
     def _validate_calendar_entry(cal, cal_idx, card_idx, filename):
@@ -86,6 +81,9 @@ class CalendarPlugin(Plugin):
                 raise ConfigError(
                     f"{prefix}.color must be a hex color string (e.g., '#3b82f6')."
                 )
+        link_url = cal.get("link_url")
+        if link_url is not None and not isinstance(link_url, str):
+            raise ConfigError(f"{prefix}.link_url must be a string.")
         cal_type = cal.get("type", "caldav")
         if cal_type not in ("caldav", "ics"):
             raise ConfigError(f"{prefix}.type must be 'caldav' or 'ics'.")
@@ -148,12 +146,6 @@ class CalendarPlugin(Plugin):
 
         html = self._template.render(events=events)
 
-        link_url = options.get("link_url")
-        if link_url:
-            return (
-                f'<a href="{link_url}" target="_blank" rel="noopener"'
-                f' class="block text-inherit no-underline">{html}</a>'
-            )
         return html
 
     def _fetch_events(self, calendars, time_window_days):
@@ -249,6 +241,7 @@ class CalendarPlugin(Plugin):
                     "is_allday": is_allday,
                     "calendar_name": cal_config["name"],
                     "calendar_color": cal_config.get("color"),
+                    "calendar_link_url": cal_config.get("link_url"),
                 })
             except (AttributeError, ValueError) as e:
                 self._logger.warning("Failed to parse CalDAV event: %s", e)
@@ -289,6 +282,7 @@ class CalendarPlugin(Plugin):
                     "is_allday": is_allday,
                     "calendar_name": cal_config["name"],
                     "calendar_color": cal_config.get("color"),
+                    "calendar_link_url": cal_config.get("link_url"),
                 })
             except (AttributeError, ValueError) as e:
                 self._logger.warning("Failed to parse ICS event: %s", e)

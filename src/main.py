@@ -45,6 +45,9 @@ async def lifespan(application):
     if not scheduler.running:
         scheduler.start()
 
+    resolved_config = resolve_all_config_vars(app.state.config, app.state.secrets)
+    app.state.config = resolved_config
+
     plugin_instances = {}
     for card in app.state.config.get("cards", []):
         plugin_name = card.get("plugin")

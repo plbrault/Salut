@@ -9,7 +9,6 @@ The system SHALL accept the following options for calendar cards:
 | `time_window_days` | integer | no | `7` | Number of days to look ahead for events |
 | `max_events` | integer | no | `10` | Maximum number of events to display |
 | `schedule` | string | yes | - | Cron expression for refresh schedule (e.g., `"*/30 * * * *"`) |
-| `link_url` | string | no | - | URL to open when the card is clicked |
 
 Each entry in `calendars` SHALL have:
 
@@ -18,6 +17,7 @@ Each entry in `calendars` SHALL have:
 | `url` | string | yes | - | Calendar URL (CalDAV server or ICS file URL) |
 | `name` | string | yes | - | Display name for the calendar (e.g., `"Work"`, `"Personal"`) |
 | `color` | string | no | - | Hex color code for visual indicator (e.g., `"#3b82f6"`) |
+| `link_url` | string | no | - | URL to open when an event from this calendar is clicked |
 | `type` | string | no | `"caldav"` | Calendar type: `"caldav"` or `"ics"` |
 | `username` | string | no | - | Username for HTTP Basic authentication (CalDAV only) |
 | `password` | string | no | - | Password for HTTP Basic authentication (CalDAV only) |
@@ -31,6 +31,14 @@ Each entry in `calendars` SHALL have:
 #### Scenario: Valid config with calendar color
 - **WHEN** a card has `plugin: calendar` with `calendars` containing an entry with `url`, `name`, and `color: "#3b82f6"`
 - **THEN** config validation passes and events from this calendar display with the specified color
+
+#### Scenario: Valid config with calendar link_url
+- **WHEN** a card has `plugin: calendar` with `calendars` containing an entry with `url`, `name`, and `link_url: "https://example.com/cal"`
+- **THEN** config validation passes
+
+#### Scenario: Invalid calendar link_url type
+- **WHEN** a calendar entry has `link_url` that is not a string
+- **THEN** a configuration error is raised
 
 #### Scenario: Missing name in calendar entry
 - **WHEN** a calendar entry has `url` but no `name`
@@ -96,10 +104,6 @@ Each entry in `calendars` SHALL have:
 - **WHEN** a calendar card has `max_events` that is not a positive integer
 - **THEN** a configuration error is raised
 
-#### Scenario: Invalid link_url type
-- **WHEN** a calendar card has `link_url` that is not a string
-- **THEN** a configuration error is raised
-
 ### Requirement: Calendar plugin fetches events from CalDAV servers
 The system SHALL provide a `calendar` plugin that connects to one or more CalDAV servers, fetches upcoming events within a configurable time window, merges events from all calendars, and caches the result in the database.
 
@@ -129,6 +133,14 @@ The calendar card SHALL display a list of upcoming events with date, time, summa
 #### Scenario: Events without color
 - **WHEN** an event is from a calendar without a `color` attribute
 - **THEN** the event displays without a color indicator
+
+#### Scenario: Events with calendar link_url are clickable
+- **WHEN** events are fetched from a calendar with a `link_url` attribute
+- **THEN** each event from that calendar is wrapped in an `<a>` tag with `href` set to the calendar's `link_url`, `target="_blank"`, and `rel="noopener"`
+
+#### Scenario: Events without calendar link_url are not wrapped
+- **WHEN** an event is from a calendar without a `link_url` attribute
+- **THEN** the event is not wrapped in an `<a>` tag
 
 #### Scenario: All-day events display date only
 - **WHEN** an event is an all-day event
