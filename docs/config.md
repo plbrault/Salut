@@ -100,28 +100,4 @@ Resolved client-side by JavaScript in the rendered HTML:
 
 ## Example
 
-```yaml
-page_title: Salut
-page_header: "<h1>Hi ${user_info.short_name} {{time_emoji}}</h1><span>{{date}} {{theme_toggle}}</span>"
-language: en
-user_info:
-  short_name: Chris
-  long_name: Chris P. Bacon
-
-columns: 3
-
-cards:
-  - title: Welcome
-    plugin: html
-    options:
-      html: "<p>Welcome to Salut!</p>"
-  - title: Links
-    plugin: html
-    options:
-      html: "<ul><li><a href='https://github.com'>GitHub</a></li></ul>"
-  - title: About
-    plugin: html
-    colspan: 2
-    options:
-      html: "<p>Salut means Hi in French.</p>"
-```
+See [starter.yml](../starter.yml) for an example configuration.
