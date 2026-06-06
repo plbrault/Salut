@@ -8,7 +8,7 @@ Plugin-based card rendering system for the starter page. Cards use plugins to re
 The system SHALL load plugins from `src/plugins/` and use them to render card content. Each plugin SHALL expose `card_style_rules` as part of its interface.
 
 #### Scenario: Plugin is loaded and executed
-- **WHEN** a card specifies `plugin: html` with `options`
+- **WHEN** a card specifies `plugin: weather` with `options`
 - **THEN** the system loads the corresponding plugin and calls its `render(options)` function
 
 #### Scenario: Plugin returns rendered HTML
