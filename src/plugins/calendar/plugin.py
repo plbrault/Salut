@@ -315,7 +315,7 @@ class CalendarPlugin(Plugin):
             ),
             ".calendar-event:last-child": "border-bottom: none;",
             ".calendar-date": (
-                "min-width: 4rem; font-size: 0.75rem;"
+                "white-space: nowrap; font-size: 0.75rem;"
                 " color: var(--text-muted); text-align: right;"
             ),
             ".calendar-date-day": "font-weight: 600; color: var(--text);",
