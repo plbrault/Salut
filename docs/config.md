@@ -65,19 +65,42 @@ Salut is configured via a YAML file (`config.yml` or `starter.yml`). The `config
 #### cards[].options
 
 - **Type:** object (optional)
-- **Description:** Plugin-specific options
+- **Description:** Plugin-specific options. See plugin documentation for available options:
+  - [HTML](plugins/html.md)
+  - [RSS](plugins/rss.md)
+  - [Search](plugins/search.md)
+  - [Weather](plugins/weather.md)
+  - [Calendar](plugins/calendar.md)
 
 #### cards[].colspan
 
 - **Type:** integer (optional, default: 1)
 - **Description:** Number of columns this card spans
 
-#### cards[].options
+## Secrets
 
-- **Type:** object (optional)
-- **Description:** Plugin-specific options
+`secrets.yml` is an optional file for storing sensitive values like passwords and tokens. Reference them in your config using `${secrets.key}` syntax:
 
-For the `rss` plugin, see [Plugins](plugins/) for available options.
+```yaml
+# secrets.yml
+calendar_password: "my-s3cur3-p@ss"
+```
+
+```yaml
+# config.yml
+cards:
+  - title: Calendar
+    plugin: calendar
+    options:
+      calendars:
+        - url: https://caldav.example.com/user/cal1/
+          name: Personal
+          auth_type: basic
+          username: user
+          password: ${secrets.calendar_password}
+```
+
+If a secret key is not found, the variable resolves to an empty string.
 
 ## Template Syntax
 
@@ -89,6 +112,8 @@ Resolved server-side from the config file. Works in any string value (titles, op
 |----------|-------------|
 | `${user_info.short_name}` | User's short name |
 | `${user_info.long_name}` | User's full name |
+| `${secrets.key}` | Value from `secrets.yml` (see [Secrets](#secrets)) |
+| `${i18n.key}` | Translated string from i18n files |
 
 ### Client-Side Variables (`{{...}}`)
 
@@ -102,28 +127,4 @@ Resolved client-side by JavaScript in the rendered HTML:
 
 ## Example
 
-```yaml
-page_title: Salut
-page_header: "<h1>Hi ${user_info.short_name} {{time_emoji}}</h1><span>{{date}} {{theme_toggle}}</span>"
-language: en
-user_info:
-  short_name: Chris
-  long_name: Chris P. Bacon
-
-columns: 3
-
-cards:
-  - title: Welcome
-    plugin: html
-    options:
-      html: "<p>Welcome to Salut!</p>"
-  - title: Links
-    plugin: html
-    options:
-      html: "<ul><li><a href='https://github.com'>GitHub</a></li></ul>"
-  - title: About
-    plugin: html
-    colspan: 2
-    options:
-      html: "<p>Salut means Hi in French.</p>"
-```
+See [starter.yml](../starter.yml) for an example configuration.
