@@ -35,11 +35,11 @@ The server SHALL serve static files (HTMX, Tailwind CSS) from the `static/` dire
 - **THEN** Tailwind CSS is loaded from `/static/tailwindcss.js`
 
 ### Requirement: SQLite database is initialized
-The server SHALL create and initialize a SQLite database on startup.
+The server SHALL delete and recreate the SQLite database on every startup, ensuring a clean state with no persisted data.
 
-#### Scenario: Database file is created
-- **WHEN** the server starts for the first time
-- **THEN** a SQLite database file exists (e.g., `salut.db`)
+#### Scenario: Database is reset on startup
+- **WHEN** the server starts
+- **THEN** any existing database file is deleted and a fresh database is created
 
 #### Scenario: WAL mode is enabled
 - **WHEN** the database is initialized
@@ -47,4 +47,8 @@ The server SHALL create and initialize a SQLite database on startup.
 
 #### Scenario: Database tables exist
 - **WHEN** the database is initialized
-- **THEN** the `feed_items` table exists with the correct schema (url, title, link, published, feed_url, fetched_at)
+- **THEN** all plugin tables exist with the correct schema (created by `init_plugins_schemas()`)
+
+#### Scenario: Previous data is discarded
+- **WHEN** the server restarts with an existing database containing cached data
+- **THEN** the cached data is no longer available after restart

@@ -45,3 +45,8 @@ class Database:
 
     def close(self):
         self._connection.close()
+
+    def delete(self):
+        self._connection.close()
+        for suffix in ["", "-wal", "-shm"]:
+            self._path.with_name(self._path.name + suffix).unlink(missing_ok=True)

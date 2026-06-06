@@ -38,6 +38,8 @@ pipenv run app
 
 The server starts at `http://localhost:8000`.
 
+**Note:** The database is ephemeral — it is recreated on each server start. All cached data (RSS feeds, weather, calendar events) is re-fetched automatically.
+
 Use a custom port:
 
 ```bash
