@@ -65,19 +65,17 @@ Salut is configured via a YAML file (`config.yml` or `starter.yml`). The `config
 #### cards[].options
 
 - **Type:** object (optional)
-- **Description:** Plugin-specific options
+- **Description:** Plugin-specific options. See plugin documentation for available options:
+  - [HTML](plugins/html.md)
+  - [RSS](plugins/rss.md)
+  - [Search](plugins/search.md)
+  - [Weather](plugins/weather.md)
+  - [Calendar](plugins/calendar.md)
 
 #### cards[].colspan
 
 - **Type:** integer (optional, default: 1)
 - **Description:** Number of columns this card spans
-
-#### cards[].options
-
-- **Type:** object (optional)
-- **Description:** Plugin-specific options
-
-For the `rss` plugin, see [Plugins](plugins/) for available options.
 
 ## Template Syntax
 
