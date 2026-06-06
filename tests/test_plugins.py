@@ -44,8 +44,8 @@ class TestHtmlPlugin:
         plugin = HtmlPlugin()
         plugin.setup({}, None, None, None)
 
-    def test_setup_database_is_noop(self, tmp_path):
-        HtmlPlugin.setup_database(Database(tmp_path / "test.db"))
+    def test_init_schema_is_noop(self, tmp_path):
+        HtmlPlugin.init_schema(Database(tmp_path / "test.db"))
 
 
 class TestRenderCard:
@@ -180,7 +180,7 @@ class TestRssPlugin:
 
     def test_rss_render_empty_when_no_items(self, tmp_path):
         db = Database(tmp_path / "test.db")
-        RssPlugin.setup_database(db)
+        RssPlugin.init_schema(db)
         plugin = RssPlugin()
         plugin.setup({}, db, None, Mock())
         plugin._delete_feed_items(plugin._card_id)  # pylint: disable=protected-access
@@ -190,7 +190,7 @@ class TestRssPlugin:
 
     def test_rss_render_with_items(self, tmp_path):
         db = Database(tmp_path / "test.db")
-        RssPlugin.setup_database(db)
+        RssPlugin.init_schema(db)
         options = {"feeds": ["http://example.com/rss"]}
         plugin = RssPlugin()
         plugin.setup(options, db, MagicMock(), Mock())
@@ -213,7 +213,7 @@ class TestRssPlugin:
 
     def test_rss_render_strips_www_from_source(self, tmp_path):
         db = Database(tmp_path / "test.db")
-        RssPlugin.setup_database(db)
+        RssPlugin.init_schema(db)
         options = {"feeds": ["https://www.example.com/rss"]}
         plugin = RssPlugin()
         plugin.setup(options, db, MagicMock(), Mock())
@@ -235,7 +235,7 @@ class TestRssPlugin:
 
     def test_rss_render_prefers_feed_title(self, tmp_path):
         db = Database(tmp_path / "test.db")
-        RssPlugin.setup_database(db)
+        RssPlugin.init_schema(db)
         options = {"feeds": ["https://www.example.com/rss"]}
         plugin = RssPlugin()
         plugin.setup(options, db, MagicMock(), Mock())
@@ -257,7 +257,7 @@ class TestRssPlugin:
 
     def test_rss_render_with_image(self, tmp_path):
         db = Database(tmp_path / "test.db")
-        RssPlugin.setup_database(db)
+        RssPlugin.init_schema(db)
         options = {"feeds": ["http://example.com/rss"]}
         plugin = RssPlugin()
         plugin.setup(options, db, MagicMock(), Mock())

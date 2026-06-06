@@ -16,7 +16,7 @@ class Plugin(ABC):
 
     @staticmethod
     @abstractmethod
-    def setup_database(database):
+    def init_schema(database):
         """Initialize database tables for this plugin. Called once at startup."""
 
     @staticmethod

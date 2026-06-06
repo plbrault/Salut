@@ -7,7 +7,7 @@ DATABASE_PATH = Path(__file__).resolve().parent.parent / "salut.db"
 class Database:
     def __init__(self, path=None):
         self._path = path or DATABASE_PATH
-        self._connection = sqlite3.connect(self._path)
+        self._connection = sqlite3.connect(self._path, check_same_thread=False)
         self._connection.execute("PRAGMA journal_mode=WAL")
         self._connection.row_factory = sqlite3.Row
 

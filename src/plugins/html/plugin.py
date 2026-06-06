@@ -13,5 +13,5 @@ class HtmlPlugin(Plugin):
         pass
 
     @staticmethod
-    def setup_database(database):
+    def init_schema(database):
         pass

@@ -13,7 +13,7 @@ from fastapi.templating import Jinja2Templates
 from src.config import load_config
 from src.database import Database
 from src.template import resolve_config_vars
-from src.plugins import setup_card, render_card, setup_plugins_database
+from src.plugins import setup_card, render_card, init_plugins_schemas
 
 BASE_DIR = Path(__file__).resolve().parent
 CACHE_DIR = BASE_DIR.parent / "cache"
@@ -39,7 +39,7 @@ async def lifespan(application):
     if os.environ.get("DEVELOPMENT"):
         logging.getLogger("uvicorn.access").addFilter(_dev_reload_filter)
 
-    setup_plugins_database(db)
+    init_plugins_schemas(db)
 
     if not scheduler.running:
         scheduler.start()

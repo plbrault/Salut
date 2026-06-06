@@ -52,29 +52,23 @@ class RssPlugin(Plugin):
             )
 
     @staticmethod
-    def setup_database(database):
+    def init_schema(database):
         database.execute(
             """
             CREATE TABLE IF NOT EXISTS feed_items (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                card_id TEXT NOT NULL DEFAULT '',
                 url TEXT NOT NULL,
                 title TEXT NOT NULL,
                 link TEXT NOT NULL,
                 published TEXT,
                 feed_url TEXT NOT NULL,
+                image_url TEXT,
+                feed_title TEXT,
                 fetched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
             """
         )
-        for column, definition in [
-            ("card_id", "TEXT NOT NULL DEFAULT ''"),
-            ("image_url", "TEXT"),
-            ("feed_title", "TEXT"),
-        ]:
-            try:
-                database.execute(f"ALTER TABLE feed_items ADD COLUMN {column} {definition}")
-            except Exception:  # pylint: disable=broad-except
-                pass
 
     def setup(self, options, database, scheduler, logger):
         self._database = database
