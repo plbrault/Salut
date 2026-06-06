@@ -11,6 +11,9 @@ pyyaml = "*"
 feedparser = "*"
 apscheduler = "*"
 requests = "*"
+caldav = "*"
+icalendar = "*"
+vobject = "*"
 
 [dev-packages]
 pylint = "*"

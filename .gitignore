@@ -1,4 +1,5 @@
 config.yml
+secrets.yml
 __pycache__/
 *.pyc
 *.pyo

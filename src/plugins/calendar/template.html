@@ -1,0 +1,31 @@
+<div class="calendar-events">
+    {% for event in events %}
+    {% if event.calendar_link_url %}
+    <a href="{{ event.calendar_link_url }}" target="_blank" rel="noopener" class="calendar-event" style="text-decoration: none; color: inherit; display: flex;">
+    {% else %}
+    <div class="calendar-event">
+    {% endif %}
+        <div class="calendar-date">
+            <div class="calendar-date-day">{{ event.start[:10] }}</div>
+            {% if not event.is_allday %}
+                <div class="calendar-date-time">{{ event.start[11:16] }}</div>
+            {% endif %}
+        </div>
+        <div class="calendar-event-body">
+            <div class="calendar-summary">{{ event.summary }}</div>
+            {% if event.calendar_name %}
+                <div class="calendar-name">
+                    {% if event.calendar_color %}
+                        <span class="calendar-name-dot" style="background-color: {{ event.calendar_color }}"></span>
+                    {% endif %}
+                    {{ event.calendar_name }}
+                </div>
+            {% endif %}
+        </div>
+    {% if event.calendar_link_url %}
+    </a>
+    {% else %}
+    </div>
+    {% endif %}
+    {% endfor %}
+</div>

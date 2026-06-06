@@ -10,7 +10,7 @@ from fastapi import FastAPI, Request, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from src.config import load_config
+from src.config import load_config, load_secrets
 from src.database import Database
 from src.template import resolve_all_config_vars
 from src.plugins import setup_card, render_card, init_plugins_schemas
@@ -36,6 +36,7 @@ async def lifespan(application):
     db = Database()
     application.state.database = db
     application.state.config = load_config()
+    application.state.secrets = load_secrets()
     if os.environ.get("DEVELOPMENT"):
         logging.getLogger("uvicorn.access").addFilter(_dev_reload_filter)
 
@@ -43,6 +44,9 @@ async def lifespan(application):
 
     if not scheduler.running:
         scheduler.start()
+
+    resolved_config = resolve_all_config_vars(app.state.config, app.state.secrets)
+    app.state.config = resolved_config
 
     plugin_instances = {}
     for card in app.state.config.get("cards", []):
@@ -80,7 +84,8 @@ def _render_cards(cards):
 @app.get("/")
 def index(request: Request):
     config = app.state.config
-    resolved_config = resolve_all_config_vars(config)
+    secrets = app.state.secrets
+    resolved_config = resolve_all_config_vars(config, secrets)
     page_title = resolved_config.get("page_title", "")
     page_header = resolved_config.get("page_header", "")
 
