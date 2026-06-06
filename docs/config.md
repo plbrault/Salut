@@ -72,6 +72,13 @@ Salut is configured via a YAML file (`config.yml` or `starter.yml`). The `config
 - **Type:** integer (optional, default: 1)
 - **Description:** Number of columns this card spans
 
+#### cards[].options
+
+- **Type:** object (optional)
+- **Description:** Plugin-specific options
+
+For the `rss` plugin, see [Plugins](plugins/) for available options.
+
 ## Template Syntax
 
 ### Config Variables (`${...}`)

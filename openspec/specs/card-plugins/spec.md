@@ -19,6 +19,10 @@ The system SHALL load plugins from `src/plugins/` and use them to render card co
 - **WHEN** a plugin fails to load or raises an exception
 - **THEN** the system displays an error message in the card instead of crashing
 
+#### Scenario: Plugin setup_database is called at startup
+- **WHEN** the server starts
+- **THEN** the system calls `plugin_class.setup_database(database)` for each plugin before calling `setup`
+
 ### Requirement: HTML plugin renders arbitrary HTML
 The system SHALL provide an `html` plugin that renders HTML from the card's `options.html` field.
 

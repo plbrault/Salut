@@ -2,6 +2,8 @@ from pathlib import Path
 
 import yaml
 
+from src.plugins import load_plugin_class
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 LANGUAGE_DEFAULTS = {
@@ -101,6 +103,10 @@ def _validate_card(card, card_idx, filename):
             raise ConfigError(
                 f"{filename}: cards[{card_idx}].colspan must be a positive integer."
             )
+
+    plugin_class = load_plugin_class(card.get("plugin"))
+    if plugin_class is not None:
+        plugin_class.validate_options(card.get("options", {}), card_idx, filename)
 
 
 def _validate_cards(config, filename):
