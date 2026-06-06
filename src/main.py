@@ -42,11 +42,11 @@ async def lifespan(application):
         scheduler.start()
 
     plugin_instances = {}
-    for card in application.state.config.get("cards", []):
+    for card in app.state.config.get("cards", []):
         plugin_name = card.get("plugin")
-        if plugin_name and plugin_name not in plugin_instances:
+        if plugin_name:
             instance = setup_card(card, database, scheduler)
-            if instance is not None:
+            if instance is not None and plugin_name not in plugin_instances:
                 plugin_instances[plugin_name] = instance
     application.state.plugin_instances = plugin_instances
 

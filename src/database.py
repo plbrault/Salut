@@ -33,6 +33,10 @@ def init_database():
         connection.execute("ALTER TABLE feed_items ADD COLUMN image_url TEXT")
     except sqlite3.OperationalError:
         pass
+    try:
+        connection.execute("ALTER TABLE feed_items ADD COLUMN feed_title TEXT")
+    except sqlite3.OperationalError:
+        pass
     connection.commit()
     connection.close()
 
@@ -48,8 +52,8 @@ def insert_feed_item(**kwargs):
     connection = get_database()
     connection.execute(
         """
-        INSERT INTO feed_items (card_id, url, title, link, published, feed_url, image_url)
-        VALUES (:card_id, :url, :title, :link, :published, :feed_url, :image_url)
+        INSERT INTO feed_items (card_id, url, title, link, published, feed_url, image_url, feed_title)
+        VALUES (:card_id, :url, :title, :link, :published, :feed_url, :image_url, :feed_title)
         """,
         kwargs,
     )

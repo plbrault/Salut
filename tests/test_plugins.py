@@ -1,6 +1,7 @@
-from unittest.mock import Mock
+from unittest.mock import Mock, MagicMock
+from pathlib import Path
 
-from src.plugins import load_plugin_class, render_card
+from src.plugins import load_plugin_class, render_card, setup_card
 from src.plugin import Plugin
 from src.plugins.html import HtmlPlugin
 from src.plugins.rss import RssPlugin
@@ -179,5 +180,113 @@ class TestRssPlugin:
         init_database()
         plugin = RssPlugin()
         plugin.setup({}, database, None, Mock())
-        result = plugin.render({"feeds": ["http://example.com/rss"]})
+        database.delete_feed_items(plugin._card_id)
+        result = plugin.render({})
         assert result == ""
+
+    def test_rss_render_with_items(self):
+        init_database()
+        options = {"feeds": ["http://example.com/rss"]}
+        plugin = RssPlugin()
+        plugin.setup(options, database, MagicMock(), Mock())
+        database.delete_feed_items(plugin._card_id)
+        database.insert_feed_item(
+            card_id=plugin._card_id,
+            url="http://example.com/rss",
+            title="Test Article",
+            link="http://example.com/article",
+            published="2026-01-01T00:00:00",
+            feed_url="http://feeds.example.com/rss",
+            image_url="",
+            feed_title="Example Feed",
+        )
+        result = plugin.render(options)
+        assert "Test Article" in result
+        assert "Example Feed" in result
+        assert 'href="http://example.com/article"' in result
+
+    def test_rss_render_strips_www_from_source(self):
+        init_database()
+        options = {"feeds": ["https://www.example.com/rss"]}
+        plugin = RssPlugin()
+        plugin.setup(options, database, MagicMock(), Mock())
+        database.delete_feed_items(plugin._card_id)
+        database.insert_feed_item(
+            card_id=plugin._card_id,
+            url="https://www.example.com/rss",
+            title="Test",
+            link="https://www.example.com/article",
+            published="2026-01-01T00:00:00",
+            feed_url="https://www.example.com/feed.xml",
+            image_url="",
+            feed_title="",
+        )
+        result = plugin.render(options)
+        assert "example.com" in result
+        assert ">example.com<" in result
+
+    def test_rss_render_prefers_feed_title(self):
+        init_database()
+        options = {"feeds": ["https://www.example.com/rss"]}
+        plugin = RssPlugin()
+        plugin.setup(options, database, MagicMock(), Mock())
+        database.delete_feed_items(plugin._card_id)
+        database.insert_feed_item(
+            card_id=plugin._card_id,
+            url="https://www.example.com/rss",
+            title="Test",
+            link="https://www.example.com/article",
+            published="2026-01-01T00:00:00",
+            feed_url="https://www.example.com/feed.xml",
+            image_url="",
+            feed_title="My Cool Blog",
+        )
+        result = plugin.render(options)
+        assert "My Cool Blog" in result
+        assert ">My Cool Blog<" in result
+
+    def test_rss_render_with_image(self):
+        init_database()
+        options = {"feeds": ["http://example.com/rss"]}
+        plugin = RssPlugin()
+        plugin.setup(options, database, MagicMock(), Mock())
+        database.delete_feed_items(plugin._card_id)
+        database.insert_feed_item(
+            card_id=plugin._card_id,
+            url="http://example.com/rss",
+            title="Test",
+            link="http://example.com/article",
+            published="2026-01-01T00:00:00",
+            feed_url="http://example.com/feed.xml",
+            image_url="/cache/rss/abc123/0.jpg",
+            feed_title="Example",
+        )
+        result = plugin.render(options)
+        assert "/cache/rss/abc123/0.jpg" in result
+
+
+class TestLoadTemplate:
+    def test_load_template_returns_template(self):
+        template_dir = Path(__file__).resolve().parent.parent / "src" / "plugins" / "rss"
+        template = Plugin.load_template(template_dir, "template.html")
+        result = template.render(items=[])
+        assert result.strip() != ""
+
+
+class TestMultipleRssCards:
+    def test_each_card_gets_its_own_setup(self):
+        db = Mock()
+        sched = Mock()
+        card1 = {"plugin": "rss", "options": {
+            "feeds": ["http://a.com/rss"],
+            "schedule": "0 */6 * * *",
+        }}
+        card2 = {"plugin": "rss", "options": {
+            "feeds": ["http://b.com/rss"],
+            "schedule": "0 */6 * * *",
+        }}
+        inst1 = setup_card(card1, db, sched)
+        inst2 = setup_card(card2, db, sched)
+        assert inst1 is not None
+        assert inst2 is not None
+        assert inst1._card_id != inst2._card_id

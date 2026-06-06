@@ -49,7 +49,7 @@ class RssPlugin(Plugin):
 
         feed_items = []
         for item in items:
-            source = urlparse(item["feed_url"]).hostname.replace("www.", "")
+            source = item.get("feed_title") or urlparse(item["feed_url"]).hostname.replace("www.", "")
             feed_items.append({
                 "title": item["title"],
                 "link": item["link"],
@@ -87,6 +87,7 @@ class RssPlugin(Plugin):
                 published=item["published"],
                 feed_url=item["feed_url"],
                 image_url=item["image_url"],
+                feed_title=item["feed_title"],
             )
 
         self._logger.info("Finished fetching RSS feeds for card %s", self._card_id)
@@ -97,6 +98,7 @@ class RssPlugin(Plugin):
             response = requests.get(feed_url, timeout=10, headers={"User-Agent": "Salut/1.0"})
             response.raise_for_status()
             parsed = feedparser.parse(response.content)
+            feed_title = parsed.feed.get("title", "")
             self._logger.info("Got %d entries from %s", len(parsed.entries), feed_url)
             items = []
             for entry in parsed.entries:
@@ -117,6 +119,7 @@ class RssPlugin(Plugin):
                     "published": published,
                     "feed_url": feed_url,
                     "image_url": image_url,
+                    "feed_title": feed_title,
                 })
             return items
         except Exception as e:  # pylint: disable=broad-except
