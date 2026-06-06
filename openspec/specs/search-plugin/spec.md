@@ -29,6 +29,18 @@ The system SHALL render a search bar with a configurable button text and a confi
 - **WHEN** a search card has `placeholder_text` set to "Type here..." and `button_text` set to "Go"
 - **THEN** the input placeholder displays "Type here..." and the button displays "Go"
 
+#### Scenario: Custom placeholder text
+- **WHEN** a search card has `placeholder_text` option set to "Search the web..."
+- **THEN** the input placeholder displays "Search the web..."
+
+#### Scenario: Default placeholder text
+- **WHEN** a search card has no `placeholder_text` option
+- **THEN** the input placeholder displays "Search"
+
+#### Scenario: Independent placeholder and button text
+- **WHEN** a search card has `placeholder_text` set to "Type here..." and `button_text` set to "Go"
+- **THEN** the input placeholder displays "Type here..." and the button displays "Go"
+
 ### Requirement: Search provider support
 The system SHALL support DuckDuckGo and Wikipedia as search providers.
 
