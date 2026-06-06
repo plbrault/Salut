@@ -5,20 +5,28 @@ user_info:
   short_name: Chris
   long_name: Chris P. Bacon
 
-columns:
-  - cards:
-      - title: News
-        type: newsfeed
-        feeds:
-          - https://news.ycombinator.com/rss
-        count: 5
-        schedule: "*/30 * * * *"
-      - title: Search
-        type: search
-  - cards:
-      - title: Weather
-        type: weather
-        city: Montreal
-        units: metric
-      - title: GitHub
-        type: github
+columns: 3
+
+cards:
+  - title: Welcome
+    plugin: html
+    colspan: 3
+    options:
+      html: "<p>Welcome to Salut! This is your personal starter page.</p>"
+  - title: Example
+    plugin: html
+    options:
+      html: "<p>This is an example card. You can add any HTML content here.</p>"
+  - title: Links
+    plugin: html
+    options:
+      html: "<ul><li><a href='https://github.com'>GitHub</a></li><li><a href='https://news.ycombinator.com'>Hacker News</a></li></ul>"
+  - title: Tips
+    plugin: html
+    options:
+      html: "<p>Edit config.yml to customize your page.</p>"
+  - title: About
+    plugin: html
+    colspan: 2
+    options:
+      html: "<p>Salut means Hi in French. This card spans two columns.</p>"

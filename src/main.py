@@ -10,6 +10,7 @@ from fastapi.templating import Jinja2Templates
 from src.config import load_config
 from src.database import init_database
 from src.template import resolve_config_vars
+from src.plugins import render_card
 
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -32,11 +33,43 @@ def startup():
         logging.getLogger("uvicorn.access").addFilter(_dev_reload_filter)
 
 
+def _compute_grid_layout(num_cols, cards):
+    cards_data = []
+    current_col = 1
+    current_row = 1
+
+    for card in cards:
+        colspan = card.get("colspan", 1)
+
+        if current_col + colspan - 1 > num_cols:
+            current_row += 1
+            current_col = 1
+
+        cards_data.append({
+            "title": card.get("title", ""),
+            "colspan": colspan,
+            "col": current_col,
+            "row": current_row,
+            "content": render_card(card),
+        })
+
+        current_col += colspan
+
+    num_rows = current_row
+    return cards_data, num_cols, num_rows
+
+
 @app.get("/")
 def index(request: Request):
     config = app.state.config
     page_title = resolve_config_vars(config.get("page_title", ""), config)
     page_header = resolve_config_vars(config.get("page_header", ""), config)
+
+    cards_data, num_cols, num_rows = _compute_grid_layout(
+        config.get("columns", 3),
+        config.get("cards", []),
+    )
+
     return templates.TemplateResponse(
         request,
         "index.html",
@@ -46,6 +79,9 @@ def index(request: Request):
             "page_header": page_header,
             "language": config.get("language", "en-US"),
             "dev_mode": os.environ.get("DEVELOPMENT") is not None,
+            "cards": cards_data,
+            "num_cols": num_cols,
+            "num_rows": num_rows,
         },
     )
 
@@ -70,6 +106,8 @@ if __name__ == "__main__":
     if "--port" in sys.argv:
         idx = sys.argv.index("--port")
         port = int(sys.argv[idx + 1])
+    elif os.environ.get("PORT"):
+        port = int(os.environ["PORT"])
 
     is_dev = os.environ.get("DEVELOPMENT") is not None
     uvicorn.run(

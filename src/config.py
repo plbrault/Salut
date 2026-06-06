@@ -73,44 +73,48 @@ def _validate_language(config, filename):
         config["language"] = LANGUAGE_DEFAULTS[language]
 
 
-def _validate_card(card, col_idx, card_idx, filename):
-    """Validate a single card in a column."""
+def _validate_card(card, card_idx, filename):
+    """Validate a single card."""
     if not isinstance(card, dict):
         raise ConfigError(
-            f"{filename}: columns[{col_idx}].cards[{card_idx}] must be a mapping."
+            f"{filename}: cards[{card_idx}] must be a mapping."
         )
 
     if not card.get("title"):
         raise ConfigError(
-            f"{filename}: columns[{col_idx}].cards[{card_idx}].title is required."
+            f"{filename}: cards[{card_idx}].title is required."
         )
 
-    if not card.get("type"):
+    if not card.get("plugin"):
         raise ConfigError(
-            f"{filename}: columns[{col_idx}].cards[{card_idx}].type is required."
+            f"{filename}: cards[{card_idx}].plugin is required."
         )
 
+    if "options" in card and not isinstance(card["options"], dict):
+        raise ConfigError(
+            f"{filename}: cards[{card_idx}].options must be a mapping."
+        )
 
-def _validate_columns(config, filename):
-    """Validate columns array and its cards."""
+    if "colspan" in card:
+        colspan = card["colspan"]
+        if not isinstance(colspan, int) or colspan < 1:
+            raise ConfigError(
+                f"{filename}: cards[{card_idx}].colspan must be a positive integer."
+            )
+
+
+def _validate_cards(config, filename):
+    """Validate cards list."""
     columns = config.get("columns")
-    if not columns or not isinstance(columns, list) or len(columns) == 0:
-        raise ConfigError(f"{filename}: 'columns' must be a non-empty array.")
+    if not isinstance(columns, int) or columns < 1:
+        raise ConfigError(f"{filename}: 'columns' must be a positive integer.")
 
-    for col_idx, column in enumerate(columns):
-        if not isinstance(column, dict):
-            raise ConfigError(
-                f"{filename}: columns[{col_idx}] must be a mapping."
-            )
+    cards = config.get("cards")
+    if not cards or not isinstance(cards, list) or len(cards) == 0:
+        raise ConfigError(f"{filename}: 'cards' must be a non-empty list.")
 
-        cards = column.get("cards")
-        if not cards or not isinstance(cards, list) or len(cards) == 0:
-            raise ConfigError(
-                f"{filename}: columns[{col_idx}].cards must be a non-empty array."
-            )
-
-        for card_idx, card in enumerate(cards):
-            _validate_card(card, col_idx, card_idx, filename)
+    for card_idx, card in enumerate(cards):
+        _validate_card(card, card_idx, filename)
 
 
 def validate_config(config, filename="config"):
@@ -121,4 +125,4 @@ def validate_config(config, filename="config"):
     _validate_required_string(config, "page_header", filename)
     _validate_language(config, filename)
     _validate_user_info(config, filename)
-    _validate_columns(config, filename)
+    _validate_cards(config, filename)

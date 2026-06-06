@@ -17,8 +17,8 @@ pytest = "*"
 httpx2 = "*"
 
 [scripts]
-app = "python -m src.main --port $PORT"
-develop = "DEVELOPMENT=1 python -m src.main --port $PORT"
+app = "python -m src.main"
+develop = "DEVELOPMENT=1 python -m src.main"
 pytest = "pytest"
 pylint = "pylint src/ tests/"
 
