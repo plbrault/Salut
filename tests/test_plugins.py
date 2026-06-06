@@ -519,6 +519,8 @@ class TestSearchPlugin:
         except ConfigError as e:
             assert "language" in str(e)
 
+
+class TestSearchPluginPlaceholder:
     def test_search_render_with_custom_placeholder_text(self):
         plugin = SearchPlugin()
         result = plugin.render({"provider": "duckduckgo", "placeholder_text": "Search the web..."})
