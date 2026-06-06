@@ -26,7 +26,7 @@
 ### Installation
 
 ```bash
-git clone https://github.com/plbrault/salut.git
+git clone https://github.com/plbrault/Salut.git
 cd salut
 pipenv install
 ```
