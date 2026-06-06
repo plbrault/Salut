@@ -21,6 +21,18 @@
             font-weight: 500;
             color: #6b7280;
         }
+        #container {
+            position: relative;
+            margin-top: 2rem;
+        }
+        .card {
+            position: absolute;
+            background: white;
+            border-radius: 0.5rem;
+            border: 1px solid #e5e7eb;
+            padding: 1rem;
+            box-sizing: border-box;
+        }
     </style>
 </head>
 <body class="bg-gray-100 p-8">
@@ -72,13 +84,84 @@
         })();
     </script>
     {% endif %}
-    <main class="grid gap-6 mt-8" style="grid-template-columns: repeat({{ num_cols }}, 1fr);">
+    <div id="container">
         {% for card in cards %}
-        <div class="bg-white rounded-lg border border-gray-200 p-4 mb-4" style="grid-column: {{ card.col }} / span {{ card.colspan }}; grid-row: {{ card.row }}; align-self: start;">
+        <div class="card" data-colspan="{{ card.colspan }}">
             <h3 class="text-lg font-semibold mb-2">{{ card.title }}</h3>
             {{ card.content | safe }}
         </div>
         {% endfor %}
-    </main>
+    </div>
+    <script>
+        (function() {
+            var MAX_COLS = {{ max_cols }};
+            var GAP = 24;
+            var container = document.getElementById('container');
+            var cards = Array.from(container.querySelectorAll('.card'));
+
+            function getNumCols() {
+                var w = window.innerWidth;
+                if (w < 640) return 1;
+                if (w < 1024) return Math.min(2, MAX_COLS);
+                return MAX_COLS;
+            }
+
+            function layout() {
+                var numCols = getNumCols();
+                var containerWidth = container.offsetWidth;
+                var colWidth = (containerWidth - (numCols - 1) * GAP) / numCols;
+
+                // Track height of each column
+                var colHeights = [];
+                for (var i = 0; i < numCols; i++) colHeights.push(0);
+
+                // Greedy column packing
+                var maxY = 0;
+                cards.forEach(function(card) {
+                    var colspan = parseInt(card.getAttribute('data-colspan')) || 1;
+                    if (colspan > numCols) colspan = numCols;
+
+                    // Find column span with minimum max height
+                    var bestCol = 0;
+                    var bestMaxH = Infinity;
+                    for (var c = 0; c <= numCols - colspan; c++) {
+                        var maxH = 0;
+                        for (var k = c; k < c + colspan; k++) {
+                            if (colHeights[k] > maxH) maxH = colHeights[k];
+                        }
+                        if (maxH < bestMaxH) {
+                            bestMaxH = maxH;
+                            bestCol = c;
+                        }
+                    }
+
+                    // Calculate position
+                    var x = bestCol * (colWidth + GAP);
+                    var y = bestMaxH + (bestMaxH > 0 ? GAP : 0);
+                    var width = colspan * colWidth + (colspan - 1) * GAP;
+
+                    card.style.left = x + 'px';
+                    card.style.top = y + 'px';
+                    card.style.width = width + 'px';
+
+                    // Update column heights
+                    var newHeight = y + card.offsetHeight;
+                    for (var k = bestCol; k < bestCol + colspan; k++) {
+                        colHeights[k] = newHeight;
+                    }
+                    if (newHeight > maxY) maxY = newHeight;
+                });
+
+                container.style.height = maxY + 'px';
+            }
+
+            layout();
+            var resizeTimer;
+            window.addEventListener('resize', function() {
+                clearTimeout(resizeTimer);
+                resizeTimer = setTimeout(layout, 100);
+            });
+        })();
+    </script>
 </body>
 </html>

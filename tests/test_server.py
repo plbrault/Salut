@@ -42,7 +42,7 @@ class TestServer:
     def test_index_contains_columns(self):
         with TestClient(app) as client:
             response = client.get("/")
-            assert 'grid gap-6 mt-8' in response.text
+            assert 'id="container"' in response.text
 
     def test_html_lang_attr(self):
         with TestClient(app) as client:
