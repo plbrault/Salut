@@ -10,6 +10,7 @@ from src.plugins.rss.plugin import RssPlugin as RssPluginDirect
 from src.plugins.search import SearchPlugin
 from src.plugins.weather import WeatherPlugin
 from src.plugins.weather.plugin import WMO_ICONS
+from src.plugins.calendar import CalendarPlugin
 from src.database import Database
 from src.config import validate_config, ConfigError
 
@@ -1020,3 +1021,425 @@ class TestPluginDarkMode:
         content = template_path.read_text()
         assert "#d1d5db" not in content
         assert "var(--border)" in content
+
+    def test_calendar_template_no_hardcoded_colors(self):
+        template_path = Path(__file__).resolve().parent.parent / "src" / "plugins" / "calendar" / "template.html"
+        content = template_path.read_text()
+        assert "text-gray-" not in content
+
+
+class TestCalendarPlugin:  # pylint: disable=protected-access
+    def _valid_options(self, **overrides):
+        opts = {
+            "calendars": [
+                {"url": "https://caldav.example.com/cal1"}
+            ],
+            "schedule": "*/30 * * * *",
+        }
+        opts.update(overrides)
+        return opts
+
+    def test_load_calendar_plugin(self):
+        cls = load_plugin_class("calendar")
+        assert cls is CalendarPlugin
+
+    def test_calendar_is_subclass_of_plugin(self):
+        assert issubclass(CalendarPlugin, Plugin)
+
+    def test_calendar_card_style_rules_returns_dict(self):
+        assert isinstance(CalendarPlugin.card_style_rules(), dict)
+
+    def test_calendar_requires_options(self):
+        config = {
+            "page_title": "Test",
+            "page_header": "Test",
+            "language": "en",
+            "user_info": {"short_name": "A", "long_name": "B"},
+            "columns": 3,
+            "cards": [{
+                "title": "Calendar",
+                "plugin": "calendar",
+            }]
+        }
+        try:
+            validate_config(config)
+            assert False, "Should have raised ConfigError"
+        except ConfigError as e:
+            assert "options is required" in str(e)
+
+    def test_calendar_requires_calendars(self):
+        config = {
+            "page_title": "Test",
+            "page_header": "Test",
+            "language": "en",
+            "user_info": {"short_name": "A", "long_name": "B"},
+            "columns": 3,
+            "cards": [{
+                "title": "Calendar",
+                "plugin": "calendar",
+                "options": {"schedule": "*/30 * * * *"}
+            }]
+        }
+        try:
+            validate_config(config)
+            assert False, "Should have raised ConfigError"
+        except ConfigError as e:
+            assert "calendars" in str(e)
+
+    def test_calendar_requires_non_empty_calendars(self):
+        config = {
+            "page_title": "Test",
+            "page_header": "Test",
+            "language": "en",
+            "user_info": {"short_name": "A", "long_name": "B"},
+            "columns": 3,
+            "cards": [{
+                "title": "Calendar",
+                "plugin": "calendar",
+                "options": {"calendars": []}
+            }]
+        }
+        try:
+            validate_config(config)
+            assert False, "Should have raised ConfigError"
+        except ConfigError as e:
+            assert "calendars" in str(e)
+
+    def test_calendar_requires_url_in_entry(self):
+        config = {
+            "page_title": "Test",
+            "page_header": "Test",
+            "language": "en",
+            "user_info": {"short_name": "A", "long_name": "B"},
+            "columns": 3,
+            "cards": [{
+                "title": "Calendar",
+                "plugin": "calendar",
+                "options": {"calendars": [{}], "schedule": "*/30 * * * *"}
+            }]
+        }
+        try:
+            validate_config(config)
+            assert False, "Should have raised ConfigError"
+        except ConfigError as e:
+            assert "url" in str(e)
+
+    def test_calendar_requires_schedule(self):
+        config = {
+            "page_title": "Test",
+            "page_header": "Test",
+            "language": "en",
+            "user_info": {"short_name": "A", "long_name": "B"},
+            "columns": 3,
+            "cards": [{
+                "title": "Calendar",
+                "plugin": "calendar",
+                "options": {"calendars": [{"url": "https://caldav.example.com/cal1"}]}
+            }]
+        }
+        try:
+            validate_config(config)
+            assert False, "Should have raised ConfigError"
+        except ConfigError as e:
+            assert "schedule" in str(e)
+
+    def test_calendar_invalid_schedule_format(self):
+        config = {
+            "page_title": "Test",
+            "page_header": "Test",
+            "language": "en",
+            "user_info": {"short_name": "A", "long_name": "B"},
+            "columns": 3,
+            "cards": [{
+                "title": "Calendar",
+                "plugin": "calendar",
+                "options": self._valid_options(schedule="invalid")
+            }]
+        }
+        try:
+            validate_config(config)
+            assert False, "Should have raised ConfigError"
+        except ConfigError as e:
+            assert "cron" in str(e)
+
+    def test_calendar_invalid_auth_type(self):
+        config = {
+            "page_title": "Test",
+            "page_header": "Test",
+            "language": "en",
+            "user_info": {"short_name": "A", "long_name": "B"},
+            "columns": 3,
+            "cards": [{
+                "title": "Calendar",
+                "plugin": "calendar",
+                "options": self._valid_options(
+                    calendars=[{"url": "https://caldav.example.com/cal1", "auth_type": "oauth"}]
+                )
+            }]
+        }
+        try:
+            validate_config(config)
+            assert False, "Should have raised ConfigError"
+        except ConfigError as e:
+            assert "auth_type" in str(e)
+
+    def test_calendar_bearer_requires_token(self):
+        config = {
+            "page_title": "Test",
+            "page_header": "Test",
+            "language": "en",
+            "user_info": {"short_name": "A", "long_name": "B"},
+            "columns": 3,
+            "cards": [{
+                "title": "Calendar",
+                "plugin": "calendar",
+                "options": self._valid_options(
+                    calendars=[{"url": "https://caldav.example.com/cal1", "auth_type": "bearer"}]
+                )
+            }]
+        }
+        try:
+            validate_config(config)
+            assert False, "Should have raised ConfigError"
+        except ConfigError as e:
+            assert "bearer_token" in str(e)
+
+    def test_calendar_invalid_time_window_days(self):
+        config = {
+            "page_title": "Test",
+            "page_header": "Test",
+            "language": "en",
+            "user_info": {"short_name": "A", "long_name": "B"},
+            "columns": 3,
+            "cards": [{
+                "title": "Calendar",
+                "plugin": "calendar",
+                "options": self._valid_options(time_window_days=0)
+            }]
+        }
+        try:
+            validate_config(config)
+            assert False, "Should have raised ConfigError"
+        except ConfigError as e:
+            assert "time_window_days" in str(e)
+
+    def test_calendar_invalid_max_events(self):
+        config = {
+            "page_title": "Test",
+            "page_header": "Test",
+            "language": "en",
+            "user_info": {"short_name": "A", "long_name": "B"},
+            "columns": 3,
+            "cards": [{
+                "title": "Calendar",
+                "plugin": "calendar",
+                "options": self._valid_options(max_events=-1)
+            }]
+        }
+        try:
+            validate_config(config)
+            assert False, "Should have raised ConfigError"
+        except ConfigError as e:
+            assert "max_events" in str(e)
+
+    def test_calendar_invalid_link_url_type(self):
+        config = {
+            "page_title": "Test",
+            "page_header": "Test",
+            "language": "en",
+            "user_info": {"short_name": "A", "long_name": "B"},
+            "columns": 3,
+            "cards": [{
+                "title": "Calendar",
+                "plugin": "calendar",
+                "options": self._valid_options(link_url=123)
+            }]
+        }
+        try:
+            validate_config(config)
+            assert False, "Should have raised ConfigError"
+        except ConfigError as e:
+            assert "link_url" in str(e)
+
+    def test_calendar_valid_config(self):
+        config = {
+            "page_title": "Test",
+            "page_header": "Test",
+            "language": "en",
+            "user_info": {"short_name": "A", "long_name": "B"},
+            "columns": 3,
+            "cards": [{
+                "title": "Calendar",
+                "plugin": "calendar",
+                "options": self._valid_options()
+            }]
+        }
+        validate_config(config)
+
+    def test_calendar_valid_config_with_multiple_calendars(self):
+        config = {
+            "page_title": "Test",
+            "page_header": "Test",
+            "language": "en",
+            "user_info": {"short_name": "A", "long_name": "B"},
+            "columns": 3,
+            "cards": [{
+                "title": "Calendar",
+                "plugin": "calendar",
+                "options": self._valid_options(
+                    calendars=[
+                        {"url": "https://caldav.example.com/cal1"},
+                        {"url": "https://caldav.example.com/cal2", "auth_type": "bearer", "bearer_token": "xxx"},
+                    ]
+                )
+            }]
+        }
+        validate_config(config)
+
+    def test_calendar_valid_config_with_optional_fields(self):
+        config = {
+            "page_title": "Test",
+            "page_header": "Test",
+            "language": "en",
+            "user_info": {"short_name": "A", "long_name": "B"},
+            "columns": 3,
+            "cards": [{
+                "title": "Calendar",
+                "plugin": "calendar",
+                "options": self._valid_options(
+                    time_window_days=14,
+                    max_events=5,
+                    link_url="https://example.com/cal"
+                )
+            }]
+        }
+        validate_config(config)
+
+    def test_compute_card_id(self):
+        options = self._valid_options()
+        card_id = CalendarPlugin._compute_card_id(options)
+        assert isinstance(card_id, str)
+        assert len(card_id) == 16
+
+    def test_compute_card_id_same_options_same_id(self):
+        opts1 = self._valid_options()
+        opts2 = self._valid_options()
+        assert CalendarPlugin._compute_card_id(opts1) == CalendarPlugin._compute_card_id(opts2)
+
+    def test_compute_card_id_different_options_different_id(self):
+        opts1 = self._valid_options(calendars=[{"url": "https://a.example.com/cal"}])
+        opts2 = self._valid_options(calendars=[{"url": "https://b.example.com/cal"}])
+        assert CalendarPlugin._compute_card_id(opts1) != CalendarPlugin._compute_card_id(opts2)
+
+    def test_init_schema_creates_table(self, tmp_path):
+        db = Database(tmp_path / "test.db")
+        CalendarPlugin.init_schema(db)
+        result = db.fetch_one(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='calendar_events'"
+        )
+        assert result is not None
+        db.close()
+
+    def test_render_empty_when_no_data(self, tmp_path):
+        db = Database(tmp_path / "test.db")
+        CalendarPlugin.init_schema(db)
+        plugin = CalendarPlugin()
+        plugin._database = db
+        plugin._card_id = "test"
+        result = plugin.render(self._valid_options())
+        assert "No upcoming events" in result
+        db.close()
+
+    def test_render_with_cached_events(self, tmp_path):
+        db = Database(tmp_path / "test.db")
+        CalendarPlugin.init_schema(db)
+        options = self._valid_options()
+        plugin = CalendarPlugin()
+        plugin._database = db
+        plugin._card_id = plugin._compute_card_id(options)
+        events = [
+            {"summary": "Team Meeting", "start": "2026-06-10T14:00:00", "is_allday": False},
+            {"summary": "Project Deadline", "start": "2026-06-12", "is_allday": True},
+        ]
+        db.execute(
+            "INSERT INTO calendar_events (card_id, events) VALUES (?, ?)",
+            (plugin._card_id, json.dumps(events)),
+        )
+        result = plugin.render(options)
+        assert "Team Meeting" in result
+        assert "Project Deadline" in result
+        assert "2026-06-10" in result
+        assert "14:00" in result
+        db.close()
+
+    def test_render_empty_events_shows_message(self, tmp_path):
+        db = Database(tmp_path / "test.db")
+        CalendarPlugin.init_schema(db)
+        options = self._valid_options()
+        plugin = CalendarPlugin()
+        plugin._database = db
+        plugin._card_id = plugin._compute_card_id(options)
+        db.execute(
+            "INSERT INTO calendar_events (card_id, events) VALUES (?, ?)",
+            (plugin._card_id, json.dumps([])),
+        )
+        result = plugin.render(options)
+        assert "No upcoming events" in result
+        db.close()
+
+    def test_render_with_link_url(self, tmp_path):
+        db = Database(tmp_path / "test.db")
+        CalendarPlugin.init_schema(db)
+        options = self._valid_options(link_url="https://example.com/cal")
+        plugin = CalendarPlugin()
+        plugin._database = db
+        plugin._card_id = plugin._compute_card_id(options)
+        events = [{"summary": "Event", "start": "2026-06-10T14:00:00", "is_allday": False}]
+        db.execute(
+            "INSERT INTO calendar_events (card_id, events) VALUES (?, ?)",
+            (plugin._card_id, json.dumps(events)),
+        )
+        result = plugin.render(options)
+        assert '<a href="https://example.com/cal"' in result
+        assert 'target="_blank"' in result
+        db.close()
+
+    def test_render_without_link_url(self, tmp_path):
+        db = Database(tmp_path / "test.db")
+        CalendarPlugin.init_schema(db)
+        options = self._valid_options()
+        plugin = CalendarPlugin()
+        plugin._database = db
+        plugin._card_id = plugin._compute_card_id(options)  # pylint: disable=protected-access
+        events = [{"summary": "Event", "start": "2026-06-10T14:00:00", "is_allday": False}]
+        db.execute(
+            "INSERT INTO calendar_events (card_id, events) VALUES (?, ?)",
+            (plugin._card_id, json.dumps(events)),  # pylint: disable=protected-access
+        )
+        result = plugin.render(options)
+        assert 'class="block text-inherit no-underline"' not in result
+        assert "Event" in result
+        db.close()
+
+    def test_each_calendar_card_gets_its_own_id(self):
+        db = Mock()
+        sched = Mock()
+        card1 = {"plugin": "calendar", "options": self._valid_options(
+            calendars=[{"url": "https://cal1.example.com"}]
+        )}
+        card2 = {"plugin": "calendar", "options": self._valid_options(
+            calendars=[{"url": "https://cal2.example.com"}]
+        )}
+        inst1 = setup_card(card1, db, sched)
+        inst2 = setup_card(card2, db, sched)
+        assert inst1 is not None
+        assert inst2 is not None
+        assert inst1._card_id != inst2._card_id  # pylint: disable=protected-access
+
+
+class TestCalendarPluginDarkMode:  # pylint: disable=too-few-public-methods
+    def test_calendar_style_rules_use_css_variables(self):
+        rules = CalendarPlugin.card_style_rules()
+        assert "var(--text-muted)" in rules[".calendar-date"]
+        assert "var(--text)" in rules[".calendar-date-day"]
+        assert "var(--text-muted)" in rules[".calendar-empty"]

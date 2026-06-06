@@ -65,3 +65,12 @@ cards:
       location_name: "Montréal (Québec)"
       schedule: "0 */2 * * *"
       link_url: "https://www.theweathernetwork.com/en/city/ca/quebec/montreal/current"
+  - title: Calendar
+    plugin: calendar
+    options:
+      calendars:
+        - url: "https://caldav.calconnect.org/public/holidays/"
+          auth_type: basic
+      schedule: "*/30 * * * *"
+      time_window_days: 30
+      max_events: 10

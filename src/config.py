@@ -39,6 +39,20 @@ def load_config():
     return config
 
 
+def load_secrets():
+    secrets_path = BASE_DIR / "secrets.yml"
+    if not secrets_path.exists():
+        return {}
+    with open(secrets_path, "r", encoding="utf-8") as f:
+        try:
+            secrets = yaml.safe_load(f)
+        except yaml.YAMLError:
+            return {}
+    if not isinstance(secrets, dict):
+        return {}
+    return secrets
+
+
 def _validate_required_string(config, key, filename):
     """Validate that a key exists and is a non-empty string."""
     value = config.get(key)

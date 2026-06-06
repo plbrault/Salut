@@ -17,7 +17,7 @@ def load_plugin_class(name):
 
 
 def init_plugins_schemas(database):
-    plugin_names = ["html", "rss", "weather"]
+    plugin_names = ["html", "rss", "weather", "calendar"]
     for name in plugin_names:
         plugin_class = load_plugin_class(name)
         if plugin_class is not None:
