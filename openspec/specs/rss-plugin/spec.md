@@ -5,7 +5,7 @@ RSS plugin for fetching and displaying feed items on the starter page.
 ## Requirements
 
 ### Requirement: Plugin abstract base class
-The system SHALL provide an abstract `Plugin` base class in `src/plugin.py` with `setup`, `render`, `setup_database`, `validate_options`, `parse_schedule`, and `load_template` methods.
+The system SHALL provide an abstract `Plugin` base class in `src/plugin.py` with `setup`, `render`, `init_schema`, `validate_options`, `parse_schedule`, and `load_template` methods.
 
 #### Scenario: Plugin class has setup method
 - **WHEN** a plugin class extends `Plugin`
@@ -15,9 +15,9 @@ The system SHALL provide an abstract `Plugin` base class in `src/plugin.py` with
 - **WHEN** a plugin class extends `Plugin`
 - **THEN** it implements `render(self, options) → str` returning an HTML string
 
-#### Scenario: Plugin class has setup_database method
+#### Scenario: Plugin class has init_schema method
 - **WHEN** a plugin class extends `Plugin`
-- **THEN** it implements `setup_database(database)` as a static method to create plugin-specific tables
+- **THEN** it implements `init_schema(database)` as a static method to create plugin-specific tables
 
 #### Scenario: Plugin class has validate_options method
 - **WHEN** a plugin class extends `Plugin`
