@@ -63,3 +63,11 @@ Always test the actual server output when making server-side changes:
 - Run the server with `PORT=9001 pipenv run develop` (or another port)
 - Check both API responses and log output
 - Verify the feature works end-to-end in the browser or via curl
+
+### Documentation
+
+**Docs must be kept up-to-date with code changes.** When you add or modify features, update the relevant docs:
+
+- `docs/config.md` — configuration reference
+- `docs/plugins/` — plugin documentation
+- `README.md` — project overview and links
