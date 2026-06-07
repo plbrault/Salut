@@ -146,15 +146,23 @@ The calendar card SHALL display a list of upcoming events with date, time, summa
 - **THEN** the event displays both the date and time
 
 ### Requirement: Calendar plugin extracts per-event URLs
-The system SHALL extract the `URL` property from VEVENT components in both CalDAV and ICS sources. The extracted URL SHALL be stored in the event dict as `url`. If no `URL` property is present, `url` SHALL be `None`.
+The system SHALL extract the `URL` property from VEVENT components in both CalDAV and ICS sources. The extracted URL SHALL be stored in the event dict as `url`. If no `URL` property is present, the system SHALL attempt to construct a URL for known providers. If neither is possible, `url` SHALL be `None`.
 
 #### Scenario: CalDAV event with URL property
 - **WHEN** a CalDAV event has a `URL` property
 - **THEN** the event dict includes `url` set to the URL string
 
-#### Scenario: CalDAV event without URL property
-- **WHEN** a CalDAV event has no `URL` property
+#### Scenario: CalDAV event without URL property on Nextcloud
+- **WHEN** a CalDAV event has no `URL` property and the calendar URL contains a Nextcloud path pattern (`/dav/calendars/` or `/remote.php/dav/`)
+- **THEN** the event dict includes `url` set to `https://<host>/apps/calendar/event/<uid>`
+
+#### Scenario: CalDAV event without URL property on non-Nextcloud
+- **WHEN** a CalDAV event has no `URL` property and the calendar URL is not Nextcloud
 - **THEN** the event dict includes `url` set to `None`
+
+#### Scenario: CalDAV event with URL property on Nextcloud
+- **WHEN** a CalDAV event has a `URL` property and the calendar URL is Nextcloud
+- **THEN** the event dict includes `url` set to the VEVENT `URL` property (not the constructed URL)
 
 #### Scenario: ICS event with URL property
 - **WHEN** an ICS event has a `URL` property

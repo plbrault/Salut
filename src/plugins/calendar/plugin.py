@@ -4,6 +4,7 @@ import re
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from urllib.parse import urlparse
 
 import caldav
 import requests
@@ -222,14 +223,30 @@ class CalendarPlugin(Plugin):
             return caldav.DAVClient(url=url, username=username, password=password)
         return caldav.DAVClient(url=url)
 
+    @staticmethod
+    def _is_nextcloud(cal_url):
+        return "/dav/calendars/" in cal_url or "/remote.php/dav/" in cal_url
+
+    @staticmethod
+    def _build_nextcloud_event_url(cal_url, uid):
+        parsed = urlparse(cal_url)
+        return f"{parsed.scheme}://{parsed.netloc}/apps/calendar/event/{uid}"
+
     def _parse_caldav_events(self, events, cal_config):
         result = []
+        cal_url = cal_config.get("url", "")
+        is_nc = self._is_nextcloud(cal_url)
         for event in events:
             try:
                 vevent = event.vobject_instance.vevent
                 summary = str(vevent.summary.value) if hasattr(vevent, 'summary') else ""
                 dtstart = vevent.dtstart.value if hasattr(vevent, 'dtstart') else None
                 url = str(vevent.url.value) if hasattr(vevent, 'url') else None
+
+                if url is None and is_nc:
+                    uid = str(vevent.uid.value) if hasattr(vevent, 'uid') else None
+                    if uid:
+                        url = self._build_nextcloud_event_url(cal_url, uid)
 
                 is_allday = isinstance(dtstart, datetime) is False if dtstart else True
                 start_str = dtstart.isoformat() if dtstart else ""
