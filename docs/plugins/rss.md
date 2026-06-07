@@ -6,7 +6,7 @@ Fetches and displays RSS feed items. Items are fetched on startup and refreshed 
 
 | Option | Type | Required | Default | Description |
 |--------|------|----------|---------|-------------|
-| `feeds` | list of strings | yes | - | RSS feed URLs to fetch |
+| `feeds` | list of strings | yes | - | RSS feed URLs to fetch. Order determines precedence for deduplication: when two feeds publish items with the same title, the one listed first is kept. |
 | `schedule` | string | yes | - | Cron expression for refresh schedule (e.g., `"0 */6 * * *"`) |
 | `max_items` | integer | no | 10 | Maximum number of items to display |
 | `images` | boolean | no | false | Fetch and cache feed images locally |

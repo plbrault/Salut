@@ -84,10 +84,6 @@ The system SHALL provide an `RssPlugin` class extending `Plugin` that fetches RS
 - **WHEN** an RSS feed does not provide a channel title
 - **THEN** the rendered item displays the domain name (without `www.`) as the source
 
-#### Scenario: RSS plugin deduplicates feed items by link
-- **WHEN** multiple feeds return items with the same `link` URL
-- **THEN** only one instance of each item is kept (the first after sorting by published date descending)
-
 #### Scenario: RSS plugin sorts items without dates to the end
 - **WHEN** some feed items have no `published` date
 - **THEN** items with dates are sorted most recent first, and items without dates appear at the end
@@ -99,6 +95,25 @@ The system SHALL provide an `RssPlugin` class extending `Plugin` that fetches RS
 #### Scenario: RSS plugin enforces unique feed items per card
 - **WHEN** a feed item with a duplicate `link` is inserted for a card
 - **THEN** the database constraint prevents the duplicate from being stored
+
+### Requirement: RSS plugin deduplicates feed items by link
+The system SHALL deduplicate feed items by both `link` URL and `title`. When multiple items share the same `link` URL, only one instance is kept. When multiple items from different feeds share the same `title` (exact match, after stripping whitespace), only one instance is kept, retaining the item from the feed with higher precedence (earlier in the `feeds` config list).
+
+#### Scenario: RSS plugin deduplicates feed items by link
+- **WHEN** multiple feeds return items with the same `link` URL
+- **THEN** only one instance of each item is kept (the first after sorting by published date descending)
+
+#### Scenario: RSS plugin deduplicates feed items by title across feeds
+- **WHEN** multiple feeds return items with the same `title` (exact match) but different `link` URLs
+- **THEN** only one instance is kept, retaining the item from the feed that appears earlier in the `feeds` config list
+
+#### Scenario: RSS plugin preserves items with different titles and links
+- **WHEN** two feed items have different `title` values and different `link` URLs
+- **THEN** both items are kept
+
+#### Scenario: RSS plugin title dedup is case-sensitive
+- **WHEN** two feed items have titles that differ only in casing (e.g., "Hello World" vs "hello world")
+- **THEN** they are treated as different items and both are kept
 
 ### Requirement: Each card gets its own setup
 The system SHALL call `setup_card` for every card, even when multiple cards use the same plugin. Each card requires its own feed fetching and scheduler registration.

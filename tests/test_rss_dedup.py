@@ -51,6 +51,44 @@ class TestRssDeduplication:
         assert len(result) == 1
         assert result[0]["title"] == "Version 1"
 
+    def test_deduplicate_items_by_title_keeps_higher_precedence(self):
+        items = [
+            {"link": "http://feed-b.com/1", "title": "Same Title", "feed_url": "http://feed-b.com/rss"},
+            {"link": "http://feed-a.com/1", "title": "Same Title", "feed_url": "http://feed-a.com/rss"},
+        ]
+        precedence = {"http://feed-a.com/rss": 0, "http://feed-b.com/rss": 1}
+        result = RssPlugin._deduplicate_items(items, precedence)  # pylint: disable=protected-access
+        assert len(result) == 1
+        assert result[0]["feed_url"] == "http://feed-a.com/rss"
+
+    def test_deduplicate_items_by_title_is_case_sensitive(self):
+        items = [
+            {"link": "http://example.com/1", "title": "Hello World", "feed_url": "http://feed-a.com/rss"},
+            {"link": "http://example.com/2", "title": "hello world", "feed_url": "http://feed-b.com/rss"},
+        ]
+        precedence = {"http://feed-a.com/rss": 0, "http://feed-b.com/rss": 1}
+        result = RssPlugin._deduplicate_items(items, precedence)  # pylint: disable=protected-access
+        assert len(result) == 2
+
+    def test_deduplicate_items_preserves_different_titles_and_links(self):
+        items = [
+            {"link": "http://example.com/1", "title": "Article A", "feed_url": "http://feed-a.com/rss"},
+            {"link": "http://example.com/2", "title": "Article B", "feed_url": "http://feed-b.com/rss"},
+        ]
+        precedence = {"http://feed-a.com/rss": 0, "http://feed-b.com/rss": 1}
+        result = RssPlugin._deduplicate_items(items, precedence)  # pylint: disable=protected-access
+        assert len(result) == 2
+
+    def test_deduplicate_items_link_dedup_still_works(self):
+        items = [
+            {"link": "http://example.com/1", "title": "Article 1", "feed_url": "http://feed-a.com/rss"},
+            {"link": "http://example.com/1", "title": "Article 1 Different", "feed_url": "http://feed-b.com/rss"},
+        ]
+        precedence = {"http://feed-a.com/rss": 0, "http://feed-b.com/rss": 1}
+        result = RssPlugin._deduplicate_items(items, precedence)  # pylint: disable=protected-access
+        assert len(result) == 1
+        assert result[0]["title"] == "Article 1"
+
 
 class TestRssUniqueConstraint:
     def test_unique_constraint_prevents_duplicate_inserts(self, tmp_path):
