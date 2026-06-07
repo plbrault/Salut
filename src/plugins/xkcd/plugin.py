@@ -1,5 +1,6 @@
 import hashlib
 import json
+import struct
 from pathlib import Path
 
 import requests
@@ -57,6 +58,8 @@ class XkcdPlugin(Plugin):
                 alt_text TEXT NOT NULL,
                 comic_url TEXT NOT NULL,
                 explain_url TEXT NOT NULL,
+                img_width INTEGER,
+                img_height INTEGER,
                 fetched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
             """
@@ -94,6 +97,8 @@ class XkcdPlugin(Plugin):
             alt_text=row["alt_text"],
             comic_url=row["comic_url"],
             explain_url=row["explain_url"],
+            img_width=row["img_width"],
+            img_height=row["img_height"],
         )
 
     def _fetch_comic(self):
@@ -113,7 +118,7 @@ class XkcdPlugin(Plugin):
             explain_url = f"https://www.explainxkcd.com/wiki/index.php/{comic_num}"
 
             self._delete_previous_comic()
-            self._download_image(img_url)
+            img_width, img_height = self._download_image(img_url)
             self._store_comic(
                 card_id=self._card_id,
                 comic_num=comic_num,
@@ -122,6 +127,8 @@ class XkcdPlugin(Plugin):
                 alt_text=alt_text,
                 comic_url=comic_url,
                 explain_url=explain_url,
+                img_width=img_width,
+                img_height=img_height,
             )
 
             self._logger.info("XKCD comic #%d fetched for card %s", comic_num, self._card_id)
@@ -151,14 +158,20 @@ class XkcdPlugin(Plugin):
             filepath = card_cache_dir / f"comic{ext}"
             filepath.write_bytes(response.content)
             self._logger.info("Saved XKCD image to %s", filepath)
+            return self._get_image_dimensions(response.content)
         except Exception as e:  # pylint: disable=broad-except
             self._logger.warning("Failed to download XKCD image: %s — %s", img_url, e)
+            return None, None
 
     def _store_comic(self, **kwargs):
         self._database.execute(
             """
-            INSERT INTO xkcd_comics (card_id, comic_num, title, img_url, alt_text, comic_url, explain_url)
-            VALUES (:card_id, :comic_num, :title, :img_url, :alt_text, :comic_url, :explain_url)
+            INSERT INTO xkcd_comics
+            (card_id, comic_num, title, img_url, alt_text,
+             comic_url, explain_url, img_width, img_height)
+            VALUES (:card_id, :comic_num, :title, :img_url,
+                    :alt_text, :comic_url, :explain_url,
+                    :img_width, :img_height)
             """,
             kwargs,
         )
@@ -185,3 +198,20 @@ class XkcdPlugin(Plugin):
         if url.endswith(".png"):
             return ".png"
         return ".jpg"
+
+    @staticmethod
+    def _get_image_dimensions(data):
+        if data[:8] == b'\x89PNG\r\n\x1a\n':
+            width, height = struct.unpack('>II', data[16:24])
+            return width, height
+        if data[:2] == b'\xff\xd8':
+            offset = 2
+            while offset < len(data) - 1:
+                if data[offset] != 0xFF:
+                    break
+                marker = data[offset + 1]
+                if marker in (0xC0, 0xC2):
+                    height, width = struct.unpack('>HH', data[offset + 5:offset + 9])
+                    return width, height
+                offset += 2 + struct.unpack('>H', data[offset + 2:offset + 4])[0]
+        return None, None

@@ -54,11 +54,15 @@ The system SHALL fetch XKCD comics from `https://xkcd.com/info.0.json` using the
 - **THEN** a warning is logged and the plugin continues without crashing
 
 ### Requirement: XKCD plugin caches comic image
-The system SHALL download the comic image locally to `cache/xkcd/<card_id>/comic.<ext>` and serve it as a static file. Only one image SHALL be kept per card — the old image SHALL be deleted before downloading the new one.
+The system SHALL download the comic image locally to `cache/xkcd/<card_id>/comic.<ext>` and serve it as a static file. Only one image SHALL be kept per card — the old image SHALL be deleted before downloading the new one. The image dimensions SHALL be extracted from the downloaded file headers and stored in the database.
 
 #### Scenario: Image downloaded on fetch
 - **WHEN** a comic is successfully fetched
 - **THEN** the comic image is downloaded to the local cache directory
+
+#### Scenario: Image dimensions extracted from file headers
+- **WHEN** a comic image is downloaded
+- **THEN** the width and height are extracted from the PNG or JPEG file headers
 
 #### Scenario: Old image deleted on refresh
 - **WHEN** a new comic is fetched
@@ -66,7 +70,7 @@ The system SHALL download the comic image locally to `cache/xkcd/<card_id>/comic
 
 #### Scenario: Cached image served in template
 - **WHEN** the XKCD plugin renders a comic
-- **THEN** the image source points to the local cached path
+- **THEN** the image source points to the local cached path with width and height attributes
 
 ### Requirement: Each XKCD card gets its own setup
 The system SHALL call `setup` for every card with `plugin: xkcd`, even when multiple cards use the same plugin.
