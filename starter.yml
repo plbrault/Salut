@@ -82,6 +82,7 @@ cards:
     options:
       provider_type: rss
       url: "https://www.workchronicles.com/feed"
+      schedule: "0 9 * * *"
   - title: About
     plugin: html
     column: 1
