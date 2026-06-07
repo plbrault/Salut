@@ -1683,7 +1683,7 @@ class TestXkcdPlugin:  # pylint: disable=protected-access
         result = plugin.render(options)
         assert "Planetary Science" in result
         assert "https://xkcd.com/3255/" in result
-        assert "Explain" in result
+        assert "Explain XKCD" in result
         assert 'width="800"' in result
         assert 'height="600"' in result
         db.close()

@@ -22,6 +22,6 @@ cards:
 
 - Displays the comic image, title, and alt text description
 - Comic image links to the XKCD page
-- Includes a link to the "Explain" page for that comic
+- Includes a link to the "Explain XKCD" page for that comic
 - Comic image is cached locally (one image at a time)
 - Only the most recent comic is kept in the database
