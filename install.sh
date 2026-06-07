@@ -96,10 +96,8 @@ systemctl --user enable "$SERVICE_NAME"
 systemctl --user start "$SERVICE_NAME"
 
 if ! loginctl enable-linger "$USER" 2>/dev/null; then
-    if ! sudo loginctl enable-linger "$USER" 2>/dev/null; then
-        echo -e "\033[0;31mWarning: Could not enable linger. The service may not start at boot.\033[0m"
-        echo "  Try running: sudo loginctl enable-linger $USER"
-    fi
+    echo -e "\033[0;31mWarning: Could not enable linger. The service may not start at boot.\033[0m"
+    echo "  Try running: sudo loginctl enable-linger $USER"
 fi
 
 echo ""
