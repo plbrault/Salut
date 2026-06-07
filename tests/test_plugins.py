@@ -1614,7 +1614,7 @@ class TestCalendarPluginDarkMode:  # pylint: disable=too-few-public-methods
         assert "var(--text-muted)" in rules[".calendar-empty"]
 
 
-class TestXkcdPlugin:
+class TestXkcdPlugin:  # pylint: disable=protected-access
     def test_load_xkcd_plugin(self):
         cls = load_plugin_class("xkcd")
         assert cls is XkcdPlugin
