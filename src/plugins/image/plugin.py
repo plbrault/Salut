@@ -102,16 +102,22 @@ class ImagePlugin(Plugin):
         card_id = self._compute_card_id(options)
 
         if not options.get("schedule"):
-            self._fetch_image(options)
-            row = self._database.fetch_one(
-                "SELECT * FROM image_items WHERE card_id = ?",
-                (card_id,),
+            row = self._fetch_image(options)
+            if not row:
+                return ""
+            return self._template.render(
+                image_url=row["img_url"],
+                source_url=row["source_url"],
+                img_width=row.get("img_width"),
+                img_height=row.get("img_height"),
+                footer_html=options.get("footer_html", ""),
+                dynamic=True,
             )
-        else:
-            row = self._database.fetch_one(
-                "SELECT * FROM image_items WHERE card_id = ?",
-                (card_id,),
-            )
+
+        row = self._database.fetch_one(
+            "SELECT * FROM image_items WHERE card_id = ?",
+            (card_id,),
+        )
 
         if not row:
             return ""
@@ -122,6 +128,7 @@ class ImagePlugin(Plugin):
             img_width=row["img_width"],
             img_height=row["img_height"],
             footer_html=options.get("footer_html", ""),
+            dynamic=False,
         )
 
     def _fetch_image(self, options):
@@ -136,25 +143,36 @@ class ImagePlugin(Plugin):
             elif provider_type == "file":
                 img_url, source_link = self._fetch_from_file(options)
             else:
-                return
+                return None
 
             if not img_url:
                 self._logger.warning("No image found for card %s", self._card_id)
-                return
+                return None
 
-            self._delete_previous_image()
-            img_width, img_height, ext = self._download_image(img_url)
-            local_url = f"/cache/image/{self._card_id}/comic{ext}"
-            self._store_image(
-                card_id=self._card_id,
-                source_url=source_link,
-                img_url=local_url,
-                img_width=img_width,
-                img_height=img_height,
-            )
-            self._logger.info("Image fetched for card %s", self._card_id)
+            schedule = options.get("schedule")
+            if schedule:
+                self._delete_previous_image()
+                img_width, img_height, ext = self._download_image(img_url)
+                local_url = f"/cache/image/{self._card_id}/comic{ext}"
+                self._store_image(
+                    card_id=self._card_id,
+                    source_url=source_link,
+                    img_url=local_url,
+                    img_width=img_width,
+                    img_height=img_height,
+                )
+                self._logger.info("Image fetched for card %s", self._card_id)
+                return None
+
+            return {
+                "img_url": img_url,
+                "source_url": source_link,
+                "img_width": None,
+                "img_height": None,
+            }
         except Exception as e:  # pylint: disable=broad-except
             self._logger.warning("Failed to fetch image: %s", e)
+            return None
 
     def _fetch_from_rss(self, options):
         url = options["url"]

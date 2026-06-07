@@ -1,6 +1,6 @@
 <div class="flex flex-col gap-2">
     <a href="{{ source_url }}" target="_blank" rel="noopener" class="block">
-        <img src="{{ image_url }}" alt="" class="w-full rounded-lg object-cover"{% if img_width %} width="{{ img_width }}"{% endif %}{% if img_height %} height="{{ img_height }}"{% endif %}>
+        <img src="{{ image_url }}" alt="" class="w-full rounded-lg object-cover"{% if img_width %} width="{{ img_width }}"{% endif %}{% if img_height %} height="{{ img_height }}"{% endif %}{% if dynamic %} onload="window.dispatchEvent(new Event('resize'))"{% endif %}>
     </a>
     {% if footer_html %}
     <div class="text-xs" style="color: var(--text-muted)">{{ footer_html | safe }}</div>
