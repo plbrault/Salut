@@ -100,20 +100,21 @@ class ImagePlugin(Plugin):
 
     def render(self, options):
         card_id = self._compute_card_id(options)
-        row = self._database.fetch_one(
-            "SELECT * FROM image_items WHERE card_id = ?",
-            (card_id,),
-        )
+
+        if not options.get("schedule"):
+            self._fetch_image(options)
+            row = self._database.fetch_one(
+                "SELECT * FROM image_items WHERE card_id = ?",
+                (card_id,),
+            )
+        else:
+            row = self._database.fetch_one(
+                "SELECT * FROM image_items WHERE card_id = ?",
+                (card_id,),
+            )
 
         if not row:
-            if not options.get("schedule"):
-                self._fetch_image(options)
-                row = self._database.fetch_one(
-                    "SELECT * FROM image_items WHERE card_id = ?",
-                    (card_id,),
-                )
-            if not row:
-                return ""
+            return ""
 
         return self._template.render(
             image_url=row["img_url"],
