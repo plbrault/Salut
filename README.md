@@ -12,6 +12,7 @@
 * Layout consisting of cards based on plugins:
 
     * [Calendar](docs/plugins/calendar.md)
+    * [GitHub](docs/plugins/github.md)
     * [HTML](docs/plugins/html.md)
     * [Image](docs/plugins/image.md)
     * [RSS](docs/plugins/rss.md)

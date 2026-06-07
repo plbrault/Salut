@@ -15,6 +15,7 @@ from src.plugins.weather.plugin import WMO_ICONS
 from src.plugins.calendar import CalendarPlugin
 from src.plugins.xkcd import XkcdPlugin
 from src.plugins.image import ImagePlugin
+from src.plugins.github import GithubPlugin
 from src.database import Database
 from src.config import validate_config, ConfigError
 from src.i18n import _load_translations
@@ -1872,3 +1873,97 @@ class TestImagePlugin:  # pylint: disable=protected-access
 
     def test_image_card_style_rules_returns_dict(self):
         assert isinstance(ImagePlugin.card_style_rules(), dict)
+
+
+class TestGithubPlugin:  # pylint: disable=protected-access
+    def test_load_github_plugin(self):
+        cls = load_plugin_class("github")
+        assert cls is GithubPlugin
+
+    def test_github_is_subclass_of_plugin(self):
+        assert issubclass(GithubPlugin, Plugin)
+
+    def test_validate_options_requires_options(self):
+        try:
+            GithubPlugin.validate_options(None, 0, "test.yml")
+            assert False, "Should have raised ConfigError"
+        except ConfigError:
+            pass
+
+    def test_validate_options_requires_token(self):
+        try:
+            GithubPlugin.validate_options({}, 0, "test.yml")
+            assert False, "Should have raised ConfigError"
+        except ConfigError as e:
+            assert "token" in str(e)
+
+    def test_validate_options_rejects_empty_token(self):
+        try:
+            GithubPlugin.validate_options({"token": ""}, 0, "test.yml")
+            assert False, "Should have raised ConfigError"
+        except ConfigError as e:
+            assert "token" in str(e)
+
+    def test_validate_options_accepts_valid_token(self):
+        GithubPlugin.validate_options({"token": "ghp_abc123"}, 0, "test.yml")
+
+    def test_validate_options_accepts_optional_schedule(self):
+        GithubPlugin.validate_options(
+            {"token": "ghp_abc123", "schedule": "*/5 * * * *"}, 0, "test.yml"
+        )
+
+    def test_validate_options_rejects_invalid_schedule(self):
+        try:
+            GithubPlugin.validate_options(
+                {"token": "ghp_abc123", "schedule": "invalid"}, 0, "test.yml"
+            )
+            assert False, "Should have raised ConfigError"
+        except ConfigError as e:
+            assert "cron" in str(e)
+
+    def test_validate_options_accepts_optional_max_items(self):
+        GithubPlugin.validate_options(
+            {"token": "ghp_abc123", "max_items": 20}, 0, "test.yml"
+        )
+
+    def test_validate_options_rejects_invalid_max_items(self):
+        try:
+            GithubPlugin.validate_options(
+                {"token": "ghp_abc123", "max_items": -1}, 0, "test.yml"
+            )
+            assert False, "Should have raised ConfigError"
+        except ConfigError as e:
+            assert "max_items" in str(e)
+
+    def test_init_schema_creates_table(self, tmp_path):
+        db = Database(tmp_path / "test.db")
+        GithubPlugin.init_schema(db)
+        tables = db.fetch_all("SELECT name FROM sqlite_master WHERE type='table'")
+        table_names = [t["name"] for t in tables]
+        assert "github_notifications" in table_names
+        db.close()
+
+    def test_format_reason(self):
+        assert GithubPlugin._format_reason("review_requested") == "review requested"
+        assert GithubPlugin._format_reason("ASSIGNED") == "assigned"
+        assert GithubPlugin._format_reason("mentioned") == "mentioned"
+
+    def test_build_web_url(self):
+        api_url = "https://api.github.com/repos/owner/repo/pulls/123"
+        assert GithubPlugin._build_web_url(api_url) == "https://github.com/owner/repo/pull/123"
+
+    def test_build_web_url_strips_patch(self):
+        api_url = "https://api.github.com/repos/owner/repo/issues/456.patch"
+        assert GithubPlugin._build_web_url(api_url) == "https://github.com/owner/repo/issues/456"
+
+    def test_build_web_url_strips_json(self):
+        api_url = "https://api.github.com/repos/owner/repo/pulls/789.json"
+        assert GithubPlugin._build_web_url(api_url) == "https://github.com/owner/repo/pull/789"
+
+    def test_time_ago_returns_string(self):
+        result = GithubPlugin._time_ago("2026-06-07T12:00:00Z")
+        assert isinstance(result, str)
+        assert len(result) > 0
+
+    def test_github_notifications_card_style_rules_returns_dict(self):
+        assert isinstance(GithubPlugin.card_style_rules(), dict)

@@ -35,6 +35,10 @@ cards:
       location_name: "Montreal"
       schedule: "0 */2 * * *"
       link_url: "https://www.theweathernetwork.com/en/city/ca/quebec/montreal/current"
+  - title: GitHub
+    plugin: github
+    options:
+      token: "${secrets.github_token}"
   - title: Tech News
     plugin: rss
     colspan: 2
