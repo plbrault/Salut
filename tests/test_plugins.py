@@ -1,4 +1,5 @@
 import json
+import tempfile
 from unittest.mock import Mock, MagicMock
 from pathlib import Path
 
@@ -11,6 +12,7 @@ from src.plugins.search import SearchPlugin
 from src.plugins.weather import WeatherPlugin
 from src.plugins.weather.plugin import WMO_ICONS
 from src.plugins.calendar import CalendarPlugin
+from src.plugins.xkcd import XkcdPlugin
 from src.database import Database
 from src.config import validate_config, ConfigError
 from src.i18n import _load_translations
@@ -1609,3 +1611,78 @@ class TestCalendarPluginDarkMode:  # pylint: disable=too-few-public-methods
         assert "var(--text-muted)" in rules[".calendar-date"]
         assert "var(--text)" in rules[".calendar-date-day"]
         assert "var(--text-muted)" in rules[".calendar-empty"]
+
+
+class TestXkcdPlugin:
+    def test_load_xkcd_plugin(self):
+        cls = load_plugin_class("xkcd")
+        assert cls is XkcdPlugin
+
+    def test_xkcd_is_subclass_of_plugin(self):
+        assert issubclass(XkcdPlugin, Plugin)
+
+    def test_validate_options_requires_schedule(self):
+        try:
+            XkcdPlugin.validate_options({"other": "value"}, 0, "test.yml")
+            assert False, "Should have raised ConfigError"
+        except ConfigError as e:
+            assert "schedule" in str(e)
+
+    def test_validate_options_requires_valid_cron(self):
+        try:
+            XkcdPlugin.validate_options({"schedule": "not-a-cron"}, 0, "test.yml")
+            assert False, "Should have raised ConfigError"
+        except ConfigError as e:
+            assert "cron" in str(e)
+
+    def test_validate_options_accepts_valid_cron(self):
+        XkcdPlugin.validate_options({"schedule": "0 9 * * *"}, 0, "test.yml")
+
+    def test_init_schema_creates_table(self, tmp_path):
+        db = Database(tmp_path / "test.db")
+        XkcdPlugin.init_schema(db)
+        tables = db.fetch_all("SELECT name FROM sqlite_master WHERE type='table'")
+        table_names = [t["name"] for t in tables]
+        assert "xkcd_comics" in table_names
+        db.close()
+
+    def test_render_returns_empty_when_no_data(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            db = Database(Path(tmp_dir) / "test.db")
+            XkcdPlugin.init_schema(db)
+            plugin = XkcdPlugin()
+            plugin._database = db
+            plugin._card_id = "test_card"
+            result = plugin.render({})
+            assert result == ""
+            db.close()
+
+    def test_render_returns_html_when_data_exists(self, tmp_path):
+        db = Database(tmp_path / "test.db")
+        XkcdPlugin.init_schema(db)
+        plugin = XkcdPlugin()
+        plugin._database = db
+        options = {"schedule": "0 9 * * *"}
+        card_id = plugin._compute_card_id(options)
+        plugin._card_id = card_id
+        db.execute(
+            "INSERT INTO xkcd_comics"
+            " (card_id, comic_num, title, img_url, alt_text,"
+            " comic_url, explain_url)"
+            " VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (
+                card_id, 3255, "Planetary Science",
+                "https://imgs.xkcd.com/comics/planetary_science.png",
+                "The research was overseen by...",
+                "https://xkcd.com/3255/",
+                "https://www.explainxkcd.com/wiki/index.php/3255",
+            ),
+        )
+        result = plugin.render(options)
+        assert "Planetary Science" in result
+        assert "https://xkcd.com/3255/" in result
+        assert "Explain XKCD" in result
+        db.close()
+
+    def test_xkcd_card_style_rules_returns_dict(self):
+        assert isinstance(XkcdPlugin.card_style_rules(), dict)
