@@ -2,6 +2,7 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
+from src.config import ConfigError
 from src.main import app
 from src.plugins.html import HtmlPlugin
 from src.plugins.search import SearchPlugin
@@ -154,3 +155,39 @@ class TestServer:
                 assert 'rel="icon"' not in response.text
             finally:
                 app.state.config = original
+
+    def test_config_error_shows_error_page(self):
+        error_msg = "Invalid YAML in config.yml: mapping values are not allowed here"
+        with patch("src.main.load_config", side_effect=ConfigError(error_msg)):
+            with TestClient(app) as client:
+                response = client.get("/")
+                assert response.status_code == 200
+                assert "Configuration Error" in response.text
+                assert "Invalid YAML in config.yml" in response.text
+
+    def test_config_validation_error_shows_error_page(self):
+        error_msg = "config.yml: 'language' must be a non-empty string."
+        with patch("src.main.load_config", side_effect=ConfigError(error_msg)):
+            with TestClient(app) as client:
+                response = client.get("/")
+                assert response.status_code == 200
+                assert "Configuration Error" in response.text
+                assert (
+                    "'language' must be a non-empty string" in response.text
+                    or "&#39;language&#39; must be a non-empty string" in response.text
+                )
+
+    def test_no_config_file_shows_error_page(self):
+        error_msg = "No config file found. Create config.yml or starter.yml."
+        with patch("src.main.load_config", side_effect=ConfigError(error_msg)):
+            with TestClient(app) as client:
+                response = client.get("/")
+                assert response.status_code == 200
+                assert "Configuration Error" in response.text
+                assert "No config file found" in response.text
+
+    def test_valid_config_no_error_page(self):
+        with TestClient(app) as client:
+            response = client.get("/")
+            assert response.status_code == 200
+            assert "Configuration Error" not in response.text

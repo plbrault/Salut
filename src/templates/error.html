@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuration Error</title>
+    <script src="/static/tailwindcss.js"></script>
+    <style>
+        @font-face {
+            font-family: 'Inter';
+            font-style: normal;
+            font-weight: 100 900;
+            font-display: swap;
+            src: url('/static/fonts/Inter-Variable.woff2') format('woff2');
+        }
+        :root {
+            --bg: #f3f4f6;
+            --card-bg: white;
+            --text: #111827;
+            --text-muted: #6b7280;
+            --border: #e5e7eb;
+            --error-bg: #fef2f2;
+            --error-border: #fecaca;
+            --error-text: #991b1b;
+        }
+        [data-theme="dark"] {
+            --bg: #111827;
+            --card-bg: #1f2937;
+            --text: #f9fafb;
+            --text-muted: #9ca3af;
+            --border: #374151;
+            --error-bg: #450a0a;
+            --error-border: #7f1d1d;
+            --error-text: #fca5a5;
+        }
+    </style>
+</head>
+<body class="p-8 flex items-center justify-center min-h-screen" style="background: var(--bg); font-family: 'Inter', sans-serif;">
+    <div class="max-w-lg w-full rounded-lg border p-6" style="background: var(--error-bg); border-color: var(--error-border);">
+        <h1 class="text-xl font-semibold mb-2" style="color: var(--error-text);">Configuration Error</h1>
+        <p class="text-sm mb-4" style="color: var(--error-text);">Your config file could not be loaded.</p>
+        <pre class="text-sm p-4 rounded overflow-x-auto" style="background: var(--card-bg); color: var(--text); border: 1px solid var(--border);">{{ error }}</pre>
+        <p class="text-sm mt-4" style="color: var(--text-muted);">Fix the issue in <code>config.yml</code> and reload the page.</p>
+    </div>
+</body>
+</html>
