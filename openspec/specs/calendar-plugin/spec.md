@@ -17,7 +17,6 @@ Each entry in `calendars` SHALL have:
 | `url` | string | yes | - | Calendar URL (CalDAV server or ICS file URL) |
 | `name` | string | yes | - | Display name for the calendar (e.g., `"Work"`, `"Personal"`) |
 | `color` | string | no | - | Hex color code for visual indicator (e.g., `"#3b82f6"`) |
-| `link_url` | string | no | - | URL to open when an event from this calendar is clicked |
 | `type` | string | no | `"caldav"` | Calendar type: `"caldav"` or `"ics"` |
 | `username` | string | no | - | Username for HTTP Basic authentication (CalDAV only) |
 | `password` | string | no | - | Password for HTTP Basic authentication (CalDAV only) |
@@ -32,13 +31,9 @@ Each entry in `calendars` SHALL have:
 - **WHEN** a card has `plugin: calendar` with `calendars` containing an entry with `url`, `name`, and `color: "#3b82f6"`
 - **THEN** config validation passes and events from this calendar display with the specified color
 
-#### Scenario: Valid config with calendar link_url
-- **WHEN** a card has `plugin: calendar` with `calendars` containing an entry with `url`, `name`, and `link_url: "https://example.com/cal"`
-- **THEN** config validation passes
-
-#### Scenario: Invalid calendar link_url type
-- **WHEN** a calendar entry has `link_url` that is not a string
-- **THEN** a configuration error is raised
+#### Scenario: link_url is rejected
+- **WHEN** a calendar entry has `link_url`
+- **THEN** a configuration error is raised indicating `link_url` is no longer supported
 
 #### Scenario: Missing name in calendar entry
 - **WHEN** a calendar entry has `url` but no `name`
@@ -134,13 +129,13 @@ The calendar card SHALL display a list of upcoming events with date, time, summa
 - **WHEN** an event is from a calendar without a `color` attribute
 - **THEN** the event displays without a color indicator
 
-#### Scenario: Events with calendar link_url are clickable
-- **WHEN** events are fetched from a calendar with a `link_url` attribute
-- **THEN** each event from that calendar is wrapped in an `<a>` tag with `href` set to the calendar's `link_url`, `target="_blank"`, and `rel="noopener"`
+#### Scenario: Event with URL is clickable
+- **WHEN** an event has a `url` field (from VEVENT.URL property)
+- **THEN** the event summary is rendered as an `<a>` tag with `href` set to the event URL, `target="_blank"`, and `rel="noopener"`
 
-#### Scenario: Events without calendar link_url are not wrapped
-- **WHEN** an event is from a calendar without a `link_url` attribute
-- **THEN** the event is not wrapped in an `<a>` tag
+#### Scenario: Event without URL is not clickable
+- **WHEN** an event has no `url` field
+- **THEN** the event summary is rendered as a plain `<span>` tag
 
 #### Scenario: All-day events display date only
 - **WHEN** an event is an all-day event
@@ -149,3 +144,30 @@ The calendar card SHALL display a list of upcoming events with date, time, summa
 #### Scenario: Timed events display date and time
 - **WHEN** an event has a specific time
 - **THEN** the event displays both the date and time
+
+### Requirement: Calendar plugin extracts per-event URLs
+The system SHALL extract the `URL` property from VEVENT components in both CalDAV and ICS sources. The extracted URL SHALL be stored in the event dict as `url`. If no `URL` property is present, the system SHALL attempt to construct a URL for known providers. If neither is possible, `url` SHALL be `None`.
+
+#### Scenario: CalDAV event with URL property
+- **WHEN** a CalDAV event has a `URL` property
+- **THEN** the event dict includes `url` set to the URL string
+
+#### Scenario: CalDAV event without URL property on Nextcloud
+- **WHEN** a CalDAV event has no `URL` property and the calendar URL contains a Nextcloud path pattern (`/dav/calendars/` or `/remote.php/dav/`)
+- **THEN** the event dict includes `url` set to `https://<host>/apps/calendar/object/<uid>`
+
+#### Scenario: CalDAV event without URL property on non-Nextcloud
+- **WHEN** a CalDAV event has no `URL` property and the calendar URL is not Nextcloud
+- **THEN** the event dict includes `url` set to `None`
+
+#### Scenario: CalDAV event with URL property on Nextcloud
+- **WHEN** a CalDAV event has a `URL` property and the calendar URL is Nextcloud
+- **THEN** the event dict includes `url` set to the VEVENT `URL` property (not the constructed URL)
+
+#### Scenario: ICS event with URL property
+- **WHEN** an ICS event has a `URL` property
+- **THEN** the event dict includes `url` set to the URL string
+
+#### Scenario: ICS event without URL property
+- **WHEN** an ICS event has no `URL` property
+- **THEN** the event dict includes `url` set to `None`

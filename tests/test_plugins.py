@@ -1418,8 +1418,7 @@ class TestCalendarPlugin:  # pylint: disable=protected-access
                     max_events=5,
                     calendars=[{
                         "url": "https://caldav.example.com/cal1",
-                        "name": "Test Cal",
-                        "link_url": "https://example.com/cal"
+                        "name": "Test Cal"
                     }]
                 )
             }]
@@ -1517,7 +1516,7 @@ class TestCalendarPlugin:  # pylint: disable=protected-access
         assert inst2 is not None
         assert inst1._card_id != inst2._card_id  # pylint: disable=protected-access
 
-    def test_calendar_valid_config_with_link_url(self):
+    def test_calendar_rejects_link_url(self):
         config = {
             "page_title": "Test",
             "page_header": "Test",
@@ -1536,34 +1535,14 @@ class TestCalendarPlugin:  # pylint: disable=protected-access
                 )
             }]
         }
-        validate_config(config)
-
-    def test_calendar_invalid_link_url_type(self):
-        config = {
-            "page_title": "Test",
-            "page_header": "Test",
-            "language": "en",
-            "user_info": {"short_name": "A", "long_name": "B"},
-            "columns": 3,
-            "cards": [{
-                "title": "Calendar",
-                "plugin": "calendar",
-                "options": self._valid_options(
-                    calendars=[{
-                        "url": "https://caldav.example.com/cal1",
-                        "name": "Cal",
-                        "link_url": 123
-                    }]
-                )
-            }]
-        }
         try:
             validate_config(config)
             assert False, "Should have raised ConfigError"
         except ConfigError as e:
             assert "link_url" in str(e)
+            assert "no longer supported" in str(e)
 
-    def test_render_event_with_calendar_link_url(self, tmp_path):
+    def test_render_event_with_url(self, tmp_path):
         db = Database(tmp_path / "test.db")
         CalendarPlugin.init_schema(db)
         options = self._valid_options()
@@ -1574,19 +1553,19 @@ class TestCalendarPlugin:  # pylint: disable=protected-access
             "summary": "Event",
             "start": "2026-06-10T14:00:00",
             "is_allday": False,
-            "calendar_link_url": "https://example.com/cal"
+            "url": "https://example.com/event/123"
         }]
         db.execute(
             "INSERT INTO calendar_events (card_id, events) VALUES (?, ?)",
             (plugin._card_id, json.dumps(events)),
         )
         result = plugin.render(options)
-        assert '<a href="https://example.com/cal"' in result
+        assert 'href="https://example.com/event/123"' in result
         assert 'target="_blank"' in result
         assert "Event" in result
         db.close()
 
-    def test_render_event_without_calendar_link_url(self, tmp_path):
+    def test_render_event_without_url(self, tmp_path):
         db = Database(tmp_path / "test.db")
         CalendarPlugin.init_schema(db)
         options = self._valid_options()
@@ -1605,6 +1584,62 @@ class TestCalendarPlugin:  # pylint: disable=protected-access
         result = plugin.render(options)
         assert "<a " not in result
         assert "Event" in result
+        db.close()
+
+    def test_is_nextcloud_with_dav_calendars(self):
+        assert CalendarPlugin._is_nextcloud("https://cloud.example.com/dav/calendars/user/cal1") is True
+
+    def test_is_nextcloud_with_remote_php(self):
+        assert CalendarPlugin._is_nextcloud("https://cloud.example.com/remote.php/dav/calendars/user/cal1") is True
+
+    def test_is_nextcloud_with_non_nextcloud(self):
+        assert CalendarPlugin._is_nextcloud("https://caldav.example.com/user/cal1") is False
+
+    def test_is_nextcloud_with_ics_url(self):
+        assert CalendarPlugin._is_nextcloud("https://example.com/holidays.ics") is False
+
+    def test_build_nextcloud_event_url(self):
+        url = CalendarPlugin._build_nextcloud_event_url(
+            "https://cloud.example.com/dav/calendars/user/cal1",
+            "abc123@google.com"
+        )
+        assert url == "https://cloud.example.com/apps/calendar/object/abc123@google.com"
+
+    def test_build_nextcloud_event_url_with_remote_php(self):
+        url = CalendarPlugin._build_nextcloud_event_url(
+            "https://cloud.example.com/remote.php/dav",
+            "event-456"
+        )
+        assert url == "https://cloud.example.com/apps/calendar/object/event-456"
+
+    def test_caldav_event_nextcloud_constructs_url(self, tmp_path):
+        db = Database(tmp_path / "test.db")
+        CalendarPlugin.init_schema(db)
+        options = self._valid_options(
+            calendars=[{
+                "url": "https://cloud.example.com/dav/calendars/user/cal1",
+                "name": "Nextcloud",
+                "auth_type": "basic",
+                "username": "user",
+                "password": "pass"
+            }]
+        )
+        plugin = CalendarPlugin()
+        plugin._database = db
+        plugin._card_id = plugin._compute_card_id(options)
+        events = [{
+            "summary": "Nextcloud Event",
+            "start": "2026-06-10T14:00:00",
+            "is_allday": False,
+            "url": "https://cloud.example.com/apps/calendar/event/uid-789"
+        }]
+        db.execute(
+            "INSERT INTO calendar_events (card_id, events) VALUES (?, ?)",
+            (plugin._card_id, json.dumps(events)),
+        )
+        result = plugin.render(options)
+        assert 'href="https://cloud.example.com/apps/calendar/event/uid-789"' in result
+        assert "Nextcloud Event" in result
         db.close()
 
 

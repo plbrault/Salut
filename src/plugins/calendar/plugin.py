@@ -4,6 +4,7 @@ import re
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from urllib.parse import urlparse
 
 import caldav
 import requests
@@ -83,8 +84,11 @@ class CalendarPlugin(Plugin):
                     f"{prefix}.color must be a hex color string (e.g., '#3b82f6')."
                 )
         link_url = cal.get("link_url")
-        if link_url is not None and not isinstance(link_url, str):
-            raise ConfigError(f"{prefix}.link_url must be a string.")
+        if link_url is not None:
+            raise ConfigError(
+                f"{prefix}.link_url is no longer supported. "
+                "Event URLs are now extracted automatically from the calendar."
+            )
         cal_type = cal.get("type", "caldav")
         if cal_type not in ("caldav", "ics"):
             raise ConfigError(f"{prefix}.type must be 'caldav' or 'ics'.")
@@ -219,13 +223,30 @@ class CalendarPlugin(Plugin):
             return caldav.DAVClient(url=url, username=username, password=password)
         return caldav.DAVClient(url=url)
 
+    @staticmethod
+    def _is_nextcloud(cal_url):
+        return "/dav/calendars/" in cal_url or "/remote.php/dav/" in cal_url
+
+    @staticmethod
+    def _build_nextcloud_event_url(cal_url, uid):
+        parsed = urlparse(cal_url)
+        return f"{parsed.scheme}://{parsed.netloc}/apps/calendar/object/{uid}"
+
     def _parse_caldav_events(self, events, cal_config):
         result = []
+        cal_url = cal_config.get("url", "")
+        is_nc = self._is_nextcloud(cal_url)
         for event in events:
             try:
                 vevent = event.vobject_instance.vevent
                 summary = str(vevent.summary.value) if hasattr(vevent, 'summary') else ""
                 dtstart = vevent.dtstart.value if hasattr(vevent, 'dtstart') else None
+                url = str(vevent.url.value) if hasattr(vevent, 'url') else None
+
+                if url is None and is_nc:
+                    uid = str(vevent.uid.value) if hasattr(vevent, 'uid') else None
+                    if uid:
+                        url = self._build_nextcloud_event_url(cal_url, uid)
 
                 is_allday = isinstance(dtstart, datetime) is False if dtstart else True
                 start_str = dtstart.isoformat() if dtstart else ""
@@ -236,7 +257,7 @@ class CalendarPlugin(Plugin):
                     "is_allday": is_allday,
                     "calendar_name": cal_config["name"],
                     "calendar_color": cal_config.get("color"),
-                    "calendar_link_url": cal_config.get("link_url"),
+                    "url": url,
                 })
             except (AttributeError, ValueError) as e:
                 self._logger.warning("Failed to parse CalDAV event: %s", e)
@@ -244,7 +265,7 @@ class CalendarPlugin(Plugin):
         self._logger.info("Got %d events from CalDAV calendar", len(result))
         return result
 
-    def _parse_ics_events(self, cal, start, end, cal_config):
+    def _parse_ics_events(self, cal, start, end, cal_config):  # pylint: disable=too-many-locals
         result = []
         for component in cal.walk():
             if component.name != "VEVENT":
@@ -252,6 +273,7 @@ class CalendarPlugin(Plugin):
             try:
                 summary = str(component.get("SUMMARY", ""))
                 dtstart = component.get("DTSTART")
+                url = str(component.get("URL")) if component.get("URL") is not None else None
 
                 if dtstart is None:
                     continue
@@ -277,7 +299,7 @@ class CalendarPlugin(Plugin):
                     "is_allday": is_allday,
                     "calendar_name": cal_config["name"],
                     "calendar_color": cal_config.get("color"),
-                    "calendar_link_url": cal_config.get("link_url"),
+                    "url": url,
                 })
             except (AttributeError, ValueError) as e:
                 self._logger.warning("Failed to parse ICS event: %s", e)
