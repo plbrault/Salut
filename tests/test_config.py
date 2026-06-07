@@ -164,3 +164,32 @@ class TestValidateColumns:
     def test_missing_card_plugin(self):
         with pytest.raises(ConfigError, match="plugin is required"):
             validate_config(_make_config(cards=[{"title": "A"}]))
+
+    def test_valid_column(self):
+        validate_config(_make_config(columns=3, cards=[
+            {"title": "A", "plugin": "html", "column": 2}
+        ]))
+
+    def test_invalid_column_type(self):
+        with pytest.raises(ConfigError, match="column must be a positive integer"):
+            validate_config(_make_config(cards=[
+                {"title": "A", "plugin": "html", "column": "abc"}
+            ]))
+
+    def test_zero_column(self):
+        with pytest.raises(ConfigError, match="column must be a positive integer"):
+            validate_config(_make_config(cards=[
+                {"title": "A", "plugin": "html", "column": 0}
+            ]))
+
+    def test_column_exceeds_columns(self):
+        with pytest.raises(ConfigError, match="column.*exceeds total columns"):
+            validate_config(_make_config(columns=2, cards=[
+                {"title": "A", "plugin": "html", "column": 3}
+            ]))
+
+    def test_column_plus_colspan_exceeds_columns(self):
+        with pytest.raises(ConfigError, match="column.*colspan.*exceeds total columns"):
+            validate_config(_make_config(columns=3, cards=[
+                {"title": "A", "plugin": "html", "column": 2, "colspan": 3}
+            ]))

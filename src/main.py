@@ -85,6 +85,7 @@ def _render_cards(cards):
         {
             "title": card.get("title", ""),
             "colspan": card.get("colspan", 1),
+            "column": card.get("column"),
             "content": render_card(card, instances),
             "css_class": f"{card['plugin']}-card" if card.get("plugin") else "",
         }

@@ -85,6 +85,11 @@ Salut is configured via a YAML file (`config.yml` or `starter.yml`). The `config
 - **Type:** integer (optional, default: 1)
 - **Description:** Number of columns this card spans
 
+#### cards[].column
+
+- **Type:** integer (optional)
+- **Description:** Force this card into a specific column (1-indexed). When set, the card is placed after all preceding cards in config order, then positioned at the bottom of the specified column. When omitted, the greedy column packing algorithm is used. Must be between 1 and the total `columns` value, and `column + colspan - 1` must not exceed `columns`.
+
 ## Secrets
 
 `secrets.yml` is an optional file for storing sensitive values like passwords and tokens. Reference them in your config using `${secrets.key}` syntax:

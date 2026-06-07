@@ -54,7 +54,7 @@ The system SHALL support a `colspan` field on cards to span multiple columns.
 - **THEN** the card occupies 1 column (default)
 
 ### Requirement: Card config schema
-The system SHALL accept a flat `cards` list at the top level, with each card having `title`, `plugin`, `options`, and optional `colspan` fields.
+The system SHALL accept a flat `cards` list at the top level, with each card having `title`, `plugin`, `options`, and optional `colspan` and `column` fields.
 
 #### Scenario: Valid card config
 - **WHEN** a card has `title` (string), `plugin` (string), and `options` (dict)
@@ -67,6 +67,14 @@ The system SHALL accept a flat `cards` list at the top level, with each card hav
 #### Scenario: Card without colspan
 - **WHEN** a card has no `colspan` field
 - **THEN** the card spans 1 column (default)
+
+#### Scenario: Card with column
+- **WHEN** a card has `column` (integer)
+- **THEN** the card is placed in the specified column
+
+#### Scenario: Card without column
+- **WHEN** a card has no `column` field
+- **THEN** the card is placed using the greedy column packing algorithm
 
 #### Scenario: Missing card title
 - **WHEN** a card has no `title` field
