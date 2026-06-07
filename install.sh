@@ -95,7 +95,10 @@ systemctl --user daemon-reload
 systemctl --user enable "$SERVICE_NAME"
 systemctl --user start "$SERVICE_NAME"
 
-loginctl enable-linger "$USER"
+if ! loginctl enable-linger "$USER" 2>/dev/null; then
+    echo "Warning: Could not enable linger. The service may not start at boot."
+    echo "  Try running: loginctl enable-linger $USER"
+fi
 
 echo ""
 echo "Salut is installed and running!"
