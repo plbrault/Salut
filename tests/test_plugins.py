@@ -14,6 +14,7 @@ from src.plugins.weather import WeatherPlugin
 from src.plugins.weather.plugin import WMO_ICONS
 from src.plugins.calendar import CalendarPlugin
 from src.plugins.xkcd import XkcdPlugin
+from src.plugins.image import ImagePlugin
 from src.database import Database
 from src.config import validate_config, ConfigError
 from src.i18n import _load_translations
@@ -1711,3 +1712,163 @@ class TestXkcdPlugin:  # pylint: disable=protected-access
 
     def test_xkcd_card_style_rules_returns_dict(self):
         assert isinstance(XkcdPlugin.card_style_rules(), dict)
+
+
+class TestImagePlugin:  # pylint: disable=protected-access
+    def test_load_image_plugin(self):
+        cls = load_plugin_class("image")
+        assert cls is ImagePlugin
+
+    def test_image_is_subclass_of_plugin(self):
+        assert issubclass(ImagePlugin, Plugin)
+
+    def test_validate_options_requires_options(self):
+        try:
+            ImagePlugin.validate_options(None, 0, "test.yml")
+            assert False, "Should have raised ConfigError"
+        except ConfigError:
+            pass
+
+    def test_validate_options_requires_provider_type(self):
+        try:
+            ImagePlugin.validate_options({"url": "http://example.com"}, 0, "test.yml")
+            assert False, "Should have raised ConfigError"
+        except ConfigError as e:
+            assert "provider_type" in str(e)
+
+    def test_validate_options_rejects_invalid_provider_type(self):
+        try:
+            ImagePlugin.validate_options(
+                {"provider_type": "invalid", "url": "http://example.com"}, 0, "test.yml"
+            )
+            assert False, "Should have raised ConfigError"
+        except ConfigError as e:
+            assert "provider_type" in str(e)
+
+    def test_validate_options_requires_url(self):
+        try:
+            ImagePlugin.validate_options({"provider_type": "rss"}, 0, "test.yml")
+            assert False, "Should have raised ConfigError"
+        except ConfigError as e:
+            assert "url" in str(e)
+
+    def test_validate_options_accepts_valid_rss(self):
+        ImagePlugin.validate_options(
+            {"provider_type": "rss", "url": "http://example.com/feed"}, 0, "test.yml"
+        )
+
+    def test_validate_options_accepts_valid_rest(self):
+        ImagePlugin.validate_options(
+            {"provider_type": "rest", "url": "http://example.com/api"}, 0, "test.yml"
+        )
+
+    def test_validate_options_accepts_valid_file(self):
+        ImagePlugin.validate_options(
+            {"provider_type": "file", "url": "image.png"}, 0, "test.yml"
+        )
+
+    def test_validate_options_accepts_optional_schedule(self):
+        ImagePlugin.validate_options(
+            {"provider_type": "rss", "url": "http://example.com/feed", "schedule": "0 9 * * *"},
+            0, "test.yml",
+        )
+
+    def test_validate_options_rejects_invalid_schedule(self):
+        try:
+            ImagePlugin.validate_options(
+                {"provider_type": "rss", "url": "http://example.com/feed", "schedule": "invalid"},
+                0, "test.yml",
+            )
+            assert False, "Should have raised ConfigError"
+        except ConfigError as e:
+            assert "cron" in str(e)
+
+    def test_init_schema_creates_table(self, tmp_path):
+        db = Database(tmp_path / "test.db")
+        ImagePlugin.init_schema(db)
+        tables = db.fetch_all("SELECT name FROM sqlite_master WHERE type='table'")
+        table_names = [t["name"] for t in tables]
+        assert "image_items" in table_names
+        db.close()
+
+    def test_get_image_dimensions_returns_none_for_invalid(self):
+        assert ImagePlugin._get_image_dimensions(b"not an image") == (None, None)
+
+    def test_get_image_dimensions_parses_png(self):
+        width, height = 320, 240
+        ihdr_data = struct.pack('>IIBBBBB', width, height, 8, 2, 0, 0, 0)
+        ihdr_chunk = b'IHDR' + ihdr_data
+        png_header = b'\x89PNG\r\n\x1a\n' + struct.pack('>I', len(ihdr_data)) + ihdr_chunk
+        w, h = ImagePlugin._get_image_dimensions(png_header)
+        assert w == width
+        assert h == height
+
+    def test_get_image_dimensions_parses_jpeg(self):
+        width, height = 640, 480
+        sof_header = b'\xff\xd8\xff\xe0' + b'\x00\x10' + b'\x00' * 14
+        sof_data = b'\xff\xc0\x00\x11\x08' + struct.pack('>HH', height, width) + b'\x00' * 6
+        jpeg_data = sof_header + sof_data
+        w, h = ImagePlugin._get_image_dimensions(jpeg_data)
+        assert w == width
+        assert h == height
+
+    def test_extract_rss_image_from_media_thumbnail(self):
+        entry = Mock()
+        entry.media_thumbnail = [{"url": "http://example.com/thumb.jpg"}]
+        entry.media_content = None
+        entry.enclosures = None
+        del entry.content
+        del entry.summary
+        assert ImagePlugin._extract_rss_image(entry) == "http://example.com/thumb.jpg"
+
+    def test_extract_rss_image_from_media_content(self):
+        entry = Mock()
+        entry.media_thumbnail = None
+        entry.media_content = [{"medium": "image", "url": "http://example.com/media.png"}]
+        entry.enclosures = None
+        del entry.content
+        del entry.summary
+        assert ImagePlugin._extract_rss_image(entry) == "http://example.com/media.png"
+
+    def test_extract_rss_image_from_enclosure(self):
+        entry = Mock()
+        entry.media_thumbnail = None
+        entry.media_content = None
+        entry.enclosures = [{"type": "image/jpeg", "href": "http://example.com/enc.jpg"}]
+        del entry.content
+        del entry.summary
+        assert ImagePlugin._extract_rss_image(entry) == "http://example.com/enc.jpg"
+
+    def test_extract_rss_image_from_img_tag(self):
+        entry = Mock()
+        entry.media_thumbnail = None
+        entry.media_content = None
+        entry.enclosures = None
+        entry.content = [{"value": '<p>Text</p><img src="http://example.com/content.png"></p>'}]
+        entry.summary = None
+        assert ImagePlugin._extract_rss_image(entry) == "http://example.com/content.png"
+
+    def test_extract_img_tag_from_xml(self):
+        html = '<div><img src="http://example.com/test.jpg"></div>'
+        assert ImagePlugin._extract_img_tag(html) == "http://example.com/test.jpg"
+
+    def test_extract_img_tag_from_malformed_html(self):
+        html = '<img src="http://example.com/test.jpg">'
+        assert ImagePlugin._extract_img_tag(html) == "http://example.com/test.jpg"
+
+    def test_find_image_in_value_string(self):
+        assert ImagePlugin._find_image_in_value("http://example.com/photo.png") == "http://example.com/photo.png"
+
+    def test_find_image_in_value_dict(self):
+        data = {"image": "http://example.com/photo.jpg"}
+        assert ImagePlugin._find_image_in_value(data) == "http://example.com/photo.jpg"
+
+    def test_find_image_in_value_nested(self):
+        data = {"data": {"items": [{"url": "http://example.com/pic.png"}]}}
+        assert ImagePlugin._find_image_in_value(data) == "http://example.com/pic.png"
+
+    def test_find_image_in_value_no_match(self):
+        assert ImagePlugin._find_image_in_value("no image here") == ""
+
+    def test_image_card_style_rules_returns_dict(self):
+        assert isinstance(ImagePlugin.card_style_rules(), dict)

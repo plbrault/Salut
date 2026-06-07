@@ -73,6 +73,7 @@ Salut is configured via a YAML file (`config.yml` or `starter.yml`). The `config
 - **Type:** object (optional)
 - **Description:** Plugin-specific options. See plugin documentation for available options:
   - [HTML](plugins/html.md)
+  - [Image](plugins/image.md)
   - [RSS](plugins/rss.md)
   - [Search](plugins/search.md)
   - [Weather](plugins/weather.md)
