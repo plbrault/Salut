@@ -13,6 +13,9 @@ This project is **spec-driven**. All features must be specified with OpenSpec be
    - `/opsx-apply` — Implement tasks from an existing change
    - `/opsx-archive` — Archive a completed change
 2. **Implement** — Follow the tasks defined in the change's `tasks.md`
+
+**NEVER start implementing code changes unless the user has explicitly asked you to** (e.g. with `/opsx-apply`). Planning artifacts (proposal, design, specs, tasks) are the output of the specify phase. Wait for the user to confirm before moving to implementation.
+
 3. **Verify** — Run `pipenv run pytest` and `pipenv run pylint`
 4. **Sync** — Keep OpenSpec artifacts (proposal, design, specs, tasks) in sync with code changes
 

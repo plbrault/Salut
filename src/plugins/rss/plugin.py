@@ -125,8 +125,10 @@ class RssPlugin(Plugin):
 
             all_items = [item for items in results for item in items]
 
+            precedence = {url: idx for idx, url in enumerate(feeds)}
+
             all_items.sort(key=lambda x: (x["published"] != "", x["published"]), reverse=True)
-            all_items = self._deduplicate_items(all_items)
+            all_items = self._deduplicate_items(all_items, precedence)
             all_items = all_items[:max_items]
             self._logger.info("Total items after sort/dedup/truncate: %d", len(all_items))
 
@@ -275,12 +277,33 @@ class RssPlugin(Plugin):
         )
 
     @staticmethod
-    def _deduplicate_items(items):
+    def _deduplicate_items(items, precedence=None):
         seen_links = set()
-        deduplicated = []
+        link_deduped = []
         for item in items:
             link = item.get("link", "")
             if link not in seen_links:
                 seen_links.add(link)
-                deduplicated.append(item)
-        return deduplicated
+                link_deduped.append(item)
+
+        if precedence is None:
+            return link_deduped
+
+        seen_titles = {}
+        title_deduped = []
+        for item in link_deduped:
+            title = item.get("title", "").strip()
+            feed_url = item.get("feed_url", "")
+            if title in seen_titles:
+                prev_item = seen_titles[title]
+                prev_idx = precedence.get(prev_item.get("feed_url", ""), float("inf"))
+                curr_idx = precedence.get(feed_url, float("inf"))
+                if curr_idx < prev_idx:
+                    title_deduped.remove(prev_item)
+                    title_deduped.append(item)
+                    seen_titles[title] = item
+            else:
+                seen_titles[title] = item
+                title_deduped.append(item)
+
+        return title_deduped
