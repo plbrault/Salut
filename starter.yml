@@ -67,8 +67,11 @@ cards:
       schedule: "*/30 * * * *"
       time_window_days: 30
       max_events: 10
+  - title: XKCD
+    plugin: xkcd
+    options:
+      schedule: "0 9 * * *"
   - title: About
     plugin: html
     options:
       html: "<div class='flex flex-col gap-3'><p class='text-sm leading-relaxed' style='color: var(--text)'>This start page is powered by <a target='_blank' href='https://github.com/plbrault/Salut' style='color: var(--link)'>Salut</a>.</p><p class='text-xs leading-relaxed' style='color: var(--text-muted)'>Salut is developed by <a target='_blank' href='https://plbrault.com' style='color: var(--link)'>Pier-Luc Brault</a> and is published under the <a target='_blank' href='https://www.gnu.org/licenses/agpl-3.0.html' style='color: var(--link)'>AGPLv3 license</a>.</p></div>"
-

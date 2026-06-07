@@ -1,0 +1,9 @@
+<div class="flex flex-col gap-2">
+    <a href="{{ comic_url }}" target="_blank" rel="noopener" class="block">
+        <img src="{{ image_url }}" alt="{{ alt_text }}" title="{{ alt_text }}" class="w-full rounded-lg object-cover"{% if img_width %} width="{{ img_width }}"{% endif %}{% if img_height %} height="{{ img_height }}"{% endif %}>
+    </a>
+    <div class="flex flex-col gap-1">
+        <span class="text-sm font-medium" style="color: var(--text)">{{ title }}</span>
+        <span class="text-xs" style="color: var(--text-muted)">{{ alt_text }} <a href="{{ explain_url }}" target="_blank" rel="noopener" class="underline" style="color: var(--text-muted)">Explain XKCD</a></span>
+    </div>
+</div>
