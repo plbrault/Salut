@@ -21,11 +21,14 @@ Each item in `calendars` is an object with:
 | `name` | string | yes | - | Display name for the calendar |
 | `type` | string | no | `"caldav"` | Calendar type: `"caldav"` or `"ics"` |
 | `color` | string | no | - | Hex color for the calendar (e.g., `"#3b82f6"`) |
-| `link_url` | string | no | - | URL to open when an event from this calendar is clicked |
 | `auth_type` | string | no | `"none"` | Authentication: `"none"`, `"basic"`, or `"bearer"` |
 | `username` | string | no | - | Username for basic auth |
 | `password` | string | no | - | Password for basic auth (use `${secrets.key}` syntax) |
 | `bearer_token` | string | no | - | Bearer token for auth (required when `auth_type: bearer`) |
+
+### Per-Event URLs
+
+Events are automatically linked to their calendar URL when the calendar server provides a `URL` property in the event data (RFC 5545). If a `URL` property is present, the event summary becomes a clickable link that opens in a new tab. If no `URL` property is provided, the event is displayed as plain text.
 
 ## Example
 
@@ -45,7 +48,6 @@ cards:
         - url: https://example.com/holidays.ics
           name: Holidays
           type: ics
-          link_url: https://example.com/holidays
       schedule: "0 */1 * * *"
       time_window_days: 14
       max_events: 15
