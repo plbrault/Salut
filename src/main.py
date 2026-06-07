@@ -10,7 +10,7 @@ from fastapi import FastAPI, Request, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from src.config import load_config, load_secrets
+from src.config import ConfigError, load_config, load_secrets
 from src.database import Database
 from src.i18n import load_global_i18n
 from src.template import resolve_all_config_vars
@@ -38,7 +38,19 @@ async def lifespan(application):
     db.delete()
     db = Database()
     application.state.database = db
-    application.state.config = load_config()
+    application.state.config_error = None
+
+    try:
+        application.state.config = load_config()
+    except ConfigError as e:
+        application.state.config_error = e.message
+        application.state.config = {}
+        application.state.secrets = {}
+        application.state.i18n = {}
+        application.state.plugin_instances = {}
+        yield
+        return
+
     application.state.secrets = load_secrets()
 
     language = application.state.config.get("language", "en")
@@ -95,6 +107,13 @@ def _render_cards(cards):
 
 @app.get("/")
 def index(request: Request):
+    if app.state.config_error:
+        return templates.TemplateResponse(
+            request,
+            "error.html",
+            {"error": app.state.config_error},
+        )
+
     config = app.state.config
     secrets = app.state.secrets
     resolved_config = resolve_all_config_vars(config, secrets)
