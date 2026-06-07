@@ -58,11 +58,6 @@ cards:
       provider_type: rest
       url: "https://cataas.com/cat?width=400"
       footer_html: "Powered by <a href='https://cataas.com' target='_blank' rel='noopener' style='color: var(--link)'>CATAAS</a>"
-  - title: Work Chronicles
-    plugin: image
-    options:
-      provider_type: rss
-      url: "https://www.workchronicles.com/feed"
   - title: Upcoming Holidays
     plugin: calendar
     options:
@@ -78,6 +73,11 @@ cards:
     plugin: xkcd
     options:
       schedule: "0 9 * * *"
+  - title: Work Chronicles
+    plugin: image
+    options:
+      provider_type: rss
+      url: "https://www.workchronicles.com/feed"
   - title: About
     plugin: html
     options:
