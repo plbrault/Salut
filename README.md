@@ -55,7 +55,7 @@ PORT=9001 pipenv run app
 
 ### Permanent Installation (Linux)
 
-On Linux, run `./install.sh` to install as a systemd service.
+On Linux, run `./install.sh` to install as a systemd service. The script will ask what port to use, or you can specify it with `--port`.
 
 ## Development
 
