@@ -188,14 +188,8 @@ class CalendarPlugin(Plugin):
         try:
             self._logger.info("Fetching CalDAV calendar: %s", url)
             client = self._create_caldav_client(url, cal_config, auth_type)
-            principal = client.principal()
-            calendars = principal.calendars()
-
-            if not calendars:
-                self._logger.warning("No calendars found at %s", url)
-                return []
-
-            cal = calendars[0]
+            cal = caldav.Calendar(url=url, client=client)
+            # pylint: disable=deprecated-method
             events = cal.date_search(start, end)
             return self._parse_caldav_events(events, cal_config)
         except Exception as e:  # pylint: disable=broad-except
