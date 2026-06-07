@@ -138,7 +138,7 @@
     {% endif %}
     <div id="container">
         {% for card in cards %}
-        <div class="card {{ card.css_class }}" data-colspan="{{ card.colspan }}">
+        <div class="card {{ card.css_class }}" data-colspan="{{ card.colspan }}" data-column="{{ card.column if card.column is not none else '' }}">
             <h3 class="text-lg font-semibold mb-2">{{ card.title }}</h3>
             {{ card.content | safe }}
         </div>
@@ -206,17 +206,30 @@
                     var colspan = parseInt(card.getAttribute('data-colspan')) || 1;
                     if (colspan > numCols) colspan = numCols;
 
-                    // Find column span with minimum max height
-                    var bestCol = 0;
-                    var bestMaxH = Infinity;
-                    for (var c = 0; c <= numCols - colspan; c++) {
-                        var maxH = 0;
-                        for (var k = c; k < c + colspan; k++) {
-                            if (colHeights[k] > maxH) maxH = colHeights[k];
-                        }
-                        if (maxH < bestMaxH) {
-                            bestMaxH = maxH;
-                            bestCol = c;
+                    var forcedCol = parseInt(card.getAttribute('data-column'));
+                    var bestCol;
+                    var bestMaxH;
+
+                    if (!isNaN(forcedCol) && forcedCol >= 1 && forcedCol <= numCols) {
+                        // Forced column: 1-indexed to 0-indexed
+                        bestCol = forcedCol - 1;
+                        // Cap colspan so it doesn't exceed numCols
+                        if (bestCol + colspan > numCols) colspan = numCols - bestCol;
+                        // Place after existing cards in the forced column
+                        bestMaxH = colHeights[bestCol];
+                    } else {
+                        // Greedy: find column span with minimum max height
+                        bestCol = 0;
+                        bestMaxH = Infinity;
+                        for (var c = 0; c <= numCols - colspan; c++) {
+                            var maxH = 0;
+                            for (var k = c; k < c + colspan; k++) {
+                                if (colHeights[k] > maxH) maxH = colHeights[k];
+                            }
+                            if (maxH < bestMaxH) {
+                                bestMaxH = maxH;
+                                bestCol = c;
+                            }
                         }
                     }
 

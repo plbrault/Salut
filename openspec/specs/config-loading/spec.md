@@ -54,6 +54,26 @@ The system SHALL validate the parsed config has the required structure.
 - **WHEN** a card has no `plugin` field
 - **THEN** a validation error is raised indicating the plugin is required
 
+#### Scenario: Card with valid column
+- **WHEN** a card has `column: 2` and the config has `columns: 3`
+- **THEN** the config is accepted
+
+#### Scenario: Card with column exceeding total columns
+- **WHEN** a card has `column: 4` and the config has `columns: 3`
+- **THEN** a validation error is raised indicating column exceeds total columns
+
+#### Scenario: Card with column and colspan exceeding total columns
+- **WHEN** a card has `column: 2`, `colspan: 3`, and the config has `columns: 4`
+- **THEN** a validation error is raised indicating column + colspan exceeds total columns
+
+#### Scenario: Invalid column type
+- **WHEN** a card has `column` that is not an integer
+- **THEN** a validation error is raised indicating column must be an integer
+
+#### Scenario: Invalid column value
+- **WHEN** a card has `column: 0`
+- **THEN** a validation error is raised indicating column must be a positive integer
+
 ### Requirement: Page title is required
 The system SHALL require a `page_title` string field in the config.
 

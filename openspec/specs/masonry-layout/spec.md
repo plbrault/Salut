@@ -7,7 +7,7 @@ This capability handles the masonry-style column layout for the starter page. Ca
 ## Requirements
 
 ### Requirement: Greedy column packing
-The system SHALL place each card in the column span where the maximum current height is minimized, processing cards in config order.
+The system SHALL process cards in config order. For each card, if it has no `column` attribute, the system SHALL place it in the column span where the maximum current height is minimized. If a card has a `column` attribute, the system SHALL place it after all preceding cards have been positioned, then place it at the bottom of the specified column.
 
 #### Scenario: Short card fills gap next to tall card
 - **WHEN** a short card follows a tall card in config
@@ -20,6 +20,22 @@ The system SHALL place each card in the column span where the maximum current he
 #### Scenario: Config order preserved
 - **WHEN** card B comes after card A in config
 - **THEN** card B is placed after card A in the packing algorithm (never before)
+
+#### Scenario: Card with forced column
+- **WHEN** a card has `column: 2`
+- **THEN** the card is placed after all cards that precede it in config order have been placed, then positioned at the bottom of column 2
+
+#### Scenario: Forced column does not create priority
+- **WHEN** card B has `column: 1` and card A precedes card B in config but is not yet placed
+- **THEN** card A is placed first (respecting config order), then card B is placed in column 1 after card A
+
+#### Scenario: Card with forced column and colspan
+- **WHEN** a card has `column: 1` and `colspan: 2`
+- **THEN** the card starts at column 1 and spans columns 1-2, placed after existing cards in those columns
+
+#### Scenario: Forced column ignores greedy algorithm
+- **WHEN** a card has `column: 3` but columns 1 and 2 are shorter than column 3, and all preceding cards have been placed
+- **THEN** the card is placed in column 3 (not the shorter columns)
 
 ### Requirement: Responsive columns
 The system SHALL adapt the number of columns based on viewport width.

@@ -118,6 +118,13 @@ def _validate_card(card, card_idx, filename):
                 f"{filename}: cards[{card_idx}].colspan must be a positive integer."
             )
 
+    if "column" in card:
+        column = card["column"]
+        if not isinstance(column, int) or column < 1:
+            raise ConfigError(
+                f"{filename}: cards[{card_idx}].column must be a positive integer."
+            )
+
     plugin_class = load_plugin_class(card.get("plugin"))
     if plugin_class is not None:
         plugin_class.validate_options(card.get("options", {}), card_idx, filename)
@@ -135,6 +142,20 @@ def _validate_cards(config, filename):
 
     for card_idx, card in enumerate(cards):
         _validate_card(card, card_idx, filename)
+
+        if "column" in card:
+            column = card["column"]
+            if column > columns:
+                raise ConfigError(
+                    f"{filename}: cards[{card_idx}].column ({column}) "
+                    f"exceeds total columns ({columns})."
+                )
+            colspan = card.get("colspan", 1)
+            if column + colspan - 1 > columns:
+                raise ConfigError(
+                    f"{filename}: cards[{card_idx}].column ({column}) + "
+                    f"colspan ({colspan}) exceeds total columns ({columns})."
+                )
 
 
 def validate_config(config, filename="config"):
