@@ -66,46 +66,54 @@ The system SHALL treat the `url` option as a relative path under `/static/custom
 - **WHEN** `provider_type` is `file`
 - **THEN** the image links to `#` (no external source)
 
-### Requirement: Image cached server-side
-The system SHALL download the image to `cache/image/<card_id>/comic.<ext>` (one file per card). The old image SHALL be deleted before downloading the new one.
+### Requirement: Image cached server-side when schedule is provided
+When a `schedule` option is provided, the system SHALL download the image to `cache/image/<card_id>/comic.<ext>` (one file per card). The old image SHALL be deleted before downloading the new one. When no schedule is provided, the image SHALL NOT be cached.
 
-#### Scenario: Image cached on fetch
-- **WHEN** an image is successfully fetched from any provider
+#### Scenario: Image cached on fetch with schedule
+- **WHEN** an image is successfully fetched and a schedule is configured
 - **THEN** the image is saved to the local cache directory
 
 #### Scenario: Old image deleted on refresh
-- **WHEN** a new image is fetched
+- **WHEN** a new image is fetched with a schedule configured
 - **THEN** the previous cached image is deleted before the new one is saved
 
 #### Scenario: Cached image served in template
-- **WHEN** the image plugin renders
+- **WHEN** the image plugin renders with a schedule configured
 - **THEN** the image source points to the local cached path
 
+#### Scenario: No caching without schedule
+- **WHEN** no schedule is configured
+- **THEN** the image is not cached and the remote URL is used directly
+
 ### Requirement: Image dimensions extracted from file headers
-The system SHALL extract width and height from PNG/JPEG file headers using `struct.unpack` and store them in the database.
+When a `schedule` option is provided, the system SHALL extract width and height from PNG/JPEG file headers using `struct.unpack` and store them in the database. When no schedule is provided, dimensions are not extracted.
 
 #### Scenario: PNG dimensions extracted
-- **WHEN** the cached image is a PNG file
+- **WHEN** the cached image is a PNG file and a schedule is configured
 - **THEN** width and height are read from bytes 16-23 of the file
 
 #### Scenario: JPEG dimensions extracted
-- **WHEN** the cached image is a JPEG file
+- **WHEN** the cached image is a JPEG file and a schedule is configured
 - **THEN** width and height are read from the first SOF0 or SOF2 marker
 
 #### Scenario: Dimensions passed to template
-- **WHEN** the image plugin renders
+- **WHEN** the image plugin renders with a schedule configured
 - **THEN** the `<img>` tag includes `width` and `height` attributes
 
+#### Scenario: No dimensions without schedule
+- **WHEN** no schedule is configured
+- **THEN** no dimensions are extracted or passed to the template
+
 ### Requirement: Optional schedule
-The system SHALL accept an optional `schedule` option (cron expression). If absent, the image SHALL be fetched on every page load. If present, the image SHALL be fetched on setup and on the cron schedule.
+The system SHALL accept an optional `schedule` option (cron expression). If absent, the image SHALL be fetched on every page load without caching, using the remote URL directly with an `onload` handler for layout shift prevention. If present, the image SHALL be cached server-side and fetched on setup and on the cron schedule.
 
 #### Scenario: No schedule provided
 - **WHEN** `schedule` is not in options
-- **THEN** no cron job is registered, and the image is fetched in `render()` if the cache is empty
+- **THEN** no cron job is registered, the image is fetched on every page load, not cached, and the remote URL is passed directly to the template with an `onload` handler
 
 #### Scenario: Schedule provided
 - **WHEN** `schedule` is a valid cron expression
-- **THEN** the image is fetched on setup and refreshed on the cron schedule
+- **THEN** the image is cached server-side and fetched on setup and refreshed on the cron schedule
 
 ### Requirement: Optional footer_html
 The system SHALL accept an optional `footer_html` option and render it as raw HTML below the image.
