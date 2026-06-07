@@ -22,15 +22,15 @@
 ### Prerequisites
 
 * Git
-* Python 3.14+
+* Python 3.11+
 * [pipenv](https://pipenv.pypa.io/)
 
-### Installation
+### Initial Setup
 
 ```bash
-git clone https://github.com/plbrault/Salut.git
+git clone https://github.com/plbrault/salut.git
 cd salut
-pipenv install
+pipenv sync
 ```
 
 ### Configuration
@@ -52,6 +52,10 @@ PORT=9001 pipenv run app
 ```
 
 **Note:** The application uses an ephemeral SQLite database. It is recreated on each server start. All cached data (RSS feeds, weather, calendar events, etc.) is re-fetched automatically.
+
+### Permanent Installation (Linux)
+
+On Linux, run `./install.sh` to install as a systemd service. The script will ask what port to use, or you can specify it with `--port`.
 
 ## Development
 

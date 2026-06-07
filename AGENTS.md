@@ -18,7 +18,7 @@ This project is **spec-driven**. All features must be specified with OpenSpec be
 
 ## Tech Stack
 
-- Python 3.14 + FastAPI
+- Python + FastAPI
 - Jinja2 templating
 - HTMX (client-side interactivity)
 - Tailwind CSS (styling)

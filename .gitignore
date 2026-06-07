@@ -8,5 +8,6 @@ __pycache__/
 *.db-shm
 .env
 venv/
+.venv/
 cache/
 openspec/changes/
