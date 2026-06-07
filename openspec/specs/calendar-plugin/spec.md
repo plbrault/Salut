@@ -154,7 +154,7 @@ The system SHALL extract the `URL` property from VEVENT components in both CalDA
 
 #### Scenario: CalDAV event without URL property on Nextcloud
 - **WHEN** a CalDAV event has no `URL` property and the calendar URL contains a Nextcloud path pattern (`/dav/calendars/` or `/remote.php/dav/`)
-- **THEN** the event dict includes `url` set to `https://<host>/apps/calendar/event/<uid>`
+- **THEN** the event dict includes `url` set to `https://<host>/apps/calendar/object/<uid>`
 
 #### Scenario: CalDAV event without URL property on non-Nextcloud
 - **WHEN** a CalDAV event has no `URL` property and the calendar URL is not Nextcloud

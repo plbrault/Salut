@@ -31,7 +31,7 @@ Each item in `calendars` is an object with:
 Events are automatically linked when a URL is available. The plugin resolves event URLs in this order:
 
 1. **VEVENT.URL property** — If the calendar server provides a `URL` property in the event data (RFC 5545), it is used directly.
-2. **Nextcloud URL construction** — For Nextcloud CalDAV calendars (detected by URL patterns `/dav/calendars/` or `/remote.php/dav/`), the event URL is constructed as `https://<host>/apps/calendar/event/<uid>`.
+2. **Nextcloud URL construction** — For Nextcloud CalDAV calendars (detected by URL patterns `/dav/calendars/` or `/remote.php/dav/`), the event URL is constructed as `https://<host>/apps/calendar/object/<uid>`.
 3. **No link** — If neither source provides a URL, the event is displayed as plain text.
 
 ## Example

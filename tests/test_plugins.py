@@ -1603,14 +1603,14 @@ class TestCalendarPlugin:  # pylint: disable=protected-access
             "https://cloud.example.com/dav/calendars/user/cal1",
             "abc123@google.com"
         )
-        assert url == "https://cloud.example.com/apps/calendar/event/abc123@google.com"
+        assert url == "https://cloud.example.com/apps/calendar/object/abc123@google.com"
 
     def test_build_nextcloud_event_url_with_remote_php(self):
         url = CalendarPlugin._build_nextcloud_event_url(
             "https://cloud.example.com/remote.php/dav",
             "event-456"
         )
-        assert url == "https://cloud.example.com/apps/calendar/event/event-456"
+        assert url == "https://cloud.example.com/apps/calendar/object/event-456"
 
     def test_caldav_event_nextcloud_constructs_url(self, tmp_path):
         db = Database(tmp_path / "test.db")

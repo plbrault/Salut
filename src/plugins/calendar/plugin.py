@@ -230,7 +230,7 @@ class CalendarPlugin(Plugin):
     @staticmethod
     def _build_nextcloud_event_url(cal_url, uid):
         parsed = urlparse(cal_url)
-        return f"{parsed.scheme}://{parsed.netloc}/apps/calendar/event/{uid}"
+        return f"{parsed.scheme}://{parsed.netloc}/apps/calendar/object/{uid}"
 
     def _parse_caldav_events(self, events, cal_config):
         result = []
