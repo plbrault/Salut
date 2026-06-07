@@ -22,13 +22,13 @@
 ### Prerequisites
 
 * Git
-* Python 3.14+
+* Python 3.11+
 * [pipenv](https://pipenv.pypa.io/)
 
 ### Initial Setup
 
 ```bash
-git clone https://github.com/plbrault/Salut.git
+git clone https://github.com/plbrault/salut.git
 cd salut
 pipenv sync
 ```
