@@ -1,14 +1,11 @@
-import hashlib
-import json
 import struct
 from pathlib import Path
 
 import requests
 
 from src.config import ConfigError
+from src.image_cache import ImageCache
 from src.plugin import Plugin
-
-CACHE_DIR = Path(__file__).resolve().parent.parent.parent.parent / "cache" / "xkcd"
 
 
 class XkcdPlugin(Plugin):
@@ -68,7 +65,7 @@ class XkcdPlugin(Plugin):
     def setup(self, options, database, scheduler, logger):
         self._database = database
         self._logger = logger
-        self._card_id = self._compute_card_id(options)
+        self._card_id = ImageCache.compute_card_id(options)
 
         schedule = options.get("schedule", "0 9 * * *")
 
@@ -81,7 +78,7 @@ class XkcdPlugin(Plugin):
         )
 
     def render(self, options):
-        card_id = self._compute_card_id(options)
+        card_id = ImageCache.compute_card_id(options)
         row = self._database.fetch_one(
             "SELECT * FROM xkcd_comics WHERE card_id = ?",
             (card_id,),
@@ -117,8 +114,16 @@ class XkcdPlugin(Plugin):
             comic_url = f"https://xkcd.com/{comic_num}/"
             explain_url = f"https://www.explainxkcd.com/wiki/index.php/{comic_num}"
 
+            cache = ImageCache("xkcd", self._card_id, self._logger)
+            local_url = cache.download(img_url, filename="comic.jpg")
+            if not local_url:
+                self._logger.warning("Failed to download XKCD image for card %s, keeping previous", self._card_id)
+                return
+
+            data = (cache.directory / "comic.jpg").read_bytes()
+            img_width, img_height = self._get_image_dimensions(data)
+
             self._delete_previous_comic()
-            img_width, img_height = self._download_image(img_url)
             self._store_comic(
                 card_id=self._card_id,
                 comic_num=comic_num,
@@ -140,28 +145,6 @@ class XkcdPlugin(Plugin):
             "DELETE FROM xkcd_comics WHERE card_id = ?",
             (self._card_id,),
         )
-        card_cache_dir = CACHE_DIR / self._card_id
-        if card_cache_dir.exists():
-            for f in card_cache_dir.iterdir():
-                f.unlink()
-
-    def _download_image(self, img_url):
-        try:
-            card_cache_dir = CACHE_DIR / self._card_id
-            card_cache_dir.mkdir(parents=True, exist_ok=True)
-
-            self._logger.info("Downloading XKCD image: %s", img_url)
-            response = requests.get(img_url, timeout=10)
-            response.raise_for_status()
-
-            ext = self._get_extension(img_url, response.headers.get("content-type", ""))
-            filepath = card_cache_dir / f"comic{ext}"
-            filepath.write_bytes(response.content)
-            self._logger.info("Saved XKCD image to %s", filepath)
-            return self._get_image_dimensions(response.content)
-        except Exception as e:  # pylint: disable=broad-except
-            self._logger.warning("Failed to download XKCD image: %s — %s", img_url, e)
-            return None, None
 
     def _store_comic(self, **kwargs):
         self._database.execute(
@@ -175,29 +158,6 @@ class XkcdPlugin(Plugin):
             """,
             kwargs,
         )
-
-    @staticmethod
-    def _compute_card_id(options):
-        raw = json.dumps(options, sort_keys=True, default=str)
-        return hashlib.sha256(raw.encode()).hexdigest()[:16]
-
-    @staticmethod
-    def _get_extension(url, content_type):
-        content_type_map = {
-            "jpeg": ".jpg",
-            "jpg": ".jpg",
-            "png": ".png",
-            "gif": ".gif",
-            "webp": ".webp",
-        }
-        for key, ext in content_type_map.items():
-            if key in content_type:
-                return ext
-        if url.endswith(".gif"):
-            return ".gif"
-        if url.endswith(".png"):
-            return ".png"
-        return ".jpg"
 
     @staticmethod
     def _get_image_dimensions(data):

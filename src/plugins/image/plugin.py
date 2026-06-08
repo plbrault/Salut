@@ -1,4 +1,3 @@
-import hashlib
 import json
 import re
 import struct
@@ -9,9 +8,9 @@ import feedparser
 import requests
 
 from src.config import ConfigError
+from src.image_cache import ImageCache
 from src.plugin import Plugin
 
-CACHE_DIR = Path(__file__).resolve().parent.parent.parent.parent / "cache" / "image"
 STATIC_CUSTOM_DIR = Path(__file__).resolve().parent.parent.parent.parent / "static" / "custom"
 
 IMAGE_URL_RE = re.compile(
@@ -84,7 +83,7 @@ class ImagePlugin(Plugin):
     def setup(self, options, database, scheduler, logger):
         self._database = database
         self._logger = logger
-        self._card_id = self._compute_card_id(options)
+        self._card_id = ImageCache.compute_card_id(options)
 
         schedule = options.get("schedule")
 
@@ -99,7 +98,7 @@ class ImagePlugin(Plugin):
             )
 
     def render(self, options):
-        card_id = self._compute_card_id(options)
+        card_id = ImageCache.compute_card_id(options)
 
         if not options.get("schedule"):
             row = self._fetch_image(options)
@@ -151,9 +150,16 @@ class ImagePlugin(Plugin):
 
             schedule = options.get("schedule")
             if schedule:
+                cache = ImageCache("image", self._card_id, self._logger)
+                local_url = cache.download(img_url, filename="comic.jpg")
+                if not local_url:
+                    self._logger.warning("Failed to download image for card %s, keeping previous", self._card_id)
+                    return None
+
+                data = (cache.directory / "comic.jpg").read_bytes()
+                img_width, img_height = self._get_image_dimensions(data)
+
                 self._delete_previous_image()
-                img_width, img_height, ext = self._download_image(img_url)
-                local_url = f"/cache/image/{self._card_id}/comic{ext}"
                 self._store_image(
                     card_id=self._card_id,
                     source_url=source_link,
@@ -265,7 +271,7 @@ class ImagePlugin(Plugin):
             img_url = self._find_image_in_value(data)
             if img_url:
                 return img_url, request_url
-        except (json.JSONDecodeError, RecursionError):
+        except Exception:  # pylint: disable=broad-except
             pass
         return "", ""
 
@@ -314,35 +320,6 @@ class ImagePlugin(Plugin):
             "DELETE FROM image_items WHERE card_id = ?",
             (self._card_id,),
         )
-        card_cache_dir = CACHE_DIR / self._card_id
-        if card_cache_dir.exists():
-            for f in card_cache_dir.iterdir():
-                f.unlink()
-
-    def _download_image(self, img_url):
-        try:
-            card_cache_dir = CACHE_DIR / self._card_id
-            card_cache_dir.mkdir(parents=True, exist_ok=True)
-
-            if img_url.startswith("/") or img_url.startswith("file://"):
-                path = img_url.replace("file://", "")
-                data = Path(path).read_bytes()
-                ext = Path(path).suffix or ".jpg"
-            else:
-                self._logger.info("Downloading image: %s", img_url)
-                response = requests.get(img_url, timeout=10)
-                response.raise_for_status()
-                data = response.content
-                ext = self._get_extension(img_url, response.headers.get("content-type", ""))
-
-            filepath = card_cache_dir / f"comic{ext}"
-            filepath.write_bytes(data)
-            self._logger.info("Saved image to %s", filepath)
-            width, height = self._get_image_dimensions(data)
-            return width, height, ext
-        except Exception as e:  # pylint: disable=broad-except
-            self._logger.warning("Failed to download image: %s — %s", img_url, e)
-            return None, None, ".jpg"
 
     def _store_image(self, **kwargs):
         self._database.execute(
@@ -353,29 +330,6 @@ class ImagePlugin(Plugin):
             """,
             kwargs,
         )
-
-    @staticmethod
-    def _compute_card_id(options):
-        raw = json.dumps(options, sort_keys=True, default=str)
-        return hashlib.sha256(raw.encode()).hexdigest()[:16]
-
-    @staticmethod
-    def _get_extension(url, content_type):
-        content_type_map = {
-            "jpeg": ".jpg",
-            "jpg": ".jpg",
-            "png": ".png",
-            "gif": ".gif",
-            "webp": ".webp",
-        }
-        for key, ext in content_type_map.items():
-            if key in content_type:
-                return ext
-        if url.endswith(".gif"):
-            return ".gif"
-        if url.endswith(".png"):
-            return ".png"
-        return ".jpg"
 
     @staticmethod
     def _get_image_dimensions(data):
