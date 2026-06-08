@@ -90,7 +90,11 @@ The system SHALL provide an `RssPlugin` class extending `Plugin` that fetches RS
 
 #### Scenario: RSS plugin fetches feeds atomically
 - **WHEN** `RssPlugin._fetch_feeds()` is called
-- **THEN** it wraps the DELETE and INSERT operations in a database transaction to prevent race conditions
+- **THEN** it first performs all network I/O (fetch feeds, sort, deduplicate, download images), then begins a database transaction, then performs DELETE and INSERT operations, then commits the transaction
+
+#### Scenario: RSS plugin rolls back on error
+- **WHEN** an error occurs during the database write phase of `_fetch_feeds()`
+- **THEN** the transaction is rolled back using `rollback_transaction()`, and the per-thread transaction state is reset
 
 #### Scenario: RSS plugin enforces unique feed items per card
 - **WHEN** a feed item with a duplicate `link` is inserted for a card

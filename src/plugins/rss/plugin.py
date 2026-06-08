@@ -114,27 +114,27 @@ class RssPlugin(Plugin):
     def _fetch_feeds(self, feeds, max_items=10, fetch_images=False):
         self._logger.info("Fetching RSS feeds for card %s (%d feeds)", self._card_id, len(feeds))
 
+        with ThreadPoolExecutor() as executor:
+            results = list(executor.map(
+                lambda url: self._fetch_single_feed(url, fetch_images), feeds
+            ))
+
+        all_items = [item for items in results for item in items]
+
+        precedence = {url: idx for idx, url in enumerate(feeds)}
+
+        all_items.sort(key=lambda x: (x["published"] != "", x["published"]), reverse=True)
+        all_items = self._deduplicate_items(all_items, precedence)
+        all_items = all_items[:max_items]
+        self._logger.info("Total items after sort/dedup/truncate: %d", len(all_items))
+
+        if fetch_images:
+            self._logger.info("Downloading images...")
+            self._download_images(all_items)
+
         self._database.begin_transaction()
         try:
             self._delete_feed_items(self._card_id)
-
-            with ThreadPoolExecutor() as executor:
-                results = list(executor.map(
-                    lambda url: self._fetch_single_feed(url, fetch_images), feeds
-                ))
-
-            all_items = [item for items in results for item in items]
-
-            precedence = {url: idx for idx, url in enumerate(feeds)}
-
-            all_items.sort(key=lambda x: (x["published"] != "", x["published"]), reverse=True)
-            all_items = self._deduplicate_items(all_items, precedence)
-            all_items = all_items[:max_items]
-            self._logger.info("Total items after sort/dedup/truncate: %d", len(all_items))
-
-            if fetch_images:
-                self._logger.info("Downloading images...")
-                self._download_images(all_items)
 
             for item in all_items:
                 self._insert_feed_item(
@@ -151,7 +151,7 @@ class RssPlugin(Plugin):
             self._database.commit_transaction()
             self._logger.info("Finished fetching RSS feeds for card %s", self._card_id)
         except Exception:
-            self._database.execute("ROLLBACK")
+            self._database.rollback_transaction()
             raise
 
     def _fetch_single_feed(self, feed_url, fetch_images):
