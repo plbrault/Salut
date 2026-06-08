@@ -83,3 +83,18 @@ The system SHALL accept a flat `cards` list at the top level, with each card hav
 #### Scenario: Missing card plugin
 - **WHEN** a card has no `plugin` field
 - **THEN** a validation error is raised
+
+### Requirement: Database rollback resets transaction state
+The Database class SHALL provide a `rollback_transaction()` method that executes `ROLLBACK` and resets the `_in_transaction` flag to `False`, ensuring subsequent `execute()` calls auto-commit.
+
+#### Scenario: Rollback resets transaction flag
+- **WHEN** a transaction is in progress and `rollback_transaction()` is called
+- **THEN** the ROLLBACK SQL is executed and `_in_transaction` is set to `False`
+
+#### Scenario: Auto-commit works after rollback
+- **WHEN** `rollback_transaction()` is called and then `execute()` is called with a SQL statement
+- **THEN** the statement is auto-committed (not held in a pending transaction)
+
+#### Scenario: Plugin exception triggers rollback
+- **WHEN** a plugin's transactional operation raises an exception
+- **THEN** `rollback_transaction()` is called and the database returns to auto-commit mode

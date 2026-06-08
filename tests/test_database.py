@@ -179,4 +179,34 @@ class TestDatabaseConcurrency:
         assert results.get("wal") == "wal"
         assert results.get("row_factory") is not None
         assert results.get("row_is_dict") is True
+
+    def test_rollback_transaction_resets_flag(self, tmp_path):
+        db = Database(tmp_path / "test.db")
+        db.execute("CREATE TABLE IF NOT EXISTS test_table (id INTEGER PRIMARY KEY, name TEXT)")
+        db.begin_transaction()
+        assert db._get_in_transaction() is True  # pylint: disable=protected-access
+        db.rollback_transaction()
+        assert db._get_in_transaction() is False  # pylint: disable=protected-access
+        db.close()
+
+    def test_rollback_transaction_discards_changes(self, tmp_path):
+        db = Database(tmp_path / "test.db")
+        db.execute("CREATE TABLE IF NOT EXISTS test_table (id INTEGER PRIMARY KEY, name TEXT)")
+        db.begin_transaction()
+        db.execute("INSERT INTO test_table (name) VALUES (?)", ("should_be_rolled_back",))
+        db.rollback_transaction()
+        rows = db.fetch_all("SELECT * FROM test_table")
+        assert rows == []
+        db.close()
+
+    def test_auto_commit_works_after_rollback(self, tmp_path):
+        db = Database(tmp_path / "test.db")
+        db.execute("CREATE TABLE IF NOT EXISTS test_table (id INTEGER PRIMARY KEY, name TEXT)")
+        db.begin_transaction()
+        db.execute("INSERT INTO test_table (name) VALUES (?)", ("should_be_rolled_back",))
+        db.rollback_transaction()
+        db.execute("INSERT INTO test_table (name) VALUES (?)", ("should_be_persisted",))
+        rows = db.fetch_all("SELECT * FROM test_table")
+        assert len(rows) == 1
+        assert rows[0]["name"] == "should_be_persisted"
         db.close()
