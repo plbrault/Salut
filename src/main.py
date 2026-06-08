@@ -24,7 +24,7 @@ def _dev_reload_filter(record):
     return "/dev-reload" not in record.getMessage()
 
 
-scheduler = BackgroundScheduler()
+scheduler = BackgroundScheduler(job_defaults={"misfire_grace_time": None})
 
 
 @asynccontextmanager

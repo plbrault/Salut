@@ -1,5 +1,6 @@
 from unittest.mock import patch
 
+from apscheduler.schedulers.background import BackgroundScheduler
 from fastapi.testclient import TestClient
 
 from src.config import ConfigError
@@ -191,3 +192,9 @@ class TestServer:
             response = client.get("/")
             assert response.status_code == 200
             assert "Configuration Error" not in response.text
+
+    def test_scheduler_misfire_grace_time_unlimited(self):
+        s = BackgroundScheduler(job_defaults={"misfire_grace_time": None})
+        s.start()
+        assert s._job_defaults["misfire_grace_time"] is None  # pylint: disable=protected-access
+        s.shutdown(wait=False)
