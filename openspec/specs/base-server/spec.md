@@ -35,7 +35,7 @@ The server SHALL serve static files (HTMX, Tailwind CSS) from the `static/` dire
 - **THEN** Tailwind CSS is loaded from `/static/tailwindcss.js`
 
 ### Requirement: SQLite database is initialized
-The server SHALL delete and recreate the SQLite database on every startup, ensuring a clean state with no persisted data.
+The server SHALL delete and recreate the SQLite database on every startup, ensuring a clean state with no persisted data. The scheduler SHALL be configured with `misfire_grace_time=None` so that scheduled jobs are never silently skipped due to timing delays.
 
 #### Scenario: Database is reset on startup
 - **WHEN** the server starts
@@ -52,3 +52,11 @@ The server SHALL delete and recreate the SQLite database on every startup, ensur
 #### Scenario: Previous data is discarded
 - **WHEN** the server restarts with an existing database containing cached data
 - **THEN** the cached data is no longer available after restart
+
+#### Scenario: Scheduler never skips misfired jobs
+- **WHEN** a scheduled job's fire time is missed due to scheduler thread delay
+- **THEN** the job SHALL still execute when the scheduler thread becomes available
+
+#### Scenario: Scheduler misfire grace time is unlimited
+- **WHEN** the BackgroundScheduler is initialized
+- **THEN** `job_defaults['misfire_grace_time']` SHALL be `None`

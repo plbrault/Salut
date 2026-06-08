@@ -151,7 +151,7 @@ class RssPlugin(Plugin):
             self._database.commit_transaction()
             self._logger.info("Finished fetching RSS feeds for card %s", self._card_id)
         except Exception:
-            self._database.execute("ROLLBACK")
+            self._database.rollback_transaction()
             raise
 
     def _fetch_single_feed(self, feed_url, fetch_images):

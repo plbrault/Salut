@@ -28,6 +28,10 @@ class Database:
         self._connection.commit()
         self._in_transaction = False
 
+    def rollback_transaction(self):
+        self._connection.execute("ROLLBACK")
+        self._in_transaction = False
+
     def fetch_one(self, sql, params=None):
         if params:
             cursor = self._connection.execute(sql, params)
