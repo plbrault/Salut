@@ -67,15 +67,15 @@ The system SHALL treat the `url` option as a relative path under `/static/custom
 - **THEN** the image links to `#` (no external source)
 
 ### Requirement: Image cached server-side when schedule is provided
-When a `schedule` option is provided, the system SHALL download the image to `cache/image/<card_id>/comic.<ext>` (one file per card). The old image SHALL be deleted before downloading the new one. When no schedule is provided, the image SHALL NOT be cached.
+When a `schedule` option is provided, the system SHALL download the image using `ImageCache` with an explicit filename (`comic.<ext>`). The new image SHALL be downloaded and written before the old database row and old cache file are deleted. Old cache files SHALL be removed via `ImageCache.cleanup_orphans` after the new database row is written. When no schedule is provided, the image SHALL NOT be cached.
 
 #### Scenario: Image cached on fetch with schedule
 - **WHEN** an image is successfully fetched and a schedule is configured
-- **THEN** the image is saved to the local cache directory
+- **THEN** the image is saved to the local cache directory via `ImageCache.download`
 
-#### Scenario: Old image deleted on refresh
+#### Scenario: Old image deleted after new image is stored
 - **WHEN** a new image is fetched with a schedule configured
-- **THEN** the previous cached image is deleted before the new one is saved
+- **THEN** the previous cached image and database row are deleted only after the new image is downloaded and the new database row is written
 
 #### Scenario: Cached image served in template
 - **WHEN** the image plugin renders with a schedule configured
@@ -84,6 +84,14 @@ When a `schedule` option is provided, the system SHALL download the image to `ca
 #### Scenario: No caching without schedule
 - **WHEN** no schedule is configured
 - **THEN** the image is not cached and the remote URL is used directly
+
+#### Scenario: Failed download preserves previous image
+- **WHEN** `ImageCache.download` returns `None` during a scheduled refresh and a previous image exists in the database
+- **THEN** the previous database row and cache file are preserved and no new database row is inserted
+
+#### Scenario: Failed download on first fetch returns no image
+- **WHEN** `ImageCache.download` returns `None` during a scheduled refresh and no previous image exists in the database
+- **THEN** no database row is inserted and the card renders nothing
 
 ### Requirement: Image dimensions extracted from file headers
 When a `schedule` option is provided, the system SHALL extract width and height from PNG/JPEG file headers using `struct.unpack` and store them in the database. When no schedule is provided, dimensions are not extracted.

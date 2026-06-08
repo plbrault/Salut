@@ -88,10 +88,6 @@ The system SHALL provide an `RssPlugin` class extending `Plugin` that fetches RS
 - **WHEN** some feed items have no `published` date
 - **THEN** items with dates are sorted most recent first, and items without dates appear at the end
 
-#### Scenario: RSS plugin fetches feeds atomically
-- **WHEN** `RssPlugin._fetch_feeds()` is called
-- **THEN** it wraps the DELETE and INSERT operations in a database transaction to prevent race conditions
-
 #### Scenario: RSS plugin enforces unique feed items per card
 - **WHEN** a feed item with a duplicate `link` is inserted for a card
 - **THEN** the database constraint prevents the duplicate from being stored
@@ -114,6 +110,33 @@ The system SHALL deduplicate feed items by both `link` URL and `title`. When mul
 #### Scenario: RSS plugin title dedup is case-sensitive
 - **WHEN** two feed items have titles that differ only in casing (e.g., "Hello World" vs "hello world")
 - **THEN** they are treated as different items and both are kept
+
+### Requirement: RSS plugin fetches feeds atomically
+The system SHALL wrap the DELETE and INSERT operations in a database transaction to prevent race conditions. Image cache files SHALL be downloaded using `ImageCache` before the transaction commits. Old cache files SHALL only be deleted after the transaction commits successfully via `ImageCache.cleanup_orphans`. Cache filenames SHALL be derived from a SHA-256 hash of the remote image URL rather than the item's positional index.
+
+#### Scenario: RSS plugin writes new images before committing transaction
+- **WHEN** `RssPlugin._fetch_feeds()` is called with `fetch_images=True`
+- **THEN** new image files are written to disk before the database transaction is committed
+
+#### Scenario: RSS plugin deletes orphaned cache files after commit
+- **WHEN** the database transaction commits successfully
+- **THEN** any cache files that are not referenced by the current database rows are deleted via `ImageCache.cleanup_orphans`
+
+#### Scenario: RSS plugin preserves old cache files on refresh failure
+- **WHEN** an exception occurs during feed fetching and the transaction is rolled back
+- **THEN** old cache files remain on disk and are not deleted
+
+#### Scenario: RSS plugin uses hash-based cache filenames
+- **WHEN** an image is downloaded and cached
+- **THEN** the filename is derived from `ImageCache.hash_filename` using the remote image URL
+
+#### Scenario: RSS plugin same image URL produces same filename
+- **WHEN** the same remote image URL appears in multiple refresh cycles
+- **THEN** the cached filename is identical across refreshes
+
+#### Scenario: RSS plugin different image URLs produce different filenames
+- **WHEN** two different remote image URLs are cached
+- **THEN** they produce different cache filenames
 
 ### Requirement: Each card gets its own setup
 The system SHALL call `setup_card` for every card, even when multiple cards use the same plugin. Each card requires its own feed fetching and scheduler registration.

@@ -54,23 +54,27 @@ The system SHALL fetch XKCD comics from `https://xkcd.com/info.0.json` using the
 - **THEN** a warning is logged and the plugin continues without crashing
 
 ### Requirement: XKCD plugin caches comic image
-The system SHALL download the comic image locally to `cache/xkcd/<card_id>/comic.<ext>` and serve it as a static file. Only one image SHALL be kept per card — the old image SHALL be deleted before downloading the new one. The image dimensions SHALL be extracted from the downloaded file headers and stored in the database.
+The system SHALL download the comic image locally using `ImageCache` with an explicit filename (`comic.<ext>`). Only one image SHALL be kept per card — the new image SHALL be downloaded and written before the old database row and old cache file are deleted. Old cache files SHALL be removed via `ImageCache.cleanup_orphans` after the new database row is written. The image dimensions SHALL be extracted from the downloaded file headers and stored in the database.
 
 #### Scenario: Image downloaded on fetch
 - **WHEN** a comic is successfully fetched
-- **THEN** the comic image is downloaded to the local cache directory
+- **THEN** the comic image is downloaded to the local cache directory via `ImageCache.download`
 
 #### Scenario: Image dimensions extracted from file headers
 - **WHEN** a comic image is downloaded
 - **THEN** the width and height are extracted from the PNG or JPEG file headers
 
-#### Scenario: Old image deleted on refresh
+#### Scenario: Old image deleted after new image is stored
 - **WHEN** a new comic is fetched
-- **THEN** the previous cached image is deleted before the new one is saved
+- **THEN** the previous cached image and database row are deleted only after the new image is downloaded and the new database row is written
 
 #### Scenario: Cached image served in template
 - **WHEN** the XKCD plugin renders a comic
 - **THEN** the image source points to the local cached path with width and height attributes
+
+#### Scenario: Failed download preserves previous image
+- **WHEN** `ImageCache.download` returns `None` and a previous comic exists in the database
+- **THEN** the previous database row and cache file are preserved and the old comic continues to be displayed
 
 ### Requirement: Each XKCD card gets its own setup
 The system SHALL call `setup` for every card with `plugin: xkcd`, even when multiple cards use the same plugin.

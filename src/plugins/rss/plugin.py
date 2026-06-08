@@ -1,5 +1,3 @@
-import hashlib
-import json
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
@@ -9,9 +7,8 @@ import feedparser
 import requests
 
 from src.config import ConfigError
+from src.image_cache import ImageCache
 from src.plugin import Plugin
-
-CACHE_DIR = Path(__file__).resolve().parent.parent.parent.parent / "cache" / "rss"
 
 
 class RssPlugin(Plugin):
@@ -75,7 +72,7 @@ class RssPlugin(Plugin):
     def setup(self, options, database, scheduler, logger):
         self._database = database
         self._logger = logger
-        self._card_id = self._compute_card_id(options)
+        self._card_id = ImageCache.compute_card_id(options)
 
         feeds = options.get("feeds", [])
         max_items = options.get("max_items", 10)
@@ -93,7 +90,7 @@ class RssPlugin(Plugin):
             )
 
     def render(self, options):
-        card_id = self._compute_card_id(options)
+        card_id = ImageCache.compute_card_id(options)
         items = self._get_feed_items(card_id)
 
         if not items:
@@ -154,6 +151,15 @@ class RssPlugin(Plugin):
             self._database.rollback_transaction()
             raise
 
+        if fetch_images:
+            referenced = set()
+            rows = self._get_feed_items(self._card_id)
+            for row in rows:
+                img = row.get("image_url", "")
+                if img:
+                    referenced.add(Path(img).name)
+            ImageCache("rss", self._card_id, self._logger).cleanup_orphans(referenced)
+
     def _fetch_single_feed(self, feed_url, fetch_images):
         try:
             self._logger.info("Fetching feed: %s", feed_url)
@@ -189,11 +195,6 @@ class RssPlugin(Plugin):
             return []
 
     @staticmethod
-    def _compute_card_id(options):
-        raw = json.dumps(options, sort_keys=True, default=str)
-        return hashlib.sha256(raw.encode()).hexdigest()[:16]
-
-    @staticmethod
     def _extract_image(entry):
         if hasattr(entry, "media_thumbnail") and entry.media_thumbnail:
             return entry.media_thumbnail[0].get("url", "")
@@ -208,55 +209,16 @@ class RssPlugin(Plugin):
         return ""
 
     def _download_images(self, items):
-        card_cache_dir = CACHE_DIR / self._card_id
-        if card_cache_dir.exists():
-            for f in card_cache_dir.iterdir():
-                f.unlink()
-        card_cache_dir.mkdir(parents=True, exist_ok=True)
-
-        with ThreadPoolExecutor() as executor:
-            list(executor.map(
-                lambda args: self._download_single_image(card_cache_dir, len(items), *args),
-                enumerate(items),
-            ))
-
-    def _download_single_image(self, card_cache_dir, total, idx, item):
-        if not item["image_url"]:
-            return
-        try:
+        cache = ImageCache("rss", self._card_id, self._logger)
+        for idx, item in enumerate(items):
+            if not item["image_url"]:
+                continue
             self._logger.info(
-                "Downloading image %d/%d: %s", idx + 1, total, item["image_url"]
+                "Downloading image %d/%d: %s", idx + 1, len(items), item["image_url"]
             )
-            response = requests.get(item["image_url"], timeout=10)
-            response.raise_for_status()
-            ext = self._get_extension(
-                item["image_url"], response.headers.get("content-type", "")
-            )
-            filename = f"{idx}{ext}"
-            filepath = card_cache_dir / filename
-            filepath.write_bytes(response.content)
-            item["image_url"] = f"/cache/rss/{self._card_id}/{filename}"
-            self._logger.info("Saved image to %s", filepath)
-        except Exception as e:  # pylint: disable=broad-except
-            self._logger.warning("Failed to download image: %s — %s", item["image_url"], e)
-
-    @staticmethod
-    def _get_extension(url, content_type):
-        content_type_map = {
-            "jpeg": ".jpg",
-            "jpg": ".jpg",
-            "png": ".png",
-            "gif": ".gif",
-            "webp": ".webp",
-        }
-        for key, ext in content_type_map.items():
-            if key in content_type:
-                return ext
-        if url.endswith(".gif"):
-            return ".gif"
-        if url.endswith(".png"):
-            return ".png"
-        return ".jpg"
+            local_url = cache.download(item["image_url"])
+            if local_url:
+                item["image_url"] = local_url
 
     def _delete_feed_items(self, card_id):
         self._database.execute("DELETE FROM feed_items WHERE card_id = ?", (card_id,))

@@ -1,7 +1,7 @@
 import json
 import struct
 import tempfile
-from unittest.mock import Mock, MagicMock
+from unittest.mock import Mock, MagicMock, patch
 from pathlib import Path
 
 from src.plugins import load_plugin_class, render_card, setup_card
@@ -15,6 +15,7 @@ from src.plugins.weather.plugin import WMO_ICONS
 from src.plugins.calendar import CalendarPlugin
 from src.plugins.xkcd import XkcdPlugin
 from src.plugins.image import ImagePlugin
+from src.image_cache import ImageCache
 from src.plugins.github import GithubPlugin
 from src.database import Database
 from src.config import validate_config, ConfigError
@@ -1701,7 +1702,7 @@ class TestXkcdPlugin:  # pylint: disable=protected-access
         plugin = XkcdPlugin()
         plugin._database = db
         options = {"schedule": "0 9 * * *"}
-        card_id = plugin._compute_card_id(options)
+        card_id = ImageCache.compute_card_id(options)
         plugin._card_id = card_id
         db.execute(
             "INSERT INTO xkcd_comics"
@@ -1748,6 +1749,71 @@ class TestXkcdPlugin:  # pylint: disable=protected-access
 
     def test_xkcd_card_style_rules_returns_dict(self):
         assert isinstance(XkcdPlugin.card_style_rules(), dict)
+
+
+class TestXkcdPluginCache:  # pylint: disable=protected-access
+    def test_download_failure_preserves_old_row(self, tmp_path):
+        db = Database(tmp_path / "test.db")
+        XkcdPlugin.init_schema(db)
+        plugin = XkcdPlugin()
+        plugin._database = db
+        plugin._logger = Mock()
+        plugin._card_id = "testcard"
+        db.execute(
+            "INSERT INTO xkcd_comics"
+            " (card_id, comic_num, title, img_url, alt_text,"
+            " comic_url, explain_url, img_width, img_height)"
+            " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            ("testcard", 100, "Old Comic", "https://old.com/img.png",
+             "alt", "https://xkcd.com/100/",
+             "https://explainxkcd.com/100", 800, 600),
+        )
+
+        with patch("src.image_cache.requests.get", side_effect=Exception("fail")):
+            plugin._fetch_comic()
+
+        row = db.fetch_one("SELECT * FROM xkcd_comics WHERE card_id = ?", ("testcard",))
+        assert row is not None
+        assert row["comic_num"] == 100
+        assert row["title"] == "Old Comic"
+        db.close()
+
+    def test_successful_fetch_replaces_old(self, tmp_path):
+        db = Database(tmp_path / "test.db")
+        XkcdPlugin.init_schema(db)
+        plugin = XkcdPlugin()
+        plugin._database = db
+        plugin._logger = Mock()
+        plugin._card_id = "testcard"
+
+        mock_img_resp = MagicMock()
+        mock_img_resp.content = b"\x89PNG\r\n\x1a\n" + b"\x00" * 8 + struct.pack('>II', 400, 300) + b"\x00" * 8
+        mock_img_resp.headers = {"content-type": "image/png"}
+        mock_img_resp.raise_for_status = MagicMock()
+
+        mock_api_resp = MagicMock()
+        mock_api_resp.json.return_value = {
+            "num": 999, "title": "New Comic", "img": "https://imgs.xkcd.com/new.png",
+            "alt": "new alt"
+        }
+        mock_api_resp.raise_for_status = MagicMock()
+
+        def mock_get(url, **_kwargs):
+            if "xkcd.com/info.0.json" in url:
+                return mock_api_resp
+            return mock_img_resp
+
+        with patch("src.image_cache.requests.get", side_effect=mock_get):
+            with patch("src.plugins.xkcd.plugin.requests.get", side_effect=mock_get):
+                plugin._fetch_comic()
+
+        row = db.fetch_one("SELECT * FROM xkcd_comics WHERE card_id = ?", ("testcard",))
+        assert row is not None
+        assert row["comic_num"] == 999
+        assert row["title"] == "New Comic"
+        assert row["img_width"] == 400
+        assert row["img_height"] == 300
+        db.close()
 
 
 class TestImagePlugin:  # pylint: disable=protected-access
@@ -2002,3 +2068,171 @@ class TestGithubPlugin:  # pylint: disable=protected-access
 
     def test_github_notifications_card_style_rules_returns_dict(self):
         assert isinstance(GithubPlugin.card_style_rules(), dict)
+
+
+class TestImagePluginCache:  # pylint: disable=protected-access
+    def test_download_failure_preserves_old_row(self, tmp_path):
+        db = Database(tmp_path / "test.db")
+        ImagePlugin.init_schema(db)
+        plugin = ImagePlugin()
+        plugin._database = db
+        plugin._logger = Mock()
+        plugin._card_id = "testcard"
+        db.execute(
+            "INSERT INTO image_items"
+            " (card_id, source_url, img_url, img_width, img_height)"
+            " VALUES (?, ?, ?, ?, ?)",
+            ("testcard", "http://old.com",
+             "/cache/image/testcard/comic.jpg", 100, 100),
+        )
+
+        with patch("src.image_cache.requests.get", side_effect=Exception("fail")):
+            with patch("src.image_cache.CACHE_DIR", tmp_path):
+                plugin._fetch_image(
+                    {"provider_type": "rest",
+                     "url": "http://new.com/img",
+                     "schedule": "0 * * * *"}
+                )
+
+        row = db.fetch_one("SELECT * FROM image_items WHERE card_id = ?", ("testcard",))
+        assert row is not None
+        assert row["img_url"] == "/cache/image/testcard/comic.jpg"
+        db.close()
+
+    def test_successful_fetch_replaces_old(self, tmp_path):
+        db = Database(tmp_path / "test.db")
+        ImagePlugin.init_schema(db)
+        plugin = ImagePlugin()
+        plugin._database = db
+        plugin._logger = Mock()
+        plugin._card_id = "testcard"
+
+        mock_resp = MagicMock()
+        mock_resp.content = (
+            b"\x89PNG\r\n\x1a\n" + b"\x00" * 8
+            + struct.pack('>II', 200, 150) + b"\x00" * 8
+        )
+        mock_resp.headers = {"content-type": "image/png"}
+        mock_resp.raise_for_status = MagicMock()
+
+        with patch("src.image_cache.requests.get", return_value=mock_resp):
+            with patch("src.image_cache.CACHE_DIR", tmp_path):
+                plugin._fetch_image(
+                    {"provider_type": "rest",
+                     "url": "http://new.com/img",
+                     "schedule": "0 * * * *"}
+                )
+
+        row = db.fetch_one("SELECT * FROM image_items WHERE card_id = ?", ("testcard",))
+        assert row is not None
+        assert row["img_width"] == 200
+        assert row["img_height"] == 150
+        db.close()
+
+    def test_first_fetch_failure_no_row_inserted(self, tmp_path):
+        db = Database(tmp_path / "test.db")
+        ImagePlugin.init_schema(db)
+        plugin = ImagePlugin()
+        plugin._database = db
+        plugin._logger = Mock()
+        plugin._card_id = "testcard"
+
+        with patch("src.image_cache.requests.get", side_effect=Exception("fail")):
+            with patch("src.image_cache.CACHE_DIR", tmp_path):
+                plugin._fetch_image(
+                    {"provider_type": "rest",
+                     "url": "http://new.com/img",
+                     "schedule": "0 * * * *"}
+                )
+
+        row = db.fetch_one(
+            "SELECT * FROM image_items WHERE card_id = ?",
+            ("testcard",),
+        )
+        assert row is None
+        db.close()
+
+
+class TestRssImageCache:  # pylint: disable=protected-access
+    def test_same_url_same_filename(self, tmp_path):
+        db = Database(tmp_path / "test.db")
+        RssPlugin.init_schema(db)
+        options = {"feeds": ["http://example.com/rss"]}
+        plugin = RssPlugin()
+        plugin.setup(options, db, MagicMock(), Mock())
+        plugin._delete_feed_items(plugin._card_id)
+
+        plugin._insert_feed_item(
+            card_id=plugin._card_id,
+            url="http://example.com/rss",
+            title="Article 1",
+            link="http://example.com/1",
+            published="2026-01-01T00:00:00",
+            feed_url="http://example.com/rss",
+            image_url="/cache/rss/abc123/a1b2c3d4e5f6.jpg",
+            feed_title="Feed",
+        )
+        plugin._insert_feed_item(
+            card_id=plugin._card_id,
+            url="http://example.com/rss",
+            title="Article 2",
+            link="http://example.com/2",
+            published="2026-01-02T00:00:00",
+            feed_url="http://example.com/rss",
+            image_url="/cache/rss/abc123/a1b2c3d4e5f6.jpg",
+            feed_title="Feed",
+        )
+        items = plugin._get_feed_items(plugin._card_id)
+        assert items[0]["image_url"] == items[1]["image_url"]
+        db.close()
+
+    def test_different_urls_different_filenames(self, tmp_path):
+        url1 = "https://example.com/photo1.jpg"
+        url2 = "https://example.com/photo2.jpg"
+        fn1 = ImageCache.hash_filename(url1)
+        fn2 = ImageCache.hash_filename(url2)
+        assert fn1 != fn2
+        db = Database(tmp_path / "test.db")
+        db.close()
+
+    def test_old_cache_files_preserved_on_failure(self, tmp_path):
+        cache = ImageCache("rss", "testcard", Mock())
+        cache_dir = tmp_path / "rss" / "testcard"
+        cache_dir.mkdir(parents=True)
+        (cache_dir / "old_image.jpg").write_bytes(b"old data")
+
+        with patch("src.image_cache.CACHE_DIR", tmp_path):
+            referenced = {"old_image.jpg"}
+            cache.cleanup_orphans(referenced)
+        assert (cache_dir / "old_image.jpg").exists()
+        db = Database(tmp_path / "test.db")
+        db.close()
+
+    def test_orphaned_files_deleted_after_commit(self, tmp_path):
+        cache = ImageCache("rss", "testcard", Mock())
+        cache_dir = tmp_path / "rss" / "testcard"
+        cache_dir.mkdir(parents=True)
+        (cache_dir / "keep.jpg").write_bytes(b"keep")
+        (cache_dir / "orphan.jpg").write_bytes(b"orphan")
+
+        with patch("src.image_cache.CACHE_DIR", tmp_path):
+            cache.cleanup_orphans({"keep.jpg"})
+        assert (cache_dir / "keep.jpg").exists()
+        assert not (cache_dir / "orphan.jpg").exists()
+        db = Database(tmp_path / "test.db")
+        db.close()
+
+    def test_images_written_before_commit(self, tmp_path):
+        cache = ImageCache("rss", "testcard", Mock())
+        mock_response = MagicMock()
+        mock_response.content = b"image data"
+        mock_response.headers = {"content-type": "image/jpeg"}
+        mock_response.raise_for_status = MagicMock()
+
+        with patch("src.image_cache.requests.get", return_value=mock_response):
+            with patch("src.image_cache.CACHE_DIR", tmp_path):
+                result = cache.download("https://example.com/photo.jpg")
+        assert result is not None
+        assert (tmp_path / "rss" / "testcard" / Path(result).name).read_bytes() == b"image data"
+        db = Database(tmp_path / "test.db")
+        db.close()
