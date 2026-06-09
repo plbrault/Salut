@@ -47,6 +47,8 @@
         .spinner { display: none; width: 1rem; height: 1rem; border: 2px solid currentColor; border-top-color: transparent; border-radius: 50%; animation: spin 0.6s linear infinite; margin-left: 0.5rem; vertical-align: middle; }
         .htmx-request .spinner { display: inline-block; }
         @keyframes spin { to { transform: rotate(360deg); } }
+        .fullpage-editor #editor-card { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 1000; padding: 1rem; overflow: auto; border-radius: 0; margin: 0; max-width: none; }
+        .fullpage-editor .CodeMirror { height: calc(100vh - 150px); }
     </style>
 </head>
 <body class="min-h-screen p-8">
@@ -105,8 +107,13 @@
                 </div>
                 <div id="status" class="mt-3 text-sm"></div>
             </div>
-            <div class="card mb-6">
-                <h2 class="text-lg font-semibold mb-4">Config Editor</h2>
+            <div class="card mb-6" id="editor-card">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-lg font-semibold">Config Editor</h2>
+                    {% if config_exists %}
+                    <button onclick="toggleEditor()" id="toggle-btn" class="btn">Expand</button>
+                    {% endif %}
+                </div>
                 {% if config_exists %}
                 <textarea id="editor-source">{{ config_content }}</textarea>
                 <div id="editor"></div>
@@ -153,6 +160,14 @@
                 elt.disabled = false;
             });
         });
+
+        function toggleEditor() {
+            var btn = document.getElementById('toggle-btn');
+            document.body.classList.toggle('fullpage-editor');
+            var isFull = document.body.classList.contains('fullpage-editor');
+            btn.textContent = isFull ? 'Collapse' : 'Expand';
+            if (editor) editor.refresh();
+        }
 
         function loadConfig() {
             var btn = document.querySelector('button[onclick="loadConfig()"]');

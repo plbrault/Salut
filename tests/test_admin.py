@@ -138,6 +138,20 @@ class TestSessionCookie:
 
 
 class TestAdminConfigEditor:
+    def test_fullpage_toggle_button_present(self):
+        with TestClient(app) as client:
+            original = app.state.config.copy()
+            app.state.config = {**original, "admin_password": "secret"}
+            try:
+                cookie_value = create_session_cookie("secret")
+                client.cookies.set(COOKIE_NAME, cookie_value)
+                response = client.get("/admin")
+                assert response.status_code == 200
+                assert "Expand" in response.text
+                assert "toggleEditor()" in response.text
+            finally:
+                app.state.config = original
+
     def test_get_config_returns_content(self):
         with TestClient(app) as client:
             original = app.state.config.copy()

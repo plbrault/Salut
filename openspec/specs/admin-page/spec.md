@@ -106,22 +106,38 @@ The admin panel SHALL provide a button to restart the server.
 - **THEN** a modal is displayed saying the page will be unavailable until the server restarts, with an OK button that redirects to `/`
 
 ### Requirement: Server update
-The admin panel SHALL provide a button to pull the latest code and restart.
+The admin panel SHALL provide a two-step update flow: first check for updates, then update if available.
+
+#### Scenario: Check for updates when already up-to-date
+- **WHEN** the user clicks "Check for updates" and the remote has no new commits
+- **THEN** a message "No updates available" is displayed
+
+#### Scenario: Check for updates when updates exist
+- **WHEN** the user clicks "Check for updates" and the remote has new commits
+- **THEN** a message "Update available: <commit-hash> <commit-message>" is displayed and the button changes to "Update & Restart"
+
+#### Scenario: Check for updates with uncommitted changes
+- **WHEN** the user clicks "Check for updates" and there are uncommitted git changes
+- **THEN** an error message is displayed: "Uncommitted changes. Please commit or stash before updating."
+
+#### Scenario: Check for updates fails
+- **WHEN** the user clicks "Check for updates" and the git fetch fails (network error, etc.)
+- **THEN** an error message with the failure details is displayed
 
 #### Scenario: Update with uncommitted changes
-- **WHEN** the user clicks Update and there are uncommitted git changes
+- **WHEN** the user clicks "Update & Restart" and there are uncommitted git changes
 - **THEN** an error message is displayed: "Uncommitted changes. Please commit or stash before updating."
 
 #### Scenario: Update with git pull failure
-- **WHEN** the user clicks Update and `git pull` fails
+- **WHEN** the user clicks "Update & Restart" and `git pull` fails
 - **THEN** an error message with the git error is displayed
 
 #### Scenario: Successful update
-- **WHEN** the user clicks Update and git pull succeeds
+- **WHEN** the user clicks "Update & Restart" and git pull succeeds
 - **THEN** dependencies are installed via `pipenv install`, the server restarts, and a modal is displayed
 
 #### Scenario: Update on any branch
-- **WHEN** the user clicks Update
+- **WHEN** the user clicks "Update & Restart"
 - **THEN** the update pulls from the current branch's remote (regardless of which branch)
 
 ### Requirement: Log viewer
