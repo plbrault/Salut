@@ -48,8 +48,14 @@ def get_admin_error_message(request):
     if password:
         return None
     if "admin_password" in config:
-        return "Set a value for <code>admin_password</code> in <code>secrets.yml</code> and restart the server to enable the admin page."
-    return "Set <code>admin_password</code> in your config and restart the server to enable the admin page."
+        return (
+            "Set a value for <code>admin_password</code> in <code>secrets.yml</code>"
+            " and restart the server to enable the admin page."
+        )
+    return (
+        "Set <code>admin_password</code> in your config"
+        " and restart the server to enable the admin page."
+    )
 
 
 def is_admin_enabled(request):

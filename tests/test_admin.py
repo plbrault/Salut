@@ -1,3 +1,6 @@
+import subprocess
+import unittest.mock
+
 from fastapi.testclient import TestClient
 
 from src.main import app
@@ -268,8 +271,18 @@ class TestAdminReloadAndRestartUpdate:
             try:
                 cookie_value = create_session_cookie("secret")
                 client.cookies.set(COOKIE_NAME, cookie_value)
-                response = client.post("/admin/update")
-                assert response.status_code == 400
-                assert "error" in response.json()
+                original_run = subprocess.run
+
+                def mock_run(cmd, **kwargs):
+                    if cmd[:3] == ["git", "status", "--porcelain"]:
+                        from collections import namedtuple
+                        Result = namedtuple("Result", ["stdout", "returncode", "stderr"])
+                        return Result(stdout=" M src/main.py\n", returncode=0, stderr="")
+                    return original_run(cmd, **kwargs)
+
+                with unittest.mock.patch("src.main.subprocess.run", side_effect=mock_run):
+                    response = client.post("/admin/update")
+                    assert response.status_code == 400
+                    assert "error" in response.json()
             finally:
                 app.state.config = original
