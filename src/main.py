@@ -372,6 +372,25 @@ def admin_update(request: Request):  # pylint: disable=unused-argument,inconsist
     os.execv(python_path, [python_path, "-m", "src.main"])
 
 
+@app.post("/admin/check-update")
+@admin_required
+def admin_check_update(request: Request):  # pylint: disable=unused-argument
+    result = subprocess.run(["git", "status", "--porcelain"], capture_output=True, text=True, check=False)
+    if result.stdout.strip():
+        return JSONResponse({"error": "Uncommitted changes. Please commit or stash before updating."}, status_code=400)
+    result = subprocess.run(["git", "fetch", "--quiet"], capture_output=True, text=True, check=False)
+    if result.returncode != 0:
+        return JSONResponse({"error": f"Git fetch failed: {result.stderr}"}, status_code=500)
+    result = subprocess.run(["git", "rev-parse", "--abbrev-ref", "HEAD"], capture_output=True, text=True, check=False)
+    branch = result.stdout.strip()
+    local = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True, check=False).stdout.strip()
+    remote = subprocess.run(["git", "rev-parse", f"origin/{branch}"], capture_output=True, text=True, check=False).stdout.strip()
+    if local == remote:
+        return {"has_update": False}
+    commit_info = subprocess.run(["git", "log", "-1", "--format=%h %s", f"origin/{branch}"], capture_output=True, text=True, check=False).stdout.strip()
+    return {"has_update": True, "commit": commit_info}
+
+
 if __name__ == "__main__":
     port = 8000
     if "--port" in sys.argv:
