@@ -5,8 +5,9 @@ from collections import namedtuple
 
 from fastapi.testclient import TestClient
 
-from src.main import app
+from src.main import app, _get_last_commit
 from src.admin import create_session_cookie, verify_session_cookie, COOKIE_NAME, log_buffer
+from src.database import Database
 
 
 class TestAdminAuth:
@@ -137,6 +138,20 @@ class TestSessionCookie:
 
 
 class TestAdminConfigEditor:
+    def test_fullpage_toggle_button_present(self):
+        with TestClient(app) as client:
+            original = app.state.config.copy()
+            app.state.config = {**original, "admin_password": "secret"}
+            try:
+                cookie_value = create_session_cookie("secret")
+                client.cookies.set(COOKIE_NAME, cookie_value)
+                response = client.get("/admin")
+                assert response.status_code == 200
+                assert "toggleEditor()" in response.text
+                assert "fullpage-editor" in response.text
+            finally:
+                app.state.config = original
+
     def test_get_config_returns_content(self):
         with TestClient(app) as client:
             original = app.state.config.copy()
@@ -205,6 +220,62 @@ cards:
             finally:
                 app.state.config = original
 
+    def test_save_config_valid(self):
+        with TestClient(app) as client:
+            original = app.state.config.copy()
+            app.state.config = {**original, "admin_password": "secret"}
+            try:
+                cookie_value = create_session_cookie("secret")
+                client.cookies.set(COOKIE_NAME, cookie_value)
+                valid_yaml = """
+page_title: Test
+page_header: "<h1>Test</h1>"
+language: en
+user_info:
+  short_name: Test
+  long_name: Test User
+columns: 1
+cards:
+  - title: Test
+    plugin: html
+    options:
+      html: "Hello"
+"""
+                with unittest.mock.patch("pathlib.Path.write_text"):
+                    response = client.put("/admin/config", json={"content": valid_yaml})
+                    assert response.status_code == 200
+                    assert "16a34a" in response.text
+            finally:
+                app.state.config = original
+
+    def test_save_config_invalid_yaml(self):
+        with TestClient(app) as client:
+            original = app.state.config.copy()
+            app.state.config = {**original, "admin_password": "secret"}
+            try:
+                cookie_value = create_session_cookie("secret")
+                client.cookies.set(COOKIE_NAME, cookie_value)
+                invalid_yaml = "page_title: Test\n  invalid: indentation"
+                response = client.put("/admin/config", json={"content": invalid_yaml})
+                assert response.status_code == 200
+                assert "dc2626" in response.text
+            finally:
+                app.state.config = original
+
+    def test_save_config_invalid_config(self):
+        with TestClient(app) as client:
+            original = app.state.config.copy()
+            app.state.config = {**original, "admin_password": "secret"}
+            try:
+                cookie_value = create_session_cookie("secret")
+                client.cookies.set(COOKIE_NAME, cookie_value)
+                invalid_config = "page_title: Test"
+                response = client.put("/admin/config", json={"content": invalid_config})
+                assert response.status_code == 200
+                assert "dc2626" in response.text
+            finally:
+                app.state.config = original
+
 
 class TestAdminLogs:
     def test_logs_endpoint_returns_list(self):
@@ -240,24 +311,27 @@ class TestAdminLogs:
 
 
 class TestAdminReloadAndRestartUpdate:
-    def test_reload_preserves_database(self):
+    def test_reload_preserves_database(self, tmp_path):
         with TestClient(app) as client:
             original = app.state.config.copy()
             app.state.config = {**original, "admin_password": "secret"}
+            original_db = app.state.database
+            test_db = Database(tmp_path / "test.db")
+            app.state.database = test_db
             try:
                 cookie_value = create_session_cookie("secret")
                 client.cookies.set(COOKIE_NAME, cookie_value)
-                db = app.state.database
-                db.execute("CREATE TABLE IF NOT EXISTS test_table (id INTEGER)")
-                db.execute("INSERT INTO test_table (id) VALUES (1)")
+                test_db.execute("CREATE TABLE IF NOT EXISTS test_table (id INTEGER)")
+                test_db.execute("INSERT INTO test_table (id) VALUES (1)")
                 response = client.post("/admin/reload")
                 assert response.status_code == 200
-                assert response.json()["status"] == "ok"
-                result = db.fetch_all("SELECT * FROM test_table")
+                assert "16a34a" in response.text
+                result = test_db.fetch_all("SELECT * FROM test_table")
                 assert len(result) == 1
             finally:
                 app.state.config = original
-                db.execute("DROP TABLE IF EXISTS test_table")
+                app.state.database = original_db
+                test_db.close()
 
     def test_health_endpoint(self):
         with TestClient(app) as client:
@@ -284,5 +358,139 @@ class TestAdminReloadAndRestartUpdate:
                     response = client.post("/admin/update")
                     assert response.status_code == 400
                     assert "error" in response.json()
+            finally:
+                app.state.config = original
+
+
+class TestLastCommit:
+    def test_get_last_commit_returns_hash_and_message(self):
+        result = _get_last_commit()
+        assert result != "Unknown"
+        parts = result.split(" ", 1)
+        assert len(parts) == 2
+        assert len(parts[0]) == 7
+        assert len(parts[1]) > 0
+
+    def test_get_last_commit_fallback_on_error(self):
+        with unittest.mock.patch("subprocess.run", side_effect=subprocess.CalledProcessError(1, "git")):
+            result = _get_last_commit()
+            assert result == "Unknown"
+
+    def test_get_last_commit_fallback_on_missing_git(self):
+        with unittest.mock.patch("subprocess.run", side_effect=FileNotFoundError):
+            result = _get_last_commit()
+            assert result == "Unknown"
+
+    def test_admin_page_shows_last_commit(self):
+        with TestClient(app) as client:
+            original = app.state.config.copy()
+            app.state.config = {**original, "admin_password": "secret"}
+            try:
+                cookie_value = create_session_cookie("secret")
+                client.cookies.set(COOKIE_NAME, cookie_value)
+                response = client.get("/admin")
+                assert response.status_code == 200
+                assert "Last Commit:" in response.text
+            finally:
+                app.state.config = original
+
+
+class TestCheckUpdate:
+    def test_check_update_no_updates(self):
+        with TestClient(app) as client:
+            original = app.state.config.copy()
+            app.state.config = {**original, "admin_password": "secret"}
+            try:
+                cookie_value = create_session_cookie("secret")
+                client.cookies.set(COOKIE_NAME, cookie_value)
+                original_run = subprocess.run
+                def mock_run(cmd, **kwargs):
+                    if cmd[:3] == ["git", "status", "--porcelain"]:
+                        return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+                    if cmd[:2] == ["git", "fetch"]:
+                        return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+                    if cmd == ["git", "rev-parse", "--abbrev-ref", "HEAD"]:
+                        return subprocess.CompletedProcess(cmd, 0, stdout="main\n", stderr="")
+                    if cmd == ["git", "rev-parse", "HEAD"]:
+                        return subprocess.CompletedProcess(cmd, 0, stdout="abc1234\n", stderr="")
+                    if cmd == ["git", "rev-parse", "origin/main"]:
+                        return subprocess.CompletedProcess(cmd, 0, stdout="abc1234\n", stderr="")
+                    return original_run(cmd, check=False, **kwargs)
+                with unittest.mock.patch("src.main.subprocess.run", side_effect=mock_run):
+                    response = client.post("/admin/check-update")
+                    assert response.status_code == 200
+                    assert response.json()["has_update"] is False
+            finally:
+                app.state.config = original
+
+    def test_check_update_has_updates(self):
+        with TestClient(app) as client:
+            original = app.state.config.copy()
+            app.state.config = {**original, "admin_password": "secret"}
+            try:
+                cookie_value = create_session_cookie("secret")
+                client.cookies.set(COOKIE_NAME, cookie_value)
+                original_run = subprocess.run
+                responses = {
+                    tuple(["git", "status", "--porcelain"]): "",
+                    tuple(["git", "fetch"]): "",
+                    tuple(["git", "rev-parse", "--abbrev-ref", "HEAD"]): "main\n",
+                    tuple(["git", "rev-parse", "HEAD"]): "abc1234\n",
+                    tuple(["git", "rev-parse", "origin/main"]): "def5678\n",
+                    tuple(["git", "log"]): "def5678 Fix bug\n",
+                }
+                def mock_run(cmd, **kwargs):
+                    cmd_tuple = tuple(cmd)
+                    if cmd_tuple in responses:
+                        return subprocess.CompletedProcess(cmd, 0, stdout=responses[cmd_tuple], stderr="")
+                    if cmd_tuple[:2] in responses:
+                        return subprocess.CompletedProcess(cmd, 0, stdout=responses[cmd_tuple[:2]], stderr="")
+                    return original_run(cmd, check=False, **kwargs)
+                with unittest.mock.patch("src.main.subprocess.run", side_effect=mock_run):
+                    response = client.post("/admin/check-update")
+                    assert response.status_code == 200
+                    data = response.json()
+                    assert data["has_update"] is True
+                    assert "def5678" in data["commit"]
+            finally:
+                app.state.config = original
+
+    def test_check_update_uncommitted_changes(self):
+        with TestClient(app) as client:
+            original = app.state.config.copy()
+            app.state.config = {**original, "admin_password": "secret"}
+            try:
+                cookie_value = create_session_cookie("secret")
+                client.cookies.set(COOKIE_NAME, cookie_value)
+                original_run = subprocess.run
+                def mock_run(cmd, **kwargs):
+                    if cmd[:3] == ["git", "status", "--porcelain"]:
+                        return subprocess.CompletedProcess(cmd, 0, stdout=" M src/main.py\n", stderr="")
+                    return original_run(cmd, check=False, **kwargs)
+                with unittest.mock.patch("src.main.subprocess.run", side_effect=mock_run):
+                    response = client.post("/admin/check-update")
+                    assert response.status_code == 400
+                    assert "Uncommitted changes" in response.json()["error"]
+            finally:
+                app.state.config = original
+
+    def test_check_update_fetch_failure(self):
+        with TestClient(app) as client:
+            original = app.state.config.copy()
+            app.state.config = {**original, "admin_password": "secret"}
+            try:
+                cookie_value = create_session_cookie("secret")
+                client.cookies.set(COOKIE_NAME, cookie_value)
+                original_run = subprocess.run
+                def mock_run(cmd, **kwargs):
+                    if cmd[:3] == ["git", "status", "--porcelain"]:
+                        return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+                    if cmd[:2] == ["git", "fetch"]:
+                        return subprocess.CompletedProcess(cmd, 1, stdout="", stderr="fetch failed")
+                    return original_run(cmd, check=False, **kwargs)
+                with unittest.mock.patch("src.main.subprocess.run", side_effect=mock_run):
+                    response = client.post("/admin/check-update")
+                    assert response.status_code == 500
+                    assert "fetch failed" in response.json()["error"]
             finally:
                 app.state.config = original

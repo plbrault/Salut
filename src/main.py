@@ -37,6 +37,17 @@ def _dev_reload_filter(record):
     return "/dev-reload" not in record.getMessage()
 
 
+def _get_last_commit():
+    try:
+        result = subprocess.run(
+            ["git", "log", "-1", "--format=%h %s"],
+            capture_output=True, text=True, check=True, cwd=BASE_DIR.parent
+        )
+        return result.stdout.strip()
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return "Unknown"
+
+
 scheduler = BackgroundScheduler(job_defaults={"misfire_grace_time": None})
 
 
@@ -254,6 +265,7 @@ def admin_page(request: Request):
         "show_login": False,
         "config_content": config_content,
         "config_exists": config_exists,
+        "last_commit": _get_last_commit(),
     })
 
 
@@ -286,15 +298,15 @@ async def admin_save_config(request: Request):
     try:
         parsed = yaml.safe_load(content)
     except yaml.YAMLError as e:
-        return JSONResponse({"error": f"YAML syntax error: {e}"}, status_code=400)
+        return HTMLResponse(f'<span style="color:#dc2626;">YAML syntax error: {e}</span>')
     try:
         validate_config(parsed, "config.yml")
     except ConfigError as e:
-        return JSONResponse({"error": e.message}, status_code=400)
+        return HTMLResponse(f'<span style="color:#dc2626;">{e.message}</span>')
     config_path = BASE_DIR.parent / "config.yml"
     config_path.write_text(content, encoding="utf-8")
     reload_app_state()
-    return {"status": "ok"}
+    return HTMLResponse('<span style="color:#16a34a;">Config saved and reloaded successfully</span>')
 
 
 @app.post("/admin/validate")
@@ -324,9 +336,9 @@ async def admin_validate_config(request: Request):
 def admin_reload(request: Request):  # pylint: disable=unused-argument
     try:
         reload_app_state()
-        return {"status": "ok"}
+        return HTMLResponse('<span style="color:#16a34a;">Config reloaded successfully</span>')
     except Exception as e:  # pylint: disable=broad-except
-        return {"error": str(e)}, 500
+        return HTMLResponse(f'<span style="color:#dc2626;">{e}</span>')
 
 
 @app.post("/admin/restart")
@@ -358,6 +370,32 @@ def admin_update(request: Request):  # pylint: disable=unused-argument,inconsist
         return {"status": "updating"}
     python_path = sys.executable
     os.execv(python_path, [python_path, "-m", "src.main"])
+
+
+@app.post("/admin/check-update")
+@admin_required
+def admin_check_update(request: Request):  # pylint: disable=unused-argument
+    result = subprocess.run(["git", "status", "--porcelain"], capture_output=True, text=True, check=False)
+    if result.stdout.strip():
+        return JSONResponse({"error": "Uncommitted changes. Please commit or stash before updating."}, status_code=400)
+    result = subprocess.run(["git", "fetch", "--quiet"], capture_output=True, text=True, check=False)
+    if result.returncode != 0:
+        return JSONResponse({"error": f"Git fetch failed: {result.stderr}"}, status_code=500)
+    result = subprocess.run(["git", "rev-parse", "--abbrev-ref", "HEAD"], capture_output=True, text=True, check=False)
+    branch = result.stdout.strip()
+    local = subprocess.run(
+        ["git", "rev-parse", "HEAD"], capture_output=True, text=True, check=False
+    ).stdout.strip()
+    remote = subprocess.run(
+        ["git", "rev-parse", f"origin/{branch}"], capture_output=True, text=True, check=False
+    ).stdout.strip()
+    if local == remote:
+        return {"has_update": False}
+    commit_info = subprocess.run(
+        ["git", "log", "-1", "--format=%h %s", f"origin/{branch}"],
+        capture_output=True, text=True, check=False
+    ).stdout.strip()
+    return {"has_update": True, "commit": commit_info}
 
 
 if __name__ == "__main__":

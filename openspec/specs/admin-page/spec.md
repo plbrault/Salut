@@ -106,22 +106,38 @@ The admin panel SHALL provide a button to restart the server.
 - **THEN** a modal is displayed saying the page will be unavailable until the server restarts, with an OK button that redirects to `/`
 
 ### Requirement: Server update
-The admin panel SHALL provide a button to pull the latest code and restart.
+The admin panel SHALL provide a two-step update flow: first check for updates, then update if available.
+
+#### Scenario: Check for updates when already up-to-date
+- **WHEN** the user clicks "Check for updates" and the remote has no new commits
+- **THEN** a message "No updates available" is displayed
+
+#### Scenario: Check for updates when updates exist
+- **WHEN** the user clicks "Check for updates" and the remote has new commits
+- **THEN** a message "Update available: <commit-hash> <commit-message>" is displayed and the button changes to "Update & Restart"
+
+#### Scenario: Check for updates with uncommitted changes
+- **WHEN** the user clicks "Check for updates" and there are uncommitted git changes
+- **THEN** an error message is displayed: "Uncommitted changes. Please commit or stash before updating."
+
+#### Scenario: Check for updates fails
+- **WHEN** the user clicks "Check for updates" and the git fetch fails (network error, etc.)
+- **THEN** an error message with the failure details is displayed
 
 #### Scenario: Update with uncommitted changes
-- **WHEN** the user clicks Update and there are uncommitted git changes
+- **WHEN** the user clicks "Update & Restart" and there are uncommitted git changes
 - **THEN** an error message is displayed: "Uncommitted changes. Please commit or stash before updating."
 
 #### Scenario: Update with git pull failure
-- **WHEN** the user clicks Update and `git pull` fails
+- **WHEN** the user clicks "Update & Restart" and `git pull` fails
 - **THEN** an error message with the git error is displayed
 
 #### Scenario: Successful update
-- **WHEN** the user clicks Update and git pull succeeds
+- **WHEN** the user clicks "Update & Restart" and git pull succeeds
 - **THEN** dependencies are installed via `pipenv install`, the server restarts, and a modal is displayed
 
 #### Scenario: Update on any branch
-- **WHEN** the user clicks Update
+- **WHEN** the user clicks "Update & Restart"
 - **THEN** the update pulls from the current branch's remote (regardless of which branch)
 
 ### Requirement: Log viewer
@@ -141,3 +157,55 @@ The server SHALL create its listening socket with `SO_REUSEADDR` so that server 
 #### Scenario: Restart reuses port
 - **WHEN** the server restarts via `os.execv`
 - **THEN** the new process binds to the same port without "Address already in use" errors
+
+### Requirement: Button loading states
+The admin panel SHALL show a loading spinner and disable action buttons while a request is in flight.
+
+#### Scenario: Button shows spinner during request
+- **WHEN** the user clicks Load Config, Save & Reload, Reload Config, or Validate
+- **THEN** a spinner appears inside the button and the button becomes disabled until the request completes
+
+#### Scenario: Button re-enables after request
+- **WHEN** a button request completes (success or error)
+- **THEN** the spinner disappears and the button becomes enabled again
+
+### Requirement: Config save and reload feedback
+The admin panel SHALL display human-readable feedback when saving and reloading config.
+
+#### Scenario: Save successful
+- **WHEN** the user clicks Save & Reload with valid config content
+- **THEN** a green message "Config saved and reloaded successfully" is displayed
+
+#### Scenario: Save fails with YAML error
+- **WHEN** the user clicks Save & Reload with invalid YAML syntax
+- **THEN** a red error message with the YAML parse error is displayed
+
+#### Scenario: Save fails with config error
+- **WHEN** the user clicks Save & Reload with valid YAML that fails schema validation
+- **THEN** a red error message with the validation error is displayed
+
+#### Scenario: Old feedback clears on new action
+- **WHEN** the user clicks Load Config, Save & Reload, Validate, or Reload Config
+- **THEN** any previous feedback message is replaced with the new result
+
+### Requirement: Load config feedback
+The admin panel SHALL display human-readable feedback when loading config into the editor.
+
+#### Scenario: Load successful
+- **WHEN** the user clicks Load Config and the config is loaded into the editor
+- **THEN** a green message "Config loaded successfully" is displayed
+
+#### Scenario: Load fails
+- **WHEN** the user clicks Load Config and an error occurs
+- **THEN** a red error message with the error details is displayed
+
+### Requirement: Reload config feedback
+The admin panel SHALL display human-readable feedback when reloading config.
+
+#### Scenario: Reload successful
+- **WHEN** the user clicks Reload Config and the reload succeeds
+- **THEN** a green message "Config reloaded successfully" is displayed
+
+#### Scenario: Reload fails
+- **WHEN** the user clicks Reload Config and an error occurs
+- **THEN** a red error message with the error details is displayed
