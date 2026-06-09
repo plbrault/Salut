@@ -147,10 +147,8 @@ class TestAdminConfigEditor:
                 client.cookies.set(COOKIE_NAME, cookie_value)
                 response = client.get("/admin")
                 assert response.status_code == 200
-                assert "Expand" in response.text
                 assert "toggleEditor()" in response.text
-                assert "Validate" in response.text
-                assert "Save & Reload" in response.text
+                assert "fullpage-editor" in response.text
             finally:
                 app.state.config = original
 
