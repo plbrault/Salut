@@ -141,3 +141,55 @@ The server SHALL create its listening socket with `SO_REUSEADDR` so that server 
 #### Scenario: Restart reuses port
 - **WHEN** the server restarts via `os.execv`
 - **THEN** the new process binds to the same port without "Address already in use" errors
+
+### Requirement: Button loading states
+The admin panel SHALL show a loading spinner and disable action buttons while a request is in flight.
+
+#### Scenario: Button shows spinner during request
+- **WHEN** the user clicks Load Config, Save & Reload, Reload Config, or Validate
+- **THEN** a spinner appears inside the button and the button becomes disabled until the request completes
+
+#### Scenario: Button re-enables after request
+- **WHEN** a button request completes (success or error)
+- **THEN** the spinner disappears and the button becomes enabled again
+
+### Requirement: Config save and reload feedback
+The admin panel SHALL display human-readable feedback when saving and reloading config.
+
+#### Scenario: Save successful
+- **WHEN** the user clicks Save & Reload with valid config content
+- **THEN** a green message "Config saved and reloaded successfully" is displayed
+
+#### Scenario: Save fails with YAML error
+- **WHEN** the user clicks Save & Reload with invalid YAML syntax
+- **THEN** a red error message with the YAML parse error is displayed
+
+#### Scenario: Save fails with config error
+- **WHEN** the user clicks Save & Reload with valid YAML that fails schema validation
+- **THEN** a red error message with the validation error is displayed
+
+#### Scenario: Old feedback clears on new action
+- **WHEN** the user clicks Load Config, Save & Reload, Validate, or Reload Config
+- **THEN** any previous feedback message is replaced with the new result
+
+### Requirement: Load config feedback
+The admin panel SHALL display human-readable feedback when loading config into the editor.
+
+#### Scenario: Load successful
+- **WHEN** the user clicks Load Config and the config is loaded into the editor
+- **THEN** a green message "Config loaded successfully" is displayed
+
+#### Scenario: Load fails
+- **WHEN** the user clicks Load Config and an error occurs
+- **THEN** a red error message with the error details is displayed
+
+### Requirement: Reload config feedback
+The admin panel SHALL display human-readable feedback when reloading config.
+
+#### Scenario: Reload successful
+- **WHEN** the user clicks Reload Config and the reload succeeds
+- **THEN** a green message "Config reloaded successfully" is displayed
+
+#### Scenario: Reload fails
+- **WHEN** the user clicks Reload Config and an error occurs
+- **THEN** a red error message with the error details is displayed
