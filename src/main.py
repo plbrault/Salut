@@ -1,20 +1,31 @@
 import os
 import hashlib
 import logging
+import socket
+import subprocess
+import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
 
 import uvicorn
+import yaml
 from apscheduler.schedulers.background import BackgroundScheduler
 from fastapi import FastAPI, Request, Response
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from src.config import ConfigError, load_config, load_secrets
+from src.config import ConfigError, load_config, load_secrets, validate_config
 from src.database import Database
 from src.i18n import load_global_i18n
 from src.template import resolve_all_config_vars
 from src.plugins import setup_card, render_card, init_plugins_schemas
+from src.admin import (
+    COOKIE_NAME, COOKIE_MAX_AGE,
+    is_admin_enabled, check_admin_auth,
+    create_session_cookie, get_admin_password, get_admin_error_message,
+    admin_required, log_buffer, BufferHandler,
+)
 
 BASE_DIR = Path(__file__).resolve().parent
 CACHE_DIR = BASE_DIR.parent / "cache"
@@ -27,44 +38,30 @@ def _dev_reload_filter(record):
 scheduler = BackgroundScheduler(job_defaults={"misfire_grace_time": None})
 
 
-@asynccontextmanager
-async def lifespan(application):
-    handler = logging.StreamHandler()
-    handler.setFormatter(uvicorn.logging.DefaultFormatter("%(levelprefix)s %(message)s", use_colors=True))
-    logging.root.addHandler(handler)
-    logging.root.setLevel(logging.INFO)
-
-    db = Database()
-    db.delete()
-    db = Database()
-    application.state.database = db
-    application.state.config_error = None
-
+def reload_app_state():
+    db = app.state.database
     try:
-        application.state.config = load_config()
+        app.state.config = load_config()
     except ConfigError as e:
-        application.state.config_error = e.message
-        application.state.config = {}
-        application.state.secrets = {}
-        application.state.i18n = {}
-        application.state.plugin_instances = {}
-        yield
+        app.state.config_error = e.message
+        app.state.config = {}
+        app.state.secrets = {}
+        app.state.i18n = {}
+        app.state.plugin_instances = {}
         return
 
-    application.state.secrets = load_secrets()
+    app.state.config_error = None
+    app.state.secrets = load_secrets()
 
-    language = application.state.config.get("language", "en")
+    language = app.state.config.get("language", "en")
     if isinstance(language, str) and "-" in language:
         language = language.split("-")[0]
-    application.state.i18n = load_global_i18n(language)
+    app.state.i18n = load_global_i18n(language)
 
-    if os.environ.get("DEVELOPMENT"):
-        logging.getLogger("uvicorn.access").addFilter(_dev_reload_filter)
+    for job in scheduler.get_jobs():
+        scheduler.remove_job(job.id)
 
     init_plugins_schemas(db)
-
-    if not scheduler.running:
-        scheduler.start()
 
     resolved_config = resolve_all_config_vars(
         app.state.config, app.state.secrets, app.state.i18n
@@ -78,7 +75,32 @@ async def lifespan(application):
             instance = setup_card(card, db, scheduler, language)
             if instance is not None and plugin_name not in plugin_instances:
                 plugin_instances[plugin_name] = instance
-    application.state.plugin_instances = plugin_instances
+    app.state.plugin_instances = plugin_instances
+
+
+@asynccontextmanager
+async def lifespan(application):
+    handler = logging.StreamHandler()
+    handler.setFormatter(uvicorn.logging.DefaultFormatter("%(levelprefix)s %(message)s", use_colors=True))
+    logging.root.addHandler(handler)
+    logging.root.setLevel(logging.INFO)
+
+    buffer_handler = BufferHandler()
+    logging.root.addHandler(buffer_handler)
+
+    db = Database()
+    db.delete()
+    db = Database()
+    application.state.database = db
+    application.state.config_error = None
+
+    if os.environ.get("DEVELOPMENT"):
+        logging.getLogger("uvicorn.access").addFilter(_dev_reload_filter)
+
+    if not scheduler.running:
+        scheduler.start()
+
+    reload_app_state()
 
     yield
 
@@ -157,9 +179,174 @@ def dev_reload(response: Response):
     return {"version": h.hexdigest()}
 
 
-if __name__ == "__main__":
-    import sys
+@app.get("/admin/health")
+def admin_health():
+    return {"status": "ok"}
 
+
+@app.get("/admin/login")
+def admin_login_page(request: Request):
+    if not is_admin_enabled(request):
+        msg = get_admin_error_message(request)
+        return HTMLResponse(
+            "<html><head><title>Admin Not Enabled</title></head>"
+            "<body style='font-family:sans-serif;text-align:center;padding:4rem;'>"
+            "<h1>Admin Not Enabled</h1>"
+            f"<p>{msg}</p>"
+            "</body></html>",
+            status_code=403,
+        )
+    if check_admin_auth(request):
+        return RedirectResponse("/admin", status_code=302)
+    return templates.TemplateResponse(request, "admin.html", {"show_login": True, "error": None})
+
+
+@app.post("/admin/login")
+async def admin_login(request: Request):
+    if not is_admin_enabled(request):
+        msg = get_admin_error_message(request)
+        return HTMLResponse(
+            "<html><head><title>Admin Not Enabled</title></head>"
+            "<body style='font-family:sans-serif;text-align:center;padding:4rem;'>"
+            "<h1>Admin Not Enabled</h1>"
+            f"<p>{msg}</p>"
+            "</body></html>",
+            status_code=403,
+        )
+    body = await request.json()
+    password = body.get("password", "")
+    if password == get_admin_password(request):
+        response = RedirectResponse("/admin", status_code=302)
+        cookie_value = create_session_cookie(password)
+        response.set_cookie(COOKIE_NAME, cookie_value, max_age=COOKIE_MAX_AGE, httponly=True)
+        return response
+    return templates.TemplateResponse(request, "admin.html", {"show_login": True, "error": "Invalid password"})
+
+
+@app.post("/admin/logout")
+async def admin_logout(request: Request):
+    if not is_admin_enabled(request):
+        msg = get_admin_error_message(request)
+        return HTMLResponse(
+            "<html><head><title>Admin Not Enabled</title></head>"
+            "<body style='font-family:sans-serif;text-align:center;padding:4rem;'>"
+            "<h1>Admin Not Enabled</h1>"
+            f"<p>{msg}</p>"
+            "</body></html>",
+            status_code=403,
+        )
+    response = RedirectResponse("/admin/login", status_code=302)
+    response.delete_cookie(COOKIE_NAME)
+    return response
+
+
+@app.get("/admin")
+@admin_required
+def admin_page(request: Request):
+    config_path = BASE_DIR.parent / "config.yml"
+    config_content = ""
+    if config_path.exists():
+        config_content = config_path.read_text(encoding="utf-8")
+    return templates.TemplateResponse(request, "admin.html", {
+        "show_login": False,
+        "config_content": config_content,
+    })
+
+
+@app.get("/admin/logs")
+@admin_required
+def admin_logs(request: Request):
+    return list(log_buffer)
+
+
+@app.get("/admin/config")
+@admin_required
+def admin_get_config(request: Request):
+    config_path = BASE_DIR.parent / "config.yml"
+    if not config_path.exists():
+        return {"content": ""}
+    return {"content": config_path.read_text(encoding="utf-8")}
+
+
+@app.put("/admin/config")
+@admin_required
+async def admin_save_config(request: Request):
+    body = await request.json()
+    content = body.get("content", "")
+    try:
+        config = yaml.safe_load(content)
+    except yaml.YAMLError as e:
+        return JSONResponse({"error": f"YAML syntax error: {e}"}, status_code=400)
+    try:
+        validate_config(config, "config.yml")
+    except ConfigError as e:
+        return JSONResponse({"error": e.message}, status_code=400)
+    config_path = BASE_DIR.parent / "config.yml"
+    config_path.write_text(content, encoding="utf-8")
+    reload_app_state()
+    return {"status": "ok"}
+
+
+@app.post("/admin/validate")
+@admin_required
+async def admin_validate_config(request: Request):
+    body = await request.json()
+    content = body.get("content", "")
+    try:
+        config = yaml.safe_load(content)
+    except yaml.YAMLError as e:
+        return JSONResponse({"error": f"YAML syntax error: {e}"}, status_code=400)
+    try:
+        validate_config(config, "config.yml")
+    except ConfigError as e:
+        return JSONResponse({"error": e.message}, status_code=400)
+    return {"status": "ok"}
+
+
+@app.post("/admin/reload")
+@admin_required
+def admin_reload(request: Request):
+    try:
+        reload_app_state()
+        return {"status": "ok"}
+    except Exception as e:  # pylint: disable=broad-except
+        return {"error": str(e)}, 500
+
+
+@app.post("/admin/restart")
+@admin_required
+def admin_restart(request: Request):
+    invocation_id = os.environ.get("INVOCATION_ID")
+    if invocation_id:
+        subprocess.Popen(["systemctl", "--user", "restart", "salut"])
+        return {"status": "restarting"}
+    python_path = sys.executable
+    os.execv(python_path, [python_path, "-m", "src.main"])
+
+
+@app.post("/admin/update")
+@admin_required
+def admin_update(request: Request):
+    result = subprocess.run(["git", "rev-parse", "--abbrev-ref", "HEAD"], capture_output=True, text=True, check=False)
+    branch = result.stdout.strip()
+    if branch != "main":
+        return JSONResponse({"error": f"Not on main branch (currently on {branch})"}, status_code=400)
+    result = subprocess.run(["git", "status", "--porcelain"], capture_output=True, text=True, check=False)
+    if result.stdout.strip():
+        return JSONResponse({"error": "Uncommitted changes. Please commit or stash before updating."}, status_code=400)
+    result = subprocess.run(["git", "pull"], capture_output=True, text=True, check=False)
+    if result.returncode != 0:
+        return JSONResponse({"error": f"Git pull failed: {result.stderr}"}, status_code=500)
+    subprocess.run(["pipenv", "install"], capture_output=True, check=False)
+    invocation_id = os.environ.get("INVOCATION_ID")
+    if invocation_id:
+        subprocess.Popen(["systemctl", "--user", "restart", "salut"])
+        return {"status": "updating"}
+    python_path = sys.executable
+    os.execv(python_path, [python_path, "-m", "src.main"])
+
+
+if __name__ == "__main__":
     port = 8000
     if "--port" in sys.argv:
         idx = sys.argv.index("--port")
@@ -168,10 +355,17 @@ if __name__ == "__main__":
         port = int(os.environ["PORT"])
 
     is_dev = os.environ.get("DEVELOPMENT") is not None
-    uvicorn.run(
+
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    sock.set_inheritable(False)
+    sock.bind(("0.0.0.0", port))
+    sock.listen(5)
+
+    config = uvicorn.Config(
         "src.main:app",
-        host="0.0.0.0",
-        port=port,
         reload=is_dev,
         reload_includes=["*.yml", "*.yaml"] if is_dev else None,
     )
+    server = uvicorn.Server(config)
+    server.run(sockets=[sock])
