@@ -383,11 +383,18 @@ def admin_check_update(request: Request):  # pylint: disable=unused-argument
         return JSONResponse({"error": f"Git fetch failed: {result.stderr}"}, status_code=500)
     result = subprocess.run(["git", "rev-parse", "--abbrev-ref", "HEAD"], capture_output=True, text=True, check=False)
     branch = result.stdout.strip()
-    local = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True, check=False).stdout.strip()
-    remote = subprocess.run(["git", "rev-parse", f"origin/{branch}"], capture_output=True, text=True, check=False).stdout.strip()
+    local = subprocess.run(
+        ["git", "rev-parse", "HEAD"], capture_output=True, text=True, check=False
+    ).stdout.strip()
+    remote = subprocess.run(
+        ["git", "rev-parse", f"origin/{branch}"], capture_output=True, text=True, check=False
+    ).stdout.strip()
     if local == remote:
         return {"has_update": False}
-    commit_info = subprocess.run(["git", "log", "-1", "--format=%h %s", f"origin/{branch}"], capture_output=True, text=True, check=False).stdout.strip()
+    commit_info = subprocess.run(
+        ["git", "log", "-1", "--format=%h %s", f"origin/{branch}"],
+        capture_output=True, text=True, check=False
+    ).stdout.strip()
     return {"has_update": True, "commit": commit_info}
 
 
