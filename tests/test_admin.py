@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 
 from src.main import app
 from src.admin import create_session_cookie, verify_session_cookie, COOKIE_NAME, log_buffer
+from src.database import Database
 
 
 class TestAdminAuth:
@@ -205,6 +206,62 @@ cards:
             finally:
                 app.state.config = original
 
+    def test_save_config_valid(self):
+        with TestClient(app) as client:
+            original = app.state.config.copy()
+            app.state.config = {**original, "admin_password": "secret"}
+            try:
+                cookie_value = create_session_cookie("secret")
+                client.cookies.set(COOKIE_NAME, cookie_value)
+                valid_yaml = """
+page_title: Test
+page_header: "<h1>Test</h1>"
+language: en
+user_info:
+  short_name: Test
+  long_name: Test User
+columns: 1
+cards:
+  - title: Test
+    plugin: html
+    options:
+      html: "Hello"
+"""
+                with unittest.mock.patch("pathlib.Path.write_text"):
+                    response = client.put("/admin/config", json={"content": valid_yaml})
+                    assert response.status_code == 200
+                    assert "16a34a" in response.text
+            finally:
+                app.state.config = original
+
+    def test_save_config_invalid_yaml(self):
+        with TestClient(app) as client:
+            original = app.state.config.copy()
+            app.state.config = {**original, "admin_password": "secret"}
+            try:
+                cookie_value = create_session_cookie("secret")
+                client.cookies.set(COOKIE_NAME, cookie_value)
+                invalid_yaml = "page_title: Test\n  invalid: indentation"
+                response = client.put("/admin/config", json={"content": invalid_yaml})
+                assert response.status_code == 200
+                assert "dc2626" in response.text
+            finally:
+                app.state.config = original
+
+    def test_save_config_invalid_config(self):
+        with TestClient(app) as client:
+            original = app.state.config.copy()
+            app.state.config = {**original, "admin_password": "secret"}
+            try:
+                cookie_value = create_session_cookie("secret")
+                client.cookies.set(COOKIE_NAME, cookie_value)
+                invalid_config = "page_title: Test"
+                response = client.put("/admin/config", json={"content": invalid_config})
+                assert response.status_code == 200
+                assert "dc2626" in response.text
+            finally:
+                app.state.config = original
+
 
 class TestAdminLogs:
     def test_logs_endpoint_returns_list(self):
@@ -240,24 +297,27 @@ class TestAdminLogs:
 
 
 class TestAdminReloadAndRestartUpdate:
-    def test_reload_preserves_database(self):
+    def test_reload_preserves_database(self, tmp_path):
         with TestClient(app) as client:
             original = app.state.config.copy()
             app.state.config = {**original, "admin_password": "secret"}
+            original_db = app.state.database
+            test_db = Database(tmp_path / "test.db")
+            app.state.database = test_db
             try:
                 cookie_value = create_session_cookie("secret")
                 client.cookies.set(COOKIE_NAME, cookie_value)
-                db = app.state.database
-                db.execute("CREATE TABLE IF NOT EXISTS test_table (id INTEGER)")
-                db.execute("INSERT INTO test_table (id) VALUES (1)")
+                test_db.execute("CREATE TABLE IF NOT EXISTS test_table (id INTEGER)")
+                test_db.execute("INSERT INTO test_table (id) VALUES (1)")
                 response = client.post("/admin/reload")
                 assert response.status_code == 200
-                assert response.json()["status"] == "ok"
-                result = db.fetch_all("SELECT * FROM test_table")
+                assert "16a34a" in response.text
+                result = test_db.fetch_all("SELECT * FROM test_table")
                 assert len(result) == 1
             finally:
                 app.state.config = original
-                db.execute("DROP TABLE IF EXISTS test_table")
+                app.state.database = original_db
+                test_db.close()
 
     def test_health_endpoint(self):
         with TestClient(app) as client:

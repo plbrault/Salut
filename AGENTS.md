@@ -40,6 +40,13 @@ This project is **spec-driven**. All features must be specified with OpenSpec be
 - Run `pipenv run pytest` before committing
 - All tests must pass (0 failures)
 
+**Tests MUST NEVER touch real files or databases.** This is a hard rule with zero exceptions:
+
+- **Config files**: Use `tmp_path` fixture + `monkeypatch.setattr` to redirect file paths. Never read/write `config.yml` or `starter.yml` directly.
+- **Database**: Use `Database(tmp_path / "test.db")` with isolated instances. Never use `app.state.database` directly—swap in a temp database and restore in `finally`.
+- **Mock file I/O**: When testing code that writes files (e.g., `Path.write_text`), mock it with `unittest.mock.patch("pathlib.Path.write_text")`.
+- **No cleanup hacks**: If you find yourself writing `finally` blocks to restore real files or drop real tables, you're doing it wrong.
+
 ### Linting
 
 - Run `pipenv run pylint` before committing

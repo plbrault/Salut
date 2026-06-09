@@ -286,15 +286,15 @@ async def admin_save_config(request: Request):
     try:
         parsed = yaml.safe_load(content)
     except yaml.YAMLError as e:
-        return JSONResponse({"error": f"YAML syntax error: {e}"}, status_code=400)
+        return HTMLResponse(f'<span style="color:#dc2626;">YAML syntax error: {e}</span>')
     try:
         validate_config(parsed, "config.yml")
     except ConfigError as e:
-        return JSONResponse({"error": e.message}, status_code=400)
+        return HTMLResponse(f'<span style="color:#dc2626;">{e.message}</span>')
     config_path = BASE_DIR.parent / "config.yml"
     config_path.write_text(content, encoding="utf-8")
     reload_app_state()
-    return {"status": "ok"}
+    return HTMLResponse('<span style="color:#16a34a;">Config saved and reloaded successfully</span>')
 
 
 @app.post("/admin/validate")
@@ -324,9 +324,9 @@ async def admin_validate_config(request: Request):
 def admin_reload(request: Request):  # pylint: disable=unused-argument
     try:
         reload_app_state()
-        return {"status": "ok"}
+        return HTMLResponse('<span style="color:#16a34a;">Config reloaded successfully</span>')
     except Exception as e:  # pylint: disable=broad-except
-        return {"error": str(e)}, 500
+        return HTMLResponse(f'<span style="color:#dc2626;">{e}</span>')
 
 
 @app.post("/admin/restart")
