@@ -9,7 +9,6 @@
 * Single web page with no login (meant to be locally hosted)
 * YAML-based configuration
 * Internationalization (English and French currently supported)
-* Admin page for server management (config editing, reload, restart, update, logs)
 * Layout consisting of cards based on plugins:
 
     * [Calendar](docs/plugins/calendar.md)
