@@ -261,7 +261,7 @@ class TestAdminReloadAndRestartUpdate:
             assert response.status_code == 200
             assert response.json()["status"] == "ok"
 
-    def test_update_rejects_non_main_branch(self):
+    def test_update_rejects_uncommitted_changes(self):
         with TestClient(app) as client:
             original = app.state.config.copy()
             app.state.config = {**original, "admin_password": "secret"}

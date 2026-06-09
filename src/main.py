@@ -327,10 +327,6 @@ def admin_restart(request: Request):
 @app.post("/admin/update")
 @admin_required
 def admin_update(request: Request):
-    result = subprocess.run(["git", "rev-parse", "--abbrev-ref", "HEAD"], capture_output=True, text=True, check=False)
-    branch = result.stdout.strip()
-    if branch != "main":
-        return JSONResponse({"error": f"Not on main branch (currently on {branch})"}, status_code=400)
     result = subprocess.run(["git", "status", "--porcelain"], capture_output=True, text=True, check=False)
     if result.stdout.strip():
         return JSONResponse({"error": "Uncommitted changes. Please commit or stash before updating."}, status_code=400)
