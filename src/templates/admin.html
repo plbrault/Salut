@@ -51,7 +51,10 @@
 </head>
 <body class="min-h-screen p-8">
     <div class="max-w-5xl mx-auto">
-        <h1 class="text-2xl font-bold mb-6">Salut Admin</h1>
+        <h1 class="text-2xl font-bold mb-1">Salut Admin</h1>
+        {% if not show_login %}
+        <p class="text-sm mb-6" style="color: var(--text-muted);">Last Commit: <code>{{ last_commit }}</code></p>
+        {% endif %}
         <div id="content">
             {% if show_login %}
             <div class="card max-w-sm">

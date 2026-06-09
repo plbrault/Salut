@@ -37,6 +37,17 @@ def _dev_reload_filter(record):
     return "/dev-reload" not in record.getMessage()
 
 
+def _get_last_commit():
+    try:
+        result = subprocess.run(
+            ["git", "log", "-1", "--format=%h %s"],
+            capture_output=True, text=True, check=True, cwd=BASE_DIR.parent
+        )
+        return result.stdout.strip()
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return "Unknown"
+
+
 scheduler = BackgroundScheduler(job_defaults={"misfire_grace_time": None})
 
 
@@ -254,6 +265,7 @@ def admin_page(request: Request):
         "show_login": False,
         "config_content": config_content,
         "config_exists": config_exists,
+        "last_commit": _get_last_commit(),
     })
 
 

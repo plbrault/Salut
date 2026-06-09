@@ -346,3 +346,39 @@ class TestAdminReloadAndRestartUpdate:
                     assert "error" in response.json()
             finally:
                 app.state.config = original
+
+
+class TestLastCommit:
+    def test_get_last_commit_returns_hash_and_message(self):
+        from src.main import _get_last_commit
+        result = _get_last_commit()
+        assert result != "Unknown"
+        parts = result.split(" ", 1)
+        assert len(parts) == 2
+        assert len(parts[0]) == 7
+        assert len(parts[1]) > 0
+
+    def test_get_last_commit_fallback_on_error(self):
+        from src.main import _get_last_commit
+        with unittest.mock.patch("subprocess.run", side_effect=subprocess.CalledProcessError(1, "git")):
+            result = _get_last_commit()
+            assert result == "Unknown"
+
+    def test_get_last_commit_fallback_on_missing_git(self):
+        from src.main import _get_last_commit
+        with unittest.mock.patch("subprocess.run", side_effect=FileNotFoundError):
+            result = _get_last_commit()
+            assert result == "Unknown"
+
+    def test_admin_page_shows_last_commit(self):
+        with TestClient(app) as client:
+            original = app.state.config.copy()
+            app.state.config = {**original, "admin_password": "secret"}
+            try:
+                cookie_value = create_session_cookie("secret")
+                client.cookies.set(COOKIE_NAME, cookie_value)
+                response = client.get("/admin")
+                assert response.status_code == 200
+                assert "Last Commit:" in response.text
+            finally:
+                app.state.config = original
