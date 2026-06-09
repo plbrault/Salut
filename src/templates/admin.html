@@ -87,9 +87,11 @@
             <div class="card mb-6">
                 <h2 class="text-lg font-semibold mb-4">Actions</h2>
                 <div class="flex flex-wrap gap-2">
+                    {% if config_exists %}
                     <button hx-get="/admin/config" hx-target="#editor" hx-swap="none" onclick="loadConfig()" class="btn">Load Config</button>
                     <button hx-post="/admin/validate" hx-target="#status" hx-vals="js:{content: editor.getValue()}" class="btn">Validate</button>
                     <button hx-put="/admin/config" hx-target="#status" hx-vals="js:{content: editor.getValue()}" class="btn btn-primary">Save & Reload</button>
+                    {% endif %}
                     <button hx-post="/admin/reload" hx-target="#status" class="btn">Reload Config</button>
                     <button hx-post="/admin/restart" hx-target="#status" hx-swap="none" onclick="showRestartOverlay()" class="btn btn-danger">Restart</button>
                     <button onclick="tryUpdate()" class="btn btn-danger">Update</button>
@@ -98,8 +100,12 @@
             </div>
             <div class="card mb-6">
                 <h2 class="text-lg font-semibold mb-4">Config Editor</h2>
+                {% if config_exists %}
                 <textarea id="editor-source">{{ config_content }}</textarea>
                 <div id="editor"></div>
+                {% else %}
+                <p class="text-sm" style="color: var(--text-secondary);">No <code>config.yml</code> found. Create one based on <code>starter.yml</code> to get started.</p>
+                {% endif %}
             </div>
             <div class="card">
                 <h2 class="text-lg font-semibold mb-4">Logs</h2>

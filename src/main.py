@@ -1,5 +1,6 @@
 import os
 import hashlib
+import json
 import logging
 import socket
 import subprocess
@@ -11,7 +12,7 @@ import uvicorn
 import yaml
 from apscheduler.schedulers.background import BackgroundScheduler
 from fastapi import FastAPI, Request, Response
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -245,11 +246,13 @@ async def admin_logout(request: Request):
 def admin_page(request: Request):
     config_path = BASE_DIR.parent / "config.yml"
     config_content = ""
-    if config_path.exists():
+    config_exists = config_path.exists()
+    if config_exists:
         config_content = config_path.read_text(encoding="utf-8")
     return templates.TemplateResponse(request, "admin.html", {
         "show_login": False,
         "config_content": config_content,
+        "config_exists": config_exists,
     })
 
 
@@ -271,7 +274,14 @@ def admin_get_config(request: Request):
 @app.put("/admin/config")
 @admin_required
 async def admin_save_config(request: Request):
-    body = await request.json()
+    raw = await request.body()
+    content_type = request.headers.get("content-type", "")
+    if "application/json" in content_type:
+        body = json.loads(raw)
+    else:
+        from urllib.parse import parse_qs
+        body = parse_qs(raw.decode()) if raw else {}
+        body = {k: v[0] if isinstance(v, list) and len(v) == 1 else v for k, v in body.items()}
     content = body.get("content", "")
     try:
         config = yaml.safe_load(content)
@@ -290,17 +300,24 @@ async def admin_save_config(request: Request):
 @app.post("/admin/validate")
 @admin_required
 async def admin_validate_config(request: Request):
-    body = await request.json()
+    raw = await request.body()
+    content_type = request.headers.get("content-type", "")
+    if "application/json" in content_type:
+        body = json.loads(raw)
+    else:
+        from urllib.parse import parse_qs
+        body = parse_qs(raw.decode()) if raw else {}
+        body = {k: v[0] if isinstance(v, list) and len(v) == 1 else v for k, v in body.items()}
     content = body.get("content", "")
     try:
         config = yaml.safe_load(content)
     except yaml.YAMLError as e:
-        return JSONResponse({"error": f"YAML syntax error: {e}"}, status_code=400)
+        return HTMLResponse(f'<span style="color:#dc2626;">YAML syntax error: {e}</span>')
     try:
         validate_config(config, "config.yml")
     except ConfigError as e:
-        return JSONResponse({"error": e.message}, status_code=400)
-    return {"status": "ok"}
+        return HTMLResponse(f'<span style="color:#dc2626;">{e.message}</span>')
+    return HTMLResponse('<span style="color:#16a34a;">Config is valid</span>')
 
 
 @app.post("/admin/reload")

@@ -168,7 +168,7 @@ cards:
 """
                 response = client.post("/admin/validate", json={"content": valid_yaml})
                 assert response.status_code == 200
-                assert response.json()["status"] == "ok"
+                assert "16a34a" in response.text
             finally:
                 app.state.config = original
 
@@ -181,8 +181,8 @@ cards:
                 client.cookies.set(COOKIE_NAME, cookie_value)
                 invalid_yaml = "page_title: Test\n  invalid: indentation"
                 response = client.post("/admin/validate", json={"content": invalid_yaml})
-                assert response.status_code == 400
-                assert "error" in response.json()
+                assert response.status_code == 200
+                assert "error" in response.text.lower()
             finally:
                 app.state.config = original
 
@@ -195,8 +195,8 @@ cards:
                 client.cookies.set(COOKIE_NAME, cookie_value)
                 invalid_config = "page_title: Test"
                 response = client.post("/admin/validate", json={"content": invalid_config})
-                assert response.status_code == 400
-                assert "error" in response.json()
+                assert response.status_code == 200
+                assert "dc2626" in response.text
             finally:
                 app.state.config = original
 
