@@ -93,7 +93,7 @@
                     <button hx-put="/admin/config" hx-target="#status" hx-vals="js:{content: editor.getValue()}" class="btn btn-primary">Save & Reload</button>
                     {% endif %}
                     <button hx-post="/admin/reload" hx-target="#status" class="btn">Reload Config</button>
-                    <button hx-post="/admin/restart" hx-target="#status" hx-swap="none" onclick="showRestartOverlay()" class="btn btn-danger">Restart</button>
+                    <button onclick="tryRestart()" class="btn btn-danger">Restart</button>
                     <button onclick="tryUpdate()" class="btn btn-danger">Update</button>
                 </div>
                 <div id="status" class="mt-3 text-sm"></div>
@@ -144,24 +144,23 @@
             });
         }
 
-        function showRestartOverlay() {
+        function showRestartModal() {
             var overlay = document.createElement('div');
             overlay.id = 'restart-overlay';
             overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;z-index:9999;';
-            overlay.innerHTML = '<div style="color:white;text-align:center;"><p style="font-size:1.5rem;font-weight:bold;">Restarting...</p><p style="margin-top:1rem;">Please wait</p></div>';
+            overlay.innerHTML = '<div style="color:white;text-align:center;max-width:24rem;">' +
+                '<p style="font-size:1.25rem;font-weight:bold;margin-bottom:1rem;">Server is restarting</p>' +
+                '<p style="margin-bottom:1.5rem;">The application will be unavailable until the server has fully restarted.</p>' +
+                '<button onclick="window.location.href=\'/\'" class="btn btn-primary">OK</button>' +
+                '</div>';
             document.body.appendChild(overlay);
-            pollHealth();
         }
 
-        function pollHealth() {
-            fetch('/admin/health').then(function(r) {
-                if (r.ok) {
-                    window.location.href = '/admin';
-                } else {
-                    setTimeout(pollHealth, 2000);
-                }
+        function tryRestart() {
+            fetch('/admin/restart', {method: 'POST'}).then(function() {
+                showRestartModal();
             }).catch(function() {
-                setTimeout(pollHealth, 2000);
+                showRestartModal();
             });
         }
 
@@ -169,13 +168,13 @@
             fetch('/admin/update', {method: 'POST'}).then(function(r) {
                 return r.json().then(function(data) {
                     if (r.ok) {
-                        showRestartOverlay();
+                        showRestartModal();
                     } else {
                         document.getElementById('status').textContent = data.error || 'Update failed';
                     }
                 });
             }).catch(function() {
-                showRestartOverlay();
+                showRestartModal();
             });
         }
     </script>
