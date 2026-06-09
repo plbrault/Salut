@@ -24,7 +24,7 @@ The server SHALL serve an index page at `GET /` using Jinja2 templates.
 - **THEN** Jinja2 templates are cached for performance
 
 ### Requirement: Static assets are served
-The server SHALL serve static files (HTMX, Tailwind CSS) from the `static/` directory.
+The server SHALL serve static files (HTMX, Tailwind CSS, CodeMirror) from the `static/` directory.
 
 #### Scenario: HTMX is available locally
 - **WHEN** the page loads in a browser
@@ -33,6 +33,17 @@ The server SHALL serve static files (HTMX, Tailwind CSS) from the `static/` dire
 #### Scenario: Tailwind CSS is available locally
 - **WHEN** the page loads in a browser
 - **THEN** Tailwind CSS is loaded from `/static/tailwindcss.js`
+
+#### Scenario: CodeMirror is available locally
+- **WHEN** the admin page loads in a browser
+- **THEN** CodeMirror core, YAML mode, and CSS are loaded from `/static/codemirror.min.js`, `/static/yaml.min.js`, and `/static/codemirror.min.css`
+
+### Requirement: Server socket uses SO_REUSEADDR
+The server SHALL create its listening socket with `SO_REUSEADDR` to allow immediate rebinding on restart.
+
+#### Scenario: Server binds with SO_REUSEADDR
+- **WHEN** the server starts
+- **THEN** the listening socket is created with `SO_REUSEADDR` enabled
 
 ### Requirement: SQLite database is initialized
 The server SHALL delete and recreate the SQLite database on every startup, ensuring a clean state with no persisted data. The scheduler SHALL be configured with `misfire_grace_time=None` so that scheduled jobs are never silently skipped due to timing delays.

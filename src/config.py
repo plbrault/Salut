@@ -158,6 +158,13 @@ def _validate_cards(config, filename):
                 )
 
 
+def _validate_admin_password(config, filename):
+    admin_password = config.get("admin_password")
+    if admin_password is not None:
+        if not isinstance(admin_password, str) or not admin_password:
+            raise ConfigError(f"{filename}: 'admin_password' must be a non-empty string.")
+
+
 def validate_config(config, filename="config"):
     if not isinstance(config, dict):
         raise ConfigError(f"{filename}: config must be a mapping (key-value pairs).")
@@ -167,3 +174,4 @@ def validate_config(config, filename="config"):
     _validate_language(config, filename)
     _validate_user_info(config, filename)
     _validate_cards(config, filename)
+    _validate_admin_password(config, filename)

@@ -54,6 +54,8 @@ To use a custom port:
 PORT=9001 pipenv run app
 ```
 
+A rudimentary admin panel is available at `/admin`.
+
 **Note:** The application uses an ephemeral SQLite database. It is recreated on each server start. All cached data (RSS feeds, weather, calendar events, etc.) is re-fetched automatically.
 
 ### Permanent Installation (Linux)

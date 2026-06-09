@@ -30,6 +30,10 @@ The system SHALL validate the parsed config has the required structure.
 - **WHEN** the config has a `page_title` string, a `page_header` string, a `language` string, a `user_info` object with `short_name` and `long_name` strings, a `columns` integer, and a `cards` list with at least one card, each card having `title`, `plugin`, and `options`
 - **THEN** the config is accepted
 
+#### Scenario: Optional admin_password
+- **WHEN** the config has an `admin_password` field with a non-empty string value
+- **THEN** the config is accepted and the admin panel is enabled
+
 #### Scenario: Missing columns
 - **WHEN** the config has no `columns` field
 - **THEN** a validation error is raised indicating columns are required
