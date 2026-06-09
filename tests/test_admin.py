@@ -1,5 +1,7 @@
+import logging
 import subprocess
 import unittest.mock
+from collections import namedtuple
 
 from fastapi.testclient import TestClient
 
@@ -121,7 +123,7 @@ class TestSessionCookie:
         assert verify_session_cookie(cookie_value) is True
 
     def test_session_cookie_verification_with_wrong_value(self):
-        cookie = create_session_cookie("password123")
+        create_session_cookie("password123")
         assert verify_session_cookie("wrong|signature") is False
 
     def test_session_cookie_verification_with_none(self):
@@ -219,7 +221,6 @@ class TestAdminLogs:
                 app.state.config = original
 
     def test_logs_endpoint_captures_log_entries(self):
-        import logging
         with TestClient(app) as client:
             original = app.state.config.copy()
             app.state.config = {**original, "admin_password": "secret"}
@@ -271,14 +272,13 @@ class TestAdminReloadAndRestartUpdate:
             try:
                 cookie_value = create_session_cookie("secret")
                 client.cookies.set(COOKIE_NAME, cookie_value)
-                original_run = subprocess.run
+                original_run = subprocess.run  # pylint: disable=subprocess-run-check
 
                 def mock_run(cmd, **kwargs):
                     if cmd[:3] == ["git", "status", "--porcelain"]:
-                        from collections import namedtuple
                         Result = namedtuple("Result", ["stdout", "returncode", "stderr"])
                         return Result(stdout=" M src/main.py\n", returncode=0, stderr="")
-                    return original_run(cmd, **kwargs)
+                    return original_run(cmd, **kwargs)  # pylint: disable=subprocess-run-check
 
                 with unittest.mock.patch("src.main.subprocess.run", side_effect=mock_run):
                     response = client.post("/admin/update")

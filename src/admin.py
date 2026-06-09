@@ -7,7 +7,7 @@ from datetime import datetime
 from functools import wraps
 
 from fastapi import Request
-from fastapi.responses import RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 
 COOKIE_NAME = "salut_admin_session"
 COOKIE_MAX_AGE = 86400 * 7
@@ -74,7 +74,6 @@ def admin_required(handler):
     @wraps(handler)
     async def wrapper(request: Request, *args, **kwargs):
         if not is_admin_enabled(request):
-            from fastapi.responses import HTMLResponse
             msg = get_admin_error_message(request)
             return HTMLResponse(
                 "<html><head><title>Admin Not Enabled</title></head>"

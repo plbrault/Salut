@@ -7,6 +7,7 @@ import subprocess
 import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
+from urllib.parse import parse_qs
 
 import uvicorn
 import yaml
@@ -137,9 +138,9 @@ def index(request: Request):
             {"error": app.state.config_error},
         )
 
-    config = app.state.config
+    app_config = app.state.config
     secrets = app.state.secrets
-    resolved_config = resolve_all_config_vars(config, secrets)
+    resolved_config = resolve_all_config_vars(app_config, secrets)
     page_title = resolved_config.get("page_title", "")
     page_header = resolved_config.get("page_header", "")
 
@@ -258,13 +259,13 @@ def admin_page(request: Request):
 
 @app.get("/admin/logs")
 @admin_required
-def admin_logs(request: Request):
+def admin_logs(request: Request):  # pylint: disable=unused-argument
     return list(log_buffer)
 
 
 @app.get("/admin/config")
 @admin_required
-def admin_get_config(request: Request):
+def admin_get_config(request: Request):  # pylint: disable=unused-argument
     config_path = BASE_DIR.parent / "config.yml"
     if not config_path.exists():
         return {"content": ""}
@@ -279,16 +280,15 @@ async def admin_save_config(request: Request):
     if "application/json" in content_type:
         body = json.loads(raw)
     else:
-        from urllib.parse import parse_qs
         body = parse_qs(raw.decode()) if raw else {}
         body = {k: v[0] if isinstance(v, list) and len(v) == 1 else v for k, v in body.items()}
     content = body.get("content", "")
     try:
-        config = yaml.safe_load(content)
+        parsed = yaml.safe_load(content)
     except yaml.YAMLError as e:
         return JSONResponse({"error": f"YAML syntax error: {e}"}, status_code=400)
     try:
-        validate_config(config, "config.yml")
+        validate_config(parsed, "config.yml")
     except ConfigError as e:
         return JSONResponse({"error": e.message}, status_code=400)
     config_path = BASE_DIR.parent / "config.yml"
@@ -305,16 +305,15 @@ async def admin_validate_config(request: Request):
     if "application/json" in content_type:
         body = json.loads(raw)
     else:
-        from urllib.parse import parse_qs
         body = parse_qs(raw.decode()) if raw else {}
         body = {k: v[0] if isinstance(v, list) and len(v) == 1 else v for k, v in body.items()}
     content = body.get("content", "")
     try:
-        config = yaml.safe_load(content)
+        parsed = yaml.safe_load(content)
     except yaml.YAMLError as e:
         return HTMLResponse(f'<span style="color:#dc2626;">YAML syntax error: {e}</span>')
     try:
-        validate_config(config, "config.yml")
+        validate_config(parsed, "config.yml")
     except ConfigError as e:
         return HTMLResponse(f'<span style="color:#dc2626;">{e.message}</span>')
     return HTMLResponse('<span style="color:#16a34a;">Config is valid</span>')
@@ -322,7 +321,7 @@ async def admin_validate_config(request: Request):
 
 @app.post("/admin/reload")
 @admin_required
-def admin_reload(request: Request):
+def admin_reload(request: Request):  # pylint: disable=unused-argument
     try:
         reload_app_state()
         return {"status": "ok"}
@@ -332,10 +331,10 @@ def admin_reload(request: Request):
 
 @app.post("/admin/restart")
 @admin_required
-def admin_restart(request: Request):
+def admin_restart(request: Request):  # pylint: disable=unused-argument,inconsistent-return-statements
     invocation_id = os.environ.get("INVOCATION_ID")
     if invocation_id:
-        subprocess.Popen(["systemctl", "--user", "restart", "salut"])
+        subprocess.Popen(["systemctl", "--user", "restart", "salut"])  # pylint: disable=consider-using-with
         return {"status": "restarting"}
     python_path = sys.executable
     os.execv(python_path, [python_path, "-m", "src.main"])
@@ -343,7 +342,7 @@ def admin_restart(request: Request):
 
 @app.post("/admin/update")
 @admin_required
-def admin_update(request: Request):
+def admin_update(request: Request):  # pylint: disable=unused-argument,inconsistent-return-statements
     result = subprocess.run(["git", "status", "--porcelain"], capture_output=True, text=True, check=False)
     if result.stdout.strip():
         return JSONResponse({"error": "Uncommitted changes. Please commit or stash before updating."}, status_code=400)
@@ -355,7 +354,7 @@ def admin_update(request: Request):
     subprocess.run(["pipenv", "install"], capture_output=True, check=False)
     invocation_id = os.environ.get("INVOCATION_ID")
     if invocation_id:
-        subprocess.Popen(["systemctl", "--user", "restart", "salut"])
+        subprocess.Popen(["systemctl", "--user", "restart", "salut"])  # pylint: disable=consider-using-with
         return {"status": "updating"}
     python_path = sys.executable
     os.execv(python_path, [python_path, "-m", "src.main"])
