@@ -330,7 +330,9 @@ def admin_update(request: Request):
     result = subprocess.run(["git", "status", "--porcelain"], capture_output=True, text=True, check=False)
     if result.stdout.strip():
         return JSONResponse({"error": "Uncommitted changes. Please commit or stash before updating."}, status_code=400)
-    result = subprocess.run(["git", "pull"], capture_output=True, text=True, check=False)
+    result = subprocess.run(["git", "rev-parse", "--abbrev-ref", "HEAD"], capture_output=True, text=True, check=False)
+    branch = result.stdout.strip()
+    result = subprocess.run(["git", "pull", "origin", branch], capture_output=True, text=True, check=False)
     if result.returncode != 0:
         return JSONResponse({"error": f"Git pull failed: {result.stderr}"}, status_code=500)
     subprocess.run(["pipenv", "install"], capture_output=True, check=False)
