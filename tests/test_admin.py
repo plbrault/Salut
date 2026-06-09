@@ -149,6 +149,8 @@ class TestAdminConfigEditor:
                 assert response.status_code == 200
                 assert "Expand" in response.text
                 assert "toggleEditor()" in response.text
+                assert "Validate" in response.text
+                assert "Save & Reload" in response.text
             finally:
                 app.state.config = original
 
