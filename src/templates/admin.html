@@ -97,7 +97,7 @@
                 <h2 class="text-lg font-semibold mb-4">Actions</h2>
                 <div class="flex flex-wrap gap-2">
                     {% if config_exists %}
-                    <button hx-get="/admin/config" hx-target="#editor" hx-swap="none" onclick="loadConfig()" class="btn">Load Config</button>
+                    <button onclick="loadConfig()" class="btn">Load Config</button>
                     {% endif %}
                     <button hx-post="/admin/reload" hx-target="#status" class="btn">Reload Config<span class="spinner"></span></button>
                     <button onclick="tryRestart()" class="btn btn-danger">Restart</button>
