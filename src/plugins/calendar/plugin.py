@@ -193,7 +193,8 @@ class CalendarPlugin(Plugin):
             self._logger.info("Fetching CalDAV calendar: %s", url)
             client = self._create_caldav_client(url, cal_config, auth_type)
             cal = caldav.Calendar(url=url, client=client)
-            events = cal.search(start, end)
+            # pylint: disable=deprecated-method
+            events = cal.date_search(start, end)
             return self._parse_caldav_events(events, cal_config)
         except Exception as e:  # pylint: disable=broad-except
             self._logger.warning("Failed to fetch CalDAV calendar: %s — %s", url, e)
