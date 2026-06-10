@@ -1,6 +1,8 @@
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
+from html import unescape
 from pathlib import Path
+from re import sub
 from urllib.parse import urlparse
 
 import feedparser
@@ -9,6 +11,9 @@ import requests
 from src.config import ConfigError
 from src.image_cache import ImageCache
 from src.plugin import Plugin
+
+VALID_INCLUDE_FIELDS = {"title", "description", "author"}
+VALID_TRUNCATE_KEYS = {"title", "description", "author", "feed_title"}
 
 
 class RssPlugin(Plugin):
@@ -20,6 +25,72 @@ class RssPlugin(Plugin):
         self._template = self.load_template(Path(__file__).resolve().parent, "template.html")
 
     @staticmethod
+    def _validate_truncate_value(key, value, filename, card_idx):
+        prefix = f"{filename}: cards[{card_idx}].options.truncate_fields.{key}"
+        if isinstance(value, int):
+            if value <= 0:
+                raise ConfigError(
+                    f"{prefix} must be a positive integer."
+                )
+            return
+        if isinstance(value, dict):
+            max_length = value.get("max_length")
+            if not isinstance(max_length, int) or max_length <= 0:
+                raise ConfigError(
+                    f"{prefix}.max_length must be a positive integer."
+                )
+            suffix = value.get("suffix", "...")
+            if not isinstance(suffix, str):
+                raise ConfigError(
+                    f"{prefix}.suffix must be a string."
+                )
+            return
+        raise ConfigError(
+            f"{prefix} must be an integer or a dict with "
+            "max_length and suffix."
+        )
+
+    @staticmethod
+    def _validate_schedule(schedule, filename, card_idx):
+        prefix = f"{filename}: cards[{card_idx}].options.schedule"
+        if not schedule:
+            raise ConfigError(f"{prefix} is required (cron expression).")
+        if not isinstance(schedule, str):
+            raise ConfigError(f"{prefix} must be a string.")
+        parts = schedule.strip().split()
+        if len(parts) not in (5, 6):
+            raise ConfigError(
+                f"{prefix} must be a valid cron expression (5 or 6 fields)."
+            )
+
+    @staticmethod
+    def _validate_include_fields(include_fields, filename, card_idx):
+        prefix = f"{filename}: cards[{card_idx}].options.include_fields"
+        if not isinstance(include_fields, list):
+            raise ConfigError(f"{prefix} must be a list.")
+        for field in include_fields:
+            if field not in VALID_INCLUDE_FIELDS:
+                raise ConfigError(
+                    f"{prefix} contains invalid value '{field}'. "
+                    f"Valid values: {', '.join(sorted(VALID_INCLUDE_FIELDS))}."
+                )
+
+    @staticmethod
+    def _validate_truncate_fields(truncate_fields, filename, card_idx):
+        prefix = f"{filename}: cards[{card_idx}].options.truncate_fields"
+        if not isinstance(truncate_fields, dict):
+            raise ConfigError(f"{prefix} must be a dict.")
+        for key, value in truncate_fields.items():
+            if key not in VALID_TRUNCATE_KEYS:
+                raise ConfigError(
+                    f"{prefix} contains invalid key '{key}'. "
+                    f"Valid keys: {', '.join(sorted(VALID_TRUNCATE_KEYS))}."
+                )
+            RssPlugin._validate_truncate_value(
+                key, value, filename, card_idx
+            )
+
+    @staticmethod
     def validate_options(options, card_idx, filename):
         if not options:
             raise ConfigError(
@@ -29,24 +100,24 @@ class RssPlugin(Plugin):
         feeds = options.get("feeds")
         if not feeds or not isinstance(feeds, list) or len(feeds) == 0:
             raise ConfigError(
-                f"{filename}: cards[{card_idx}].options.feeds must be a non-empty list."
+                f"{filename}: cards[{card_idx}].options.feeds "
+                "must be a non-empty list."
             )
 
-        schedule = options.get("schedule")
-        if not schedule:
-            raise ConfigError(
-                f"{filename}: cards[{card_idx}].options.schedule is required (cron expression)."
+        RssPlugin._validate_schedule(
+            options.get("schedule"), filename, card_idx
+        )
+
+        include_fields = options.get("include_fields")
+        if include_fields is not None:
+            RssPlugin._validate_include_fields(
+                include_fields, filename, card_idx
             )
 
-        if not isinstance(schedule, str):
-            raise ConfigError(
-                f"{filename}: cards[{card_idx}].options.schedule must be a string."
-            )
-
-        parts = schedule.strip().split()
-        if len(parts) not in (5, 6):
-            raise ConfigError(
-                f"{filename}: cards[{card_idx}].options.schedule must be a valid cron expression (5 or 6 fields)."
+        truncate_fields = options.get("truncate_fields")
+        if truncate_fields is not None:
+            RssPlugin._validate_truncate_fields(
+                truncate_fields, filename, card_idx
             )
 
     @staticmethod
@@ -63,6 +134,8 @@ class RssPlugin(Plugin):
                 feed_url TEXT NOT NULL,
                 image_url TEXT,
                 feed_title TEXT,
+                description TEXT,
+                author TEXT,
                 fetched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE(card_id, link)
             )
@@ -78,29 +151,74 @@ class RssPlugin(Plugin):
         max_items = options.get("max_items", 10)
         fetch_images = options.get("images", False)
         schedule = options.get("schedule", "0 */6 * * *")
+        include_fields = options.get("include_fields", ["title"])
 
         if feeds:
-            self._fetch_feeds(feeds, max_items, fetch_images)
+            self._fetch_feeds(feeds, max_items, fetch_images, include_fields)
             scheduler.add_job(
                 self._fetch_feeds,
                 trigger=self.parse_schedule(schedule),
-                args=[feeds, max_items, fetch_images],
+                args=[feeds, max_items, fetch_images, include_fields],
                 id=f"rss_{self._card_id}",
                 replace_existing=True,
             )
 
+    def _apply_truncation(self, value, config):
+        if isinstance(config, int):
+            return self._truncate_text(value, config)
+        if isinstance(config, dict):
+            return self._truncate_text(
+                value,
+                config["max_length"],
+                config.get("suffix", "...")
+            )
+        return value
+
     def render(self, options):
         card_id = ImageCache.compute_card_id(options)
         items = self._get_feed_items(card_id)
+        truncate_fields = options.get("truncate_fields", {})
 
         if not items:
             return ""
 
         feed_items = []
         for item in items:
-            source = item.get("feed_title") or urlparse(item["feed_url"]).hostname.replace("www.", "")
+            source = item.get("feed_title") or (
+                urlparse(item["feed_url"]).hostname or ""
+            ).replace("www.", "")
+
+            title = item["title"]
+            description = item.get("description", "")
+            author = item.get("author", "")
+
+            display_title = title if title else description
+            display_title_key = "title" if title else "description"
+
+            if display_title_key in truncate_fields:
+                display_title = self._apply_truncation(
+                    display_title, truncate_fields[display_title_key]
+                )
+
+            if "description" in truncate_fields and title and description:
+                description = self._apply_truncation(
+                    description, truncate_fields["description"]
+                )
+
+            if "author" in truncate_fields and author:
+                author = self._apply_truncation(
+                    author, truncate_fields["author"]
+                )
+
+            if "feed_title" in truncate_fields:
+                source = self._apply_truncation(
+                    source, truncate_fields["feed_title"]
+                )
+
             feed_items.append({
-                "title": item["title"],
+                "title": display_title,
+                "description": description if title else "",
+                "author": author,
                 "link": item["link"],
                 "image_url": item.get("image_url", ""),
                 "source": source,
@@ -108,12 +226,14 @@ class RssPlugin(Plugin):
 
         return self._template.render(items=feed_items)
 
-    def _fetch_feeds(self, feeds, max_items=10, fetch_images=False):
+    def _fetch_feeds(self, feeds, max_items=10, fetch_images=False, include_fields=None):
+        if include_fields is None:
+            include_fields = ["title"]
         self._logger.info("Fetching RSS feeds for card %s (%d feeds)", self._card_id, len(feeds))
 
         with ThreadPoolExecutor() as executor:
             results = list(executor.map(
-                lambda url: self._fetch_single_feed(url, fetch_images), feeds
+                lambda url: self._fetch_single_feed(url, fetch_images, include_fields), feeds
             ))
 
         all_items = [item for items in results for item in items]
@@ -143,6 +263,8 @@ class RssPlugin(Plugin):
                     feed_url=item["feed_url"],
                     image_url=item["image_url"],
                     feed_title=item["feed_title"],
+                    description=item.get("description", ""),
+                    author=item.get("author", ""),
                 )
 
             self._database.commit_transaction()
@@ -160,38 +282,81 @@ class RssPlugin(Plugin):
                     referenced.add(Path(img).name)
             ImageCache("rss", self._card_id, self._logger).cleanup_orphans(referenced)
 
-    def _fetch_single_feed(self, feed_url, fetch_images):
+    @staticmethod
+    def _get_published_date(entry):
+        if hasattr(entry, "published_parsed") and entry.published_parsed:
+            return datetime(*entry.published_parsed[:6]).isoformat()
+        if hasattr(entry, "updated_parsed") and entry.updated_parsed:
+            return datetime(*entry.updated_parsed[:6]).isoformat()
+        return ""
+
+    def _get_description(self, entry, effective_fields):
+        if "description" not in effective_fields:
+            return ""
+        description = entry.get("description", "")
+        if not description:
+            description = entry.get("summary", "")
+        if description:
+            description = self._strip_html(description)
+        return description
+
+    def _fetch_single_feed(self, feed_url, fetch_images, include_fields=None):
+        if include_fields is None:
+            include_fields = ["title"]
         try:
             self._logger.info("Fetching feed: %s", feed_url)
-            response = requests.get(feed_url, timeout=10, headers={"User-Agent": "Salut/1.0"})
+            response = requests.get(
+                feed_url, timeout=10, headers={"User-Agent": "Salut/1.0"}
+            )
             response.raise_for_status()
             parsed = feedparser.parse(response.content)
             feed_title = parsed.feed.get("title", "")
-            self._logger.info("Got %d entries from %s", len(parsed.entries), feed_url)
+            self._logger.info(
+                "Got %d entries from %s", len(parsed.entries), feed_url
+            )
+            has_titles = any(
+                entry.get("title", "") for entry in parsed.entries
+            )
+
+            effective_fields = set(include_fields)
+            if not has_titles:
+                effective_fields.add("description")
+
             items = []
             for entry in parsed.entries:
-                published = ""
-                if hasattr(entry, "published_parsed") and entry.published_parsed:
-                    published = datetime(*entry.published_parsed[:6]).isoformat()
-                elif hasattr(entry, "updated_parsed") and entry.updated_parsed:
-                    published = datetime(*entry.updated_parsed[:6]).isoformat()
-
                 image_url = ""
                 if fetch_images:
                     image_url = self._extract_image(entry)
 
+                title = (
+                    entry.get("title", "")
+                    if "title" in effective_fields
+                    else ""
+                )
+                author = (
+                    entry.get("author", "")
+                    if "author" in effective_fields
+                    else ""
+                )
+
                 items.append({
                     "url": feed_url,
-                    "title": entry.get("title", ""),
+                    "title": title,
                     "link": entry.get("link", ""),
-                    "published": published,
+                    "published": self._get_published_date(entry),
                     "feed_url": feed_url,
                     "image_url": image_url,
                     "feed_title": feed_title,
+                    "description": self._get_description(
+                        entry, effective_fields
+                    ),
+                    "author": author,
                 })
             return items
         except Exception as e:  # pylint: disable=broad-except
-            self._logger.warning("Failed to fetch feed: %s — %s", feed_url, e)
+            self._logger.warning(
+                "Failed to fetch feed: %s — %s", feed_url, e
+            )
             return []
 
     @staticmethod
@@ -207,6 +372,20 @@ class RssPlugin(Plugin):
                 if enc.get("type", "").startswith("image/"):
                     return enc.get("href", "")
         return ""
+
+    @staticmethod
+    def _strip_html(text):
+        return unescape(sub(r"<[^>]+>", "", text))
+
+    @staticmethod
+    def _truncate_text(text, max_length, suffix="..."):
+        if len(text) <= max_length:
+            return text
+        truncated = text[:max_length]
+        last_space = truncated.rfind(" ")
+        if last_space > 0:
+            truncated = truncated[:last_space]
+        return truncated + suffix
 
     def _download_images(self, items):
         cache = ImageCache("rss", self._card_id, self._logger)
@@ -224,10 +403,16 @@ class RssPlugin(Plugin):
         self._database.execute("DELETE FROM feed_items WHERE card_id = ?", (card_id,))
 
     def _insert_feed_item(self, **kwargs):
+        kwargs.setdefault("description", "")
+        kwargs.setdefault("author", "")
         self._database.execute(
             """
-            INSERT OR REPLACE INTO feed_items (card_id, url, title, link, published, feed_url, image_url, feed_title)
-            VALUES (:card_id, :url, :title, :link, :published, :feed_url, :image_url, :feed_title)
+            INSERT OR REPLACE INTO feed_items
+            (card_id, url, title, link, published, feed_url,
+             image_url, feed_title, description, author)
+            VALUES
+            (:card_id, :url, :title, :link, :published, :feed_url,
+             :image_url, :feed_title, :description, :author)
             """,
             kwargs,
         )
@@ -255,17 +440,25 @@ class RssPlugin(Plugin):
         title_deduped = []
         for item in link_deduped:
             title = item.get("title", "").strip()
+            description = item.get("description", "").strip()
             feed_url = item.get("feed_url", "")
-            if title in seen_titles:
-                prev_item = seen_titles[title]
+
+            dedup_key = title if title else description
+
+            if not dedup_key:
+                title_deduped.append(item)
+                continue
+
+            if dedup_key in seen_titles:
+                prev_item = seen_titles[dedup_key]
                 prev_idx = precedence.get(prev_item.get("feed_url", ""), float("inf"))
                 curr_idx = precedence.get(feed_url, float("inf"))
                 if curr_idx < prev_idx:
                     title_deduped.remove(prev_item)
                     title_deduped.append(item)
-                    seen_titles[title] = item
+                    seen_titles[dedup_key] = item
             else:
-                seen_titles[title] = item
+                seen_titles[dedup_key] = item
                 title_deduped.append(item)
 
         return title_deduped
