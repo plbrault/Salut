@@ -109,13 +109,13 @@
                     <h2 class="text-lg font-semibold">Config Editor</h2>
                     <div class="flex items-center gap-2">
                         {% if config_exists %}
-                        <button hx-post="/admin/validate" hx-target="#status" hx-vals="js:{content: editor.getValue()}" class="btn">Validate<span class="spinner"></span></button>
-                        <button hx-put="/admin/config" hx-target="#status" hx-vals="js:{content: editor.getValue()}" class="btn btn-primary">Save & Reload<span class="spinner"></span></button>
+                        <button hx-post="/admin/validate" hx-target="#editor-status" hx-vals="js:{content: editor.getValue()}" class="btn">Validate<span class="spinner"></span></button>
+                        <button hx-put="/admin/config" hx-target="#editor-status" hx-vals="js:{content: editor.getValue()}" class="btn btn-primary">Save & Reload<span class="spinner"></span></button>
                         <button onclick="toggleEditor()" id="toggle-btn" class="btn">Expand</button>
                         {% endif %}
                     </div>
                 </div>
-                <div id="status" class="mb-3 text-sm"></div>
+                <div id="editor-status" class="mb-3 text-sm"></div>
                 {% if config_exists %}
                 <textarea id="editor-source">{{ config_content }}</textarea>
                 <div id="editor"></div>
@@ -154,7 +154,9 @@
             document.body.addEventListener('htmx:beforeRequest', function(e) {
                 var elt = e.detail.elt;
                 elt.disabled = true;
-                document.getElementById('status').innerHTML = '';
+                var statusId = elt.getAttribute('hx-target') || 'status';
+                var statusEl = document.getElementById(statusId.replace('#', ''));
+                if (statusEl) statusEl.innerHTML = '';
             });
 
             document.body.addEventListener('htmx:afterRequest', function(e) {
