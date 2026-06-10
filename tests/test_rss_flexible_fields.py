@@ -104,67 +104,67 @@ class TestTruncateFieldsValidation:
 
 class TestTruncation:
     def test_no_truncation_when_under_limit(self):
-        result = RssPlugin._truncate_text("Short text", 100)
+        result = RssPlugin._truncate_text("Short text", 100)  # pylint: disable=protected-access
         assert result == "Short text"
 
     def test_truncation_at_word_boundary(self):
         text = "This is a long text that should be truncated at a word boundary"
-        result = RssPlugin._truncate_text(text, 30)
+        result = RssPlugin._truncate_text(text, 30)  # pylint: disable=protected-access
         assert result == "This is a long text that..."
 
     def test_truncation_with_custom_suffix(self):
         text = "This is a long text that should be truncated"
-        result = RssPlugin._truncate_text(text, 30, suffix="…")
+        result = RssPlugin._truncate_text(text, 30, suffix="…")  # pylint: disable=protected-access
         assert result == "This is a long text that…"
 
     def test_truncation_with_empty_suffix(self):
         text = "This is a long text that should be truncated"
-        result = RssPlugin._truncate_text(text, 30, suffix="")
+        result = RssPlugin._truncate_text(text, 30, suffix="")  # pylint: disable=protected-access
         assert result == "This is a long text that"
 
     def test_truncation_no_word_boundary(self):
         text = "Supercalifragilisticexpialidocious"
-        result = RssPlugin._truncate_text(text, 10)
+        result = RssPlugin._truncate_text(text, 10)  # pylint: disable=protected-access
         assert result == "Supercalif..."
 
     def test_truncation_exact_length(self):
         text = "12345"
-        result = RssPlugin._truncate_text(text, 5)
+        result = RssPlugin._truncate_text(text, 5)  # pylint: disable=protected-access
         assert result == "12345"
 
     def test_truncation_one_over_limit(self):
         text = "123456"
-        result = RssPlugin._truncate_text(text, 5)
+        result = RssPlugin._truncate_text(text, 5)  # pylint: disable=protected-access
         assert result == "12345..."
 
     def test_feed_title_truncation(self):
-        result = RssPlugin._truncate_text("A Very Long Feed Name That Goes On", 20)
+        result = RssPlugin._truncate_text("A Very Long Feed Name That Goes On", 20)  # pylint: disable=protected-access
         assert result == "A Very Long Feed..."
 
 
-class TestStripHtml:
+class TestStripHtml:  # pylint: disable=too-few-public-methods
     def test_strip_basic_html(self):
-        result = RssPlugin._strip_html("<p>Hello <b>world</b></p>")
+        result = RssPlugin._strip_html("<p>Hello <b>world</b></p>")  # pylint: disable=protected-access
         assert result == "Hello world"
 
     def test_strip_html_entities(self):
-        result = RssPlugin._strip_html("Hello &amp; world")
+        result = RssPlugin._strip_html("Hello &amp; world")  # pylint: disable=protected-access
         assert result == "Hello & world"
 
     def test_strip_nested_html(self):
-        result = RssPlugin._strip_html("<div><span>Test</span></div>")
+        result = RssPlugin._strip_html("<div><span>Test</span></div>")  # pylint: disable=protected-access
         assert result == "Test"
 
     def test_strip_no_html(self):
-        result = RssPlugin._strip_html("Plain text")
+        result = RssPlugin._strip_html("Plain text")  # pylint: disable=protected-access
         assert result == "Plain text"
 
     def test_strip_empty_string(self):
-        result = RssPlugin._strip_html("")
+        result = RssPlugin._strip_html("")  # pylint: disable=protected-access
         assert result == ""
 
 
-class TestAutoFallback:
+class TestAutoFallback:  # pylint: disable=too-few-public-methods
     def test_feed_without_titles_extracts_description(self, tmp_path):
         db = Database(tmp_path / "test.db")
         RssPlugin.init_schema(db)
@@ -272,8 +272,8 @@ class TestTemplateRendering:
 
     def test_render_with_description_when_title_empty(self, tmp_path):
         plugin, db, options = self._make_plugin(tmp_path)
-        plugin._insert_feed_item(
-            card_id=plugin._card_id,
+        plugin._insert_feed_item(  # pylint: disable=protected-access
+            card_id=plugin._card_id,  # pylint: disable=protected-access
             url="http://example.com/rss",
             title="",
             link="http://example.com/1",
@@ -291,8 +291,8 @@ class TestTemplateRendering:
 
     def test_render_with_author(self, tmp_path):
         plugin, db, options = self._make_plugin(tmp_path)
-        plugin._insert_feed_item(
-            card_id=plugin._card_id,
+        plugin._insert_feed_item(  # pylint: disable=protected-access
+            card_id=plugin._card_id,  # pylint: disable=protected-access
             url="http://example.com/rss",
             title="Test Title",
             link="http://example.com/1",
@@ -313,8 +313,8 @@ class TestTemplateRendering:
             "truncate_fields": {"description": 30}
         }
         plugin, db, _ = self._make_plugin(tmp_path, options)
-        plugin._insert_feed_item(
-            card_id=plugin._card_id,
+        plugin._insert_feed_item(  # pylint: disable=protected-access
+            card_id=plugin._card_id,  # pylint: disable=protected-access
             url="http://example.com/rss",
             title="",
             link="http://example.com/1",
@@ -336,8 +336,8 @@ class TestTemplateRendering:
             "truncate_fields": {"feed_title": 20}
         }
         plugin, db, _ = self._make_plugin(tmp_path, options)
-        plugin._insert_feed_item(
-            card_id=plugin._card_id,
+        plugin._insert_feed_item(  # pylint: disable=protected-access
+            card_id=plugin._card_id,  # pylint: disable=protected-access
             url="http://example.com/rss",
             title="Test Title",
             link="http://example.com/1",
@@ -358,8 +358,8 @@ class TestTemplateRendering:
             "truncate_fields": {"description": 200}
         }
         plugin, db, _ = self._make_plugin(tmp_path, options)
-        plugin._insert_feed_item(
-            card_id=plugin._card_id,
+        plugin._insert_feed_item(  # pylint: disable=protected-access
+            card_id=plugin._card_id,  # pylint: disable=protected-access
             url="http://example.com/rss",
             title="Test Title",
             link="http://example.com/1",
