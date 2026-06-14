@@ -255,7 +255,7 @@ async def admin_logout(request: Request):
 
 @app.get("/admin")
 @admin_required
-def admin_page(request: Request):
+def admin_page(request: Request, reloaded: bool = False):
     config_path = BASE_DIR.parent / "config.yml"
     config_content = ""
     config_exists = config_path.exists()
@@ -266,6 +266,7 @@ def admin_page(request: Request):
         "config_content": config_content,
         "config_exists": config_exists,
         "last_commit": _get_last_commit(),
+        "reloaded": reloaded,
     })
 
 

@@ -99,11 +99,11 @@
                     {% if config_exists %}
                     <button onclick="loadConfig()" class="btn action-btn">Load Config</button>
                     {% endif %}
-                    <button hx-post="/admin/reload" hx-target="#status" class="btn action-btn">Reload Config<span class="spinner"></span></button>
+                    <button hx-post="/admin/reload" hx-target="#status" hx-on::after-request="if (event.detail.successful) window.location.href='/admin?reloaded=1'" class="btn action-btn">Reload Config<span class="spinner"></span></button>
                     <button onclick="tryRestart()" class="btn btn-danger action-btn">Restart</button>
                     <button onclick="checkUpdate()" id="update-btn" class="btn action-btn">Check for updates<span class="spinner"></span></button>
                 </div>
-                <div id="status" class="mt-3 text-sm"></div>
+                <div id="status" class="mt-3 text-sm">{% if reloaded %}<span style="color:#16a34a;">Config reloaded successfully</span>{% endif %}</div>
             </div>
             <div class="card mb-6" id="editor-card">
                 <div class="flex items-center justify-between mb-4">
