@@ -96,22 +96,19 @@
             <div class="card mb-6">
                 <h2 class="text-lg font-semibold mb-4">Actions</h2>
                 <div class="flex flex-wrap gap-2">
-                    {% if config_exists %}
-                    <button onclick="loadConfig()" class="btn">Load Config</button>
-                    {% endif %}
-                    <button hx-post="/admin/reload" hx-target="#status" class="btn">Reload Config<span class="spinner"></span></button>
-                    <button onclick="tryRestart()" class="btn btn-danger">Restart</button>
-                    <button onclick="checkUpdate()" id="update-btn" class="btn">Check for updates<span class="spinner"></span></button>
+                    <button hx-post="/admin/reload" hx-target="#status" hx-on::after-request="if (event.detail.successful) window.location.href='/admin?reloaded=1'" class="btn action-btn">Reload Config<span class="spinner"></span></button>
+                    <button onclick="tryRestart()" class="btn btn-danger action-btn">Restart</button>
+                    <button onclick="checkUpdate()" id="update-btn" class="btn action-btn">Check for updates<span class="spinner"></span></button>
                 </div>
-                <div id="status" class="mt-3 text-sm"></div>
+                <div id="status" class="mt-3 text-sm">{% if reloaded %}<span style="color:#16a34a;">Config reloaded successfully</span>{% endif %}</div>
             </div>
             <div class="card mb-6" id="editor-card">
                 <div class="flex items-center justify-between mb-4">
                     <h2 class="text-lg font-semibold">Config Editor</h2>
                     <div class="flex items-center gap-2">
                         {% if config_exists %}
-                        <button hx-post="/admin/validate" hx-target="#editor-status" hx-vals="js:{content: editor.getValue()}" class="btn">Validate<span class="spinner"></span></button>
-                        <button hx-put="/admin/config" hx-target="#editor-status" hx-vals="js:{content: editor.getValue()}" class="btn btn-primary">Save & Reload<span class="spinner"></span></button>
+                        <button hx-post="/admin/validate" hx-target="#editor-status" hx-vals="js:{content: editor.getValue()}" class="btn action-btn">Validate<span class="spinner"></span></button>
+                        <button hx-put="/admin/config" hx-target="#editor-status" hx-vals="js:{content: editor.getValue()}" class="btn btn-primary action-btn">Save & Reload<span class="spinner"></span></button>
                         <button onclick="toggleEditor()" id="toggle-btn" class="btn">Expand</button>
                         {% endif %}
                     </div>
@@ -126,7 +123,7 @@
             </div>
             <div class="card">
                 <h2 class="text-lg font-semibold mb-4">Logs</h2>
-                <button hx-get="/admin/logs" hx-target="#log-output" class="btn mb-3">Fetch Logs</button>
+                <button hx-get="/admin/logs" hx-target="#log-output" class="btn action-btn mb-3">Fetch Logs</button>
                 <div id="log-output" class="max-h-64 overflow-y-auto"></div>
             </div>
             <div class="mt-6">
@@ -140,6 +137,23 @@
         document.documentElement.dataset.theme = theme;
 
         var editor;
+
+        function getActionButtons() {
+            return document.querySelectorAll('.action-btn');
+        }
+
+        function disableAllButtons() {
+            getActionButtons().forEach(function(btn) {
+                btn.disabled = true;
+            });
+        }
+
+        function enableAllButtons() {
+            getActionButtons().forEach(function(btn) {
+                btn.disabled = false;
+            });
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
             var source = document.getElementById('editor-source');
             if (source) {
@@ -154,15 +168,14 @@
 
             document.body.addEventListener('htmx:beforeRequest', function(e) {
                 var elt = e.detail.elt;
-                elt.disabled = true;
+                disableAllButtons();
                 var statusId = elt.getAttribute('hx-target') || 'status';
                 var statusEl = document.getElementById(statusId.replace('#', ''));
                 if (statusEl) statusEl.innerHTML = '';
             });
 
             document.body.addEventListener('htmx:afterRequest', function(e) {
-                var elt = e.detail.elt;
-                elt.disabled = false;
+                enableAllButtons();
             });
         });
 
@@ -172,28 +185,6 @@
             var isFull = document.body.classList.contains('fullpage-editor');
             btn.textContent = isFull ? 'Collapse' : 'Expand';
             if (editor) editor.refresh();
-        }
-
-        function loadConfig() {
-            var btn = document.querySelector('button[onclick="loadConfig()"]');
-            btn.disabled = true;
-            var spinner = btn.querySelector('.spinner');
-            if (spinner) spinner.style.display = 'inline-block';
-            document.getElementById('status').innerHTML = '';
-            fetch('/admin/config').then(function(r) {
-                if (!r.ok) throw new Error('Failed to load config');
-                return r.json();
-            }).then(function(data) {
-                if (editor) {
-                    editor.setValue(data.content || '');
-                }
-                document.getElementById('status').innerHTML = '<span style="color:#16a34a;">Config loaded successfully</span>';
-            }).catch(function(e) {
-                document.getElementById('status').innerHTML = '<span style="color:#dc2626;">' + e.message + '</span>';
-            }).finally(function() {
-                btn.disabled = false;
-                if (spinner) spinner.style.display = 'none';
-            });
         }
 
         function showRestartModal() {
@@ -209,6 +200,7 @@
         }
 
         function tryRestart() {
+            disableAllButtons();
             fetch('/admin/restart', {method: 'POST'}).then(function() {
                 showRestartModal();
             }).catch(function() {
@@ -217,37 +209,37 @@
         }
 
         function checkUpdate() {
-            var btn = document.getElementById('update-btn');
-            btn.disabled = true;
+            disableAllButtons();
             document.getElementById('status').innerHTML = '';
             fetch('/admin/check-update', {method: 'POST'}).then(function(r) {
                 return r.json().then(function(data) {
                     if (r.ok) {
                         if (data.has_update) {
                             document.getElementById('status').innerHTML = '<span style="color:#16a34a;">Update available: <code>' + data.commit + '</code></span>';
-                            btn.outerHTML = '<button onclick="tryUpdate()" id="update-btn" class="btn btn-danger">Update & Restart<span class="spinner"></span></button>';
+                            document.getElementById('update-btn').outerHTML = '<button onclick="tryUpdate()" id="update-btn" class="btn btn-danger action-btn">Update & Restart<span class="spinner"></span></button>';
                         } else {
                             document.getElementById('status').innerHTML = '<span style="color:var(--text-muted);">No updates available</span>';
-                            btn.disabled = false;
                         }
                     } else {
                         document.getElementById('status').innerHTML = '<span style="color:#dc2626;">' + (data.error || 'Check failed') + '</span>';
-                        btn.disabled = false;
                     }
+                    enableAllButtons();
                 });
             }).catch(function() {
                 document.getElementById('status').innerHTML = '<span style="color:#dc2626;">Network error</span>';
-                btn.disabled = false;
+                enableAllButtons();
             });
         }
 
         function tryUpdate() {
+            disableAllButtons();
             fetch('/admin/update', {method: 'POST'}).then(function(r) {
                 return r.json().then(function(data) {
                     if (r.ok) {
                         showRestartModal();
                     } else {
                         document.getElementById('status').textContent = data.error || 'Update failed';
+                        enableAllButtons();
                     }
                 });
             }).catch(function() {

@@ -255,7 +255,7 @@ async def admin_logout(request: Request):
 
 @app.get("/admin")
 @admin_required
-def admin_page(request: Request):
+def admin_page(request: Request, reloaded: bool = False):
     config_path = BASE_DIR.parent / "config.yml"
     config_content = ""
     config_exists = config_path.exists()
@@ -266,6 +266,7 @@ def admin_page(request: Request):
         "config_content": config_content,
         "config_exists": config_exists,
         "last_commit": _get_last_commit(),
+        "reloaded": reloaded,
     })
 
 
@@ -273,15 +274,6 @@ def admin_page(request: Request):
 @admin_required
 def admin_logs(request: Request):  # pylint: disable=unused-argument
     return list(log_buffer)
-
-
-@app.get("/admin/config")
-@admin_required
-def admin_get_config(request: Request):  # pylint: disable=unused-argument
-    config_path = BASE_DIR.parent / "config.yml"
-    if not config_path.exists():
-        return {"content": ""}
-    return {"content": config_path.read_text(encoding="utf-8")}
 
 
 @app.put("/admin/config")

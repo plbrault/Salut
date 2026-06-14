@@ -51,7 +51,7 @@ The admin page SHALL display a config editor with CodeMirror YAML syntax highlig
 
 #### Scenario: config.yml exists
 - **WHEN** `config.yml` exists
-- **THEN** the admin page shows a CodeMirror editor pre-filled with the config content, along with Load Config, Validate, and Save & Reload buttons
+- **THEN** the admin page shows a CodeMirror editor pre-filled with the config content, along with Validate and Save & Reload buttons
 
 #### Scenario: config.yml does not exist
 - **WHEN** `config.yml` does not exist
@@ -159,15 +159,15 @@ The server SHALL create its listening socket with `SO_REUSEADDR` so that server 
 - **THEN** the new process binds to the same port without "Address already in use" errors
 
 ### Requirement: Button loading states
-The admin panel SHALL show a loading spinner and disable action buttons while a request is in flight.
+The admin panel SHALL disable all action buttons while any request is in flight to prevent concurrent actions.
 
-#### Scenario: Button shows spinner during request
-- **WHEN** the user clicks Load Config, Save & Reload, Reload Config, or Validate
-- **THEN** a spinner appears inside the button and the button becomes disabled until the request completes
+#### Scenario: All buttons disabled during request
+- **WHEN** the user clicks any action button (Save & Reload, Reload Config, Validate, Check for updates, etc.)
+- **THEN** all action buttons become disabled until the request completes
 
-#### Scenario: Button re-enables after request
+#### Scenario: All buttons re-enabled after request
 - **WHEN** a button request completes (success or error)
-- **THEN** the spinner disappears and the button becomes enabled again
+- **THEN** all action buttons become enabled again
 
 ### Requirement: Config save and reload feedback
 The admin panel SHALL display human-readable feedback when saving and reloading config.
@@ -185,26 +185,15 @@ The admin panel SHALL display human-readable feedback when saving and reloading 
 - **THEN** a red error message with the validation error is displayed
 
 #### Scenario: Old feedback clears on new action
-- **WHEN** the user clicks Load Config, Save & Reload, Validate, or Reload Config
+- **WHEN** the user clicks Save & Reload, Validate, or Reload Config
 - **THEN** any previous feedback message is replaced with the new result
 
-### Requirement: Load config feedback
-The admin panel SHALL display human-readable feedback when loading config into the editor.
-
-#### Scenario: Load successful
-- **WHEN** the user clicks Load Config and the config is loaded into the editor
-- **THEN** a green message "Config loaded successfully" is displayed
-
-#### Scenario: Load fails
-- **WHEN** the user clicks Load Config and an error occurs
-- **THEN** a red error message with the error details is displayed
-
 ### Requirement: Reload config feedback
-The admin panel SHALL display human-readable feedback when reloading config.
+The admin panel SHALL display human-readable feedback when reloading config, and reload the page to reflect UI state changes.
 
 #### Scenario: Reload successful
 - **WHEN** the user clicks Reload Config and the reload succeeds
-- **THEN** a green message "Config reloaded successfully" is displayed
+- **THEN** the page reloads and a green message "Config reloaded successfully" is displayed in the status area
 
 #### Scenario: Reload fails
 - **WHEN** the user clicks Reload Config and an error occurs
