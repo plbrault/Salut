@@ -276,15 +276,6 @@ def admin_logs(request: Request):  # pylint: disable=unused-argument
     return list(log_buffer)
 
 
-@app.get("/admin/config")
-@admin_required
-def admin_get_config(request: Request):  # pylint: disable=unused-argument
-    config_path = BASE_DIR.parent / "config.yml"
-    if not config_path.exists():
-        return {"content": ""}
-    return {"content": config_path.read_text(encoding="utf-8")}
-
-
 @app.put("/admin/config")
 @admin_required
 async def admin_save_config(request: Request):

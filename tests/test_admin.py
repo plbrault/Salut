@@ -106,18 +106,6 @@ class TestAdminAuth:
             finally:
                 app.state.config = original
 
-    def test_admin_endpoint_returns_401_without_session(self):
-        with TestClient(app) as client:
-            original = app.state.config.copy()
-            app.state.config = {**original, "admin_password": "secret"}
-            try:
-                response = client.get("/admin/config", follow_redirects=False)
-                assert response.status_code == 302
-                assert response.headers["location"] == "/admin/login"
-            finally:
-                app.state.config = original
-
-
 class TestSessionCookie:
     def test_session_cookie_creation_and_verification(self):
         cookie_value = create_session_cookie("password123")
@@ -149,19 +137,6 @@ class TestAdminConfigEditor:
                 assert response.status_code == 200
                 assert "toggleEditor()" in response.text
                 assert "fullpage-editor" in response.text
-            finally:
-                app.state.config = original
-
-    def test_get_config_returns_content(self):
-        with TestClient(app) as client:
-            original = app.state.config.copy()
-            app.state.config = {**original, "admin_password": "secret"}
-            try:
-                cookie_value = create_session_cookie("secret")
-                client.cookies.set(COOKIE_NAME, cookie_value)
-                response = client.get("/admin/config")
-                assert response.status_code == 200
-                assert "content" in response.json()
             finally:
                 app.state.config = original
 

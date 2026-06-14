@@ -96,9 +96,6 @@
             <div class="card mb-6">
                 <h2 class="text-lg font-semibold mb-4">Actions</h2>
                 <div class="flex flex-wrap gap-2">
-                    {% if config_exists %}
-                    <button onclick="loadConfig()" class="btn action-btn">Load Config</button>
-                    {% endif %}
                     <button hx-post="/admin/reload" hx-target="#status" hx-on::after-request="if (event.detail.successful) window.location.href='/admin?reloaded=1'" class="btn action-btn">Reload Config<span class="spinner"></span></button>
                     <button onclick="tryRestart()" class="btn btn-danger action-btn">Restart</button>
                     <button onclick="checkUpdate()" id="update-btn" class="btn action-btn">Check for updates<span class="spinner"></span></button>
@@ -188,24 +185,6 @@
             var isFull = document.body.classList.contains('fullpage-editor');
             btn.textContent = isFull ? 'Collapse' : 'Expand';
             if (editor) editor.refresh();
-        }
-
-        function loadConfig() {
-            disableAllButtons();
-            document.getElementById('status').innerHTML = '';
-            fetch('/admin/config').then(function(r) {
-                if (!r.ok) throw new Error('Failed to load config');
-                return r.json();
-            }).then(function(data) {
-                if (editor) {
-                    editor.setValue(data.content || '');
-                }
-                document.getElementById('status').innerHTML = '<span style="color:#16a34a;">Config loaded successfully</span>';
-            }).catch(function(e) {
-                document.getElementById('status').innerHTML = '<span style="color:#dc2626;">' + e.message + '</span>';
-            }).finally(function() {
-                enableAllButtons();
-            });
         }
 
         function showRestartModal() {
