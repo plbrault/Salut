@@ -77,26 +77,30 @@ class XkcdPlugin(Plugin):
             replace_existing=True,
         )
 
-    def render(self, options):
-        card_id = ImageCache.compute_card_id(options)
-        row = self._database.fetch_one(
-            "SELECT * FROM xkcd_comics WHERE card_id = ?",
-            (card_id,),
-        )
+    def render(self, cards):
+        results = []
+        for card in cards:
+            card_id = card["card_id"]
+            row = self._database.fetch_one(
+                "SELECT * FROM xkcd_comics WHERE card_id = ?",
+                (card_id,),
+            )
 
-        if not row:
-            return ""
+            if not row:
+                results.append("")
+                continue
 
-        return self._template.render(
-            comic_num=row["comic_num"],
-            title=row["title"],
-            image_url=row["img_url"],
-            alt_text=row["alt_text"],
-            comic_url=row["comic_url"],
-            explain_url=row["explain_url"],
-            img_width=row["img_width"],
-            img_height=row["img_height"],
-        )
+            results.append(self._template.render(
+                comic_num=row["comic_num"],
+                title=row["title"],
+                image_url=row["img_url"],
+                alt_text=row["alt_text"],
+                comic_url=row["comic_url"],
+                explain_url=row["explain_url"],
+                img_width=row["img_width"],
+                img_height=row["img_height"],
+            ))
+        return results
 
     def _fetch_comic(self):
         try:

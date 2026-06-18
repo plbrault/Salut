@@ -21,7 +21,7 @@ from src.config import ConfigError, load_config, load_secrets, validate_config
 from src.database import Database
 from src.i18n import load_global_i18n
 from src.template import resolve_all_config_vars
-from src.plugins import setup_card, render_card, init_plugins_schemas
+from src.plugins import setup_card, render_cards_batch, init_plugins_schemas, load_plugin_class
 from src.admin import (
     COOKIE_NAME, COOKIE_MAX_AGE,
     is_admin_enabled, check_admin_auth,
@@ -126,18 +126,47 @@ app.mount("/cache", StaticFiles(directory=CACHE_DIR), name="cache")
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
 
 
+def _compute_card_id(plugin_name, options, card_idx, card):
+    if "card_id" in card:
+        return card["card_id"]
+    plugin_class = load_plugin_class(plugin_name)
+    if plugin_class and hasattr(plugin_class, "compute_card_id"):
+        return plugin_class.compute_card_id(options)
+    return f"{plugin_name}_{card_idx}"
+
+
 def _render_cards(cards):
     instances = app.state.plugin_instances
-    return [
-        {
-            "title": card.get("title", ""),
-            "colspan": card.get("colspan", 1),
-            "column": card.get("column"),
-            "content": render_card(card, instances),
-            "css_class": f"{card['plugin']}-card" if card.get("plugin") else "",
-        }
-        for card in cards
-    ]
+
+    plugin_groups = {}
+    for card_idx, card in enumerate(cards):
+        plugin_name = card.get("plugin")
+        if plugin_name not in plugin_groups:
+            plugin_groups[plugin_name] = []
+        plugin_groups[plugin_name].append((card_idx, card))
+
+    rendered = [None] * len(cards)
+
+    for plugin_name, group in plugin_groups.items():
+        indices = [card_pos for card_pos, _ in group]
+        batch_cards = []
+        for card_pos, card in group:
+            options = card.get("options", {})
+            card_id = _compute_card_id(plugin_name, options, card_pos, card)
+            batch_cards.append({"options": options, "card_id": card_id})
+
+        html_list = render_cards_batch(plugin_name, batch_cards, instances)
+
+        for i, card_pos in enumerate(indices):
+            rendered[card_pos] = {
+                "title": group[i][1].get("title", ""),
+                "colspan": group[i][1].get("colspan", 1),
+                "column": group[i][1].get("column"),
+                "content": html_list[i],
+                "css_class": f"{plugin_name}-card" if plugin_name else "",
+            }
+
+    return rendered
 
 
 @app.get("/")

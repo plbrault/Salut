@@ -186,8 +186,8 @@ class TestAutoFallback:  # pylint: disable=too-few-public-methods
             author="",
         )
 
-        result = plugin.render(options)
-        assert "Post content here" in result
+        result = plugin.render([{"options": options, "card_id": plugin._card_id}])  # pylint: disable=protected-access
+        assert "Post content here" in result[0]
         db.close()
 
 
@@ -284,9 +284,9 @@ class TestTemplateRendering:
             description="This is the post content",
             author="",
         )
-        result = plugin.render(options)
-        assert "This is the post content" in result
-        assert "Test Feed" in result
+        result = plugin.render([{"options": options, "card_id": plugin._card_id}])  # pylint: disable=protected-access
+        assert "This is the post content" in result[0]
+        assert "Test Feed" in result[0]
         db.close()
 
     def test_render_with_author(self, tmp_path):
@@ -303,8 +303,8 @@ class TestTemplateRendering:
             description="",
             author="John Doe",
         )
-        result = plugin.render(options)
-        assert "John Doe" in result
+        result = plugin.render([{"options": options, "card_id": plugin._card_id}])  # pylint: disable=protected-access
+        assert "John Doe" in result[0]
         db.close()
 
     def test_render_truncates_description(self, tmp_path):
@@ -325,9 +325,9 @@ class TestTemplateRendering:
             description="This is a very long description that should be truncated at some point",
             author="",
         )
-        result = plugin.render(options)
-        assert "This is a very long..." in result
-        assert "that should be truncated" not in result
+        result = plugin.render([{"options": options, "card_id": plugin._card_id}])  # pylint: disable=protected-access
+        assert "This is a very long..." in result[0]
+        assert "that should be truncated" not in result[0]
         db.close()
 
     def test_render_truncates_feed_title(self, tmp_path):
@@ -348,8 +348,8 @@ class TestTemplateRendering:
             description="",
             author="",
         )
-        result = plugin.render(options)
-        assert "A Very Long Feed..." in result
+        result = plugin.render([{"options": options, "card_id": plugin._card_id}])  # pylint: disable=protected-access
+        assert "A Very Long Feed..." in result[0]
         db.close()
 
     def test_render_with_description_and_title(self, tmp_path):
@@ -370,7 +370,7 @@ class TestTemplateRendering:
             description="This is the description",
             author="",
         )
-        result = plugin.render(options)
-        assert "Test Title" in result
-        assert "This is the description" in result
+        result = plugin.render([{"options": options, "card_id": plugin._card_id}])  # pylint: disable=protected-access
+        assert "Test Title" in result[0]
+        assert "This is the description" in result[0]
         db.close()

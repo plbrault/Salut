@@ -31,8 +31,12 @@ class HtmlPlugin(Plugin):
     def setup(self, options, database, scheduler, logger):
         pass
 
-    def render(self, options):
-        return options.get("html", "")
+    def render(self, cards):
+        results = []
+        for card in cards:
+            options = card["options"]
+            results.append(options.get("html", ""))
+        return results
 
     @staticmethod
     def validate_options(options, card_idx, filename):

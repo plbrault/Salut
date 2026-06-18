@@ -90,6 +90,12 @@ Salut is configured via a YAML file (`config.yml` or `starter.yml`). The `config
 - **Type:** integer (optional)
 - **Description:** Force this card into a specific column (1-indexed). When set, the card is placed after all preceding cards in config order, then positioned at the bottom of the specified column. When omitted, the greedy column packing algorithm is used. Must be between 1 and the total `columns` value, and `column + colspan - 1` must not exceed `columns`.
 
+#### cards[].card_id
+
+- **Type:** string (optional)
+- **Description:** Custom unique identifier for this card. When provided, this overrides the auto-generated card_id (computed from options hash).
+- **Example:** `my-weather-card`
+
 ### admin_password
 
 - **Type:** string (optional)

@@ -144,8 +144,7 @@ class WeatherPlugin(Plugin):
             replace_existing=True,
         )
 
-    def render(self, options):
-        card_id = self._compute_card_id(options)
+    def _render_weather_card(self, options, card_id):
         row = self._database.fetch_one(
             "SELECT data FROM weather_data WHERE card_id = ?",
             (card_id,),
@@ -179,11 +178,19 @@ class WeatherPlugin(Plugin):
 
         link_url = options.get("link_url")
         if link_url:
-            return (
+            html = (
                 f'<a href="{link_url}" target="_blank" rel="noopener"'
                 f' class="block text-inherit no-underline">{html}</a>'
             )
         return html
+
+    def render(self, cards):
+        results = []
+        for card in cards:
+            options = card["options"]
+            card_id = card["card_id"]
+            results.append(self._render_weather_card(options, card_id))
+        return results
 
     def _fetch_weather(self, latitude, longitude, units, language):
         try:

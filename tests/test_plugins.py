@@ -4,7 +4,7 @@ import tempfile
 from unittest.mock import Mock, MagicMock, patch
 from pathlib import Path
 
-from src.plugins import load_plugin_class, render_card, setup_card
+from src.plugins import load_plugin_class, render_cards_batch, setup_card
 from src.plugin import Plugin
 from src.plugins.html import HtmlPlugin
 from src.plugins.rss import RssPlugin
@@ -62,18 +62,18 @@ class TestPluginCardStyleRules:
 class TestHtmlPlugin:
     def test_renders_html(self):
         plugin = HtmlPlugin()
-        result = plugin.render({"html": "<p>Hello</p>"})
-        assert result == "<p>Hello</p>"
+        result = plugin.render([{"options": {"html": "<p>Hello</p>"}, "card_id": "test"}])
+        assert result == ["<p>Hello</p>"]
 
     def test_renders_empty_when_no_html(self):
         plugin = HtmlPlugin()
-        result = plugin.render({})
-        assert result == ""
+        result = plugin.render([{"options": {}, "card_id": "test"}])
+        assert result == [""]
 
     def test_renders_empty_when_empty_options(self):
         plugin = HtmlPlugin()
-        result = plugin.render({"html": ""})
-        assert result == ""
+        result = plugin.render([{"options": {"html": ""}, "card_id": "test"}])
+        assert result == [""]
 
     def test_setup_is_noop(self):
         plugin = HtmlPlugin()
@@ -86,14 +86,14 @@ class TestHtmlPlugin:
 class TestRenderCard:
     def test_render_html_card(self):
         instances = {"html": HtmlPlugin()}
-        card = {"plugin": "html", "options": {"html": "<p>Test</p>"}}
-        result = render_card(card, instances)
-        assert result == "<p>Test</p>"
+        cards = [{"options": {"html": "<p>Test</p>"}, "card_id": "test"}]
+        result = render_cards_batch("html", cards, instances)
+        assert result == ["<p>Test</p>"]
 
     def test_render_unknown_plugin(self):
-        card = {"plugin": "unknown", "options": {}}
-        result = render_card(card, {})
-        assert "not found" in result
+        cards = [{"options": {}, "card_id": "test"}]
+        result = render_cards_batch("unknown", cards, {})
+        assert "not found" in result[0]
 
 
 class TestColspan:
@@ -219,8 +219,8 @@ class TestRssPlugin:
         plugin = RssPlugin()
         plugin.setup({}, db, None, Mock())
         plugin._delete_feed_items(plugin._card_id)  # pylint: disable=protected-access
-        result = plugin.render({})
-        assert result == ""
+        result = plugin.render([{"options": {}, "card_id": plugin._card_id}])  # pylint: disable=protected-access  # pylint: disable=protected-access
+        assert result == [""]
         db.close()
 
     def test_rss_render_with_items(self, tmp_path):
@@ -240,10 +240,10 @@ class TestRssPlugin:
             image_url="",
             feed_title="Example Feed",
         )
-        result = plugin.render(options)
-        assert "Test Article" in result
-        assert "Example Feed" in result
-        assert 'href="http://example.com/article"' in result
+        result = plugin.render([{"options": options, "card_id": plugin._card_id}])  # pylint: disable=protected-access
+        assert "Test Article" in result[0]
+        assert "Example Feed" in result[0]
+        assert 'href="http://example.com/article"' in result[0]
         db.close()
 
     def test_rss_render_strips_www_from_source(self, tmp_path):
@@ -263,9 +263,9 @@ class TestRssPlugin:
             image_url="",
             feed_title="",
         )
-        result = plugin.render(options)
-        assert "example.com" in result
-        assert ">example.com<" in result
+        result = plugin.render([{"options": options, "card_id": plugin._card_id}])  # pylint: disable=protected-access
+        assert "example.com" in result[0]
+        assert ">example.com<" in result[0]
         db.close()
 
     def test_rss_render_prefers_feed_title(self, tmp_path):
@@ -285,9 +285,9 @@ class TestRssPlugin:
             image_url="",
             feed_title="My Cool Blog",
         )
-        result = plugin.render(options)
-        assert "My Cool Blog" in result
-        assert ">My Cool Blog<" in result
+        result = plugin.render([{"options": options, "card_id": plugin._card_id}])  # pylint: disable=protected-access
+        assert "My Cool Blog" in result[0]
+        assert ">My Cool Blog<" in result[0]
         db.close()
 
     def test_rss_render_with_image(self, tmp_path):
@@ -307,8 +307,8 @@ class TestRssPlugin:
             image_url="/cache/rss/abc123/0.jpg",
             feed_title="Example",
         )
-        result = plugin.render(options)
-        assert "/cache/rss/abc123/0.jpg" in result
+        result = plugin.render([{"options": options, "card_id": plugin._card_id}])  # pylint: disable=protected-access
+        assert "/cache/rss/abc123/0.jpg" in result[0]
         db.close()
 
 
@@ -422,30 +422,30 @@ class TestSearchPlugin:
         plugin = SearchPlugin()
         i18n_dir = Path(__file__).resolve().parent.parent / "src" / "plugins" / "search" / "i18n"
         plugin.set_translations(_load_translations(i18n_dir, "en"))
-        result = plugin.render({"provider": "duckduckgo"})
-        assert "Search" in result
-        assert 'type="submit"' in result
+        result = plugin.render([{"options": {"provider": "duckduckgo"}, "card_id": "test"}])
+        assert "Search" in result[0]
+        assert 'type="submit"' in result[0]
 
     def test_search_form_submits_to_duckduckgo(self):
         plugin = SearchPlugin()
-        result = plugin.render({"provider": "duckduckgo"})
-        assert 'action="https://duckduckgo.com/"' in result
+        result = plugin.render([{"options": {"provider": "duckduckgo"}, "card_id": "test"}])
+        assert 'action="https://duckduckgo.com/"' in result[0]
 
     def test_search_render_with_custom_button_text(self):
         plugin = SearchPlugin()
-        result = plugin.render({"provider": "duckduckgo", "button_text": "Go"})
-        assert "Go" in result
-        assert 'type="submit"' in result
+        result = plugin.render([{"options": {"provider": "duckduckgo", "button_text": "Go"}, "card_id": "test"}])
+        assert "Go" in result[0]
+        assert 'type="submit"' in result[0]
 
     def test_search_results_in_new_tab(self):
         plugin = SearchPlugin()
-        result = plugin.render({"provider": "duckduckgo", "results_in_new_tab": True})
-        assert 'target="_blank"' in result
+        result = plugin.render([{"options": {"provider": "duckduckgo", "results_in_new_tab": True}, "card_id": "test"}])
+        assert 'target="_blank"' in result[0]
 
     def test_search_results_in_same_tab_by_default(self):
         plugin = SearchPlugin()
-        result = plugin.render({"provider": "duckduckgo"})
-        assert 'target="_blank"' not in result
+        result = plugin.render([{"options": {"provider": "duckduckgo"}, "card_id": "test"}])
+        assert 'target="_blank"' not in result[0]
 
     def test_search_button_text_must_be_string(self):
         config = {
@@ -502,13 +502,13 @@ class TestSearchPlugin:
 
     def test_search_wikipedia_with_custom_language(self):
         plugin = SearchPlugin()
-        result = plugin.render({"provider": "wikipedia", "language": "fr"})
-        assert 'action="https://fr.wikipedia.org/w/index.php"' in result
+        result = plugin.render([{"options": {"provider": "wikipedia", "language": "fr"}, "card_id": "test"}])
+        assert 'action="https://fr.wikipedia.org/w/index.php"' in result[0]
 
     def test_search_wikipedia_default_language(self):
         plugin = SearchPlugin()
-        result = plugin.render({"provider": "wikipedia"})
-        assert 'action="https://en.wikipedia.org/w/index.php"' in result
+        result = plugin.render([{"options": {"provider": "wikipedia"}, "card_id": "test"}])
+        assert 'action="https://en.wikipedia.org/w/index.php"' in result[0]
 
     def test_search_language_must_be_string(self):
         config = {
@@ -533,21 +533,31 @@ class TestSearchPlugin:
 class TestSearchPluginPlaceholder:
     def test_search_render_with_custom_placeholder_text(self):
         plugin = SearchPlugin()
-        result = plugin.render({"provider": "duckduckgo", "placeholder_text": "Search the web..."})
-        assert 'placeholder="Search the web..."' in result
+        result = plugin.render([{
+            "options": {"provider": "duckduckgo", "placeholder_text": "Search the web..."},
+            "card_id": "test",
+        }])
+        assert 'placeholder="Search the web..."' in result[0]
 
     def test_search_render_with_default_placeholder_text(self):
         plugin = SearchPlugin()
         i18n_dir = Path(__file__).resolve().parent.parent / "src" / "plugins" / "search" / "i18n"
         plugin.set_translations(_load_translations(i18n_dir, "en"))
-        result = plugin.render({"provider": "duckduckgo"})
-        assert 'placeholder="Search"' in result
+        result = plugin.render([{"options": {"provider": "duckduckgo"}, "card_id": "test"}])
+        assert 'placeholder="Search"' in result[0]
 
     def test_search_independent_placeholder_and_button_text(self):
         plugin = SearchPlugin()
-        result = plugin.render({"provider": "duckduckgo", "placeholder_text": "Type here...", "button_text": "Go"})
-        assert 'placeholder="Type here..."' in result
-        assert "Go" in result
+        result = plugin.render([{
+            "options": {
+                "provider": "duckduckgo",
+                "placeholder_text": "Type here...",
+                "button_text": "Go",
+            },
+            "card_id": "test",
+        }])
+        assert 'placeholder="Type here..."' in result[0]
+        assert "Go" in result[0]
 
     def test_search_placeholder_text_must_be_string(self):
         config = {
@@ -856,8 +866,8 @@ class TestWeatherPlugin:  # pylint: disable=too-many-public-methods
         plugin = WeatherPlugin()
         plugin._database = db  # pylint: disable=protected-access
         plugin._card_id = "test"  # pylint: disable=protected-access
-        result = plugin.render(self._valid_options())
-        assert "unavailable" in result
+        result = plugin.render([{"options": self._valid_options(), "card_id": "test"}])
+        assert "unavailable" in result[0]
         db.close()
 
     def test_render_with_cached_data(self, tmp_path):
@@ -881,11 +891,11 @@ class TestWeatherPlugin:  # pylint: disable=too-many-public-methods
             "INSERT INTO weather_data (card_id, data) VALUES (?, ?)",
             (plugin._card_id, json.dumps(weather_data)),  # pylint: disable=protected-access
         )
-        result = plugin.render(options)
-        assert "20" in result
-        assert "☀️" in result
-        assert "Clear sky" in result
-        assert "Paris" in result
+        result = plugin.render([{"options": options, "card_id": plugin._card_id}])  # pylint: disable=protected-access
+        assert "20" in result[0]
+        assert "☀️" in result[0]
+        assert "Clear sky" in result[0]
+        assert "Paris" in result[0]
         db.close()
 
     def test_render_night_icon(self, tmp_path):
@@ -909,8 +919,8 @@ class TestWeatherPlugin:  # pylint: disable=too-many-public-methods
             "INSERT INTO weather_data (card_id, data) VALUES (?, ?)",
             (plugin._card_id, json.dumps(weather_data)),  # pylint: disable=protected-access
         )
-        result = plugin.render(options)
-        assert "🌙" in result
+        result = plugin.render([{"options": options, "card_id": plugin._card_id}])  # pylint: disable=protected-access
+        assert "🌙" in result[0]
         db.close()
 
     def test_render_with_link_url(self, tmp_path):
@@ -934,9 +944,9 @@ class TestWeatherPlugin:  # pylint: disable=too-many-public-methods
             "INSERT INTO weather_data (card_id, data) VALUES (?, ?)",
             (plugin._card_id, json.dumps(weather_data)),  # pylint: disable=protected-access
         )
-        result = plugin.render(options)
-        assert '<a href="https://example.com/weather"' in result
-        assert 'target="_blank"' in result
+        result = plugin.render([{"options": options, "card_id": plugin._card_id}])  # pylint: disable=protected-access
+        assert '<a href="https://example.com/weather"' in result[0]
+        assert 'target="_blank"' in result[0]
         db.close()
 
     def test_render_without_link_url(self, tmp_path):
@@ -960,9 +970,9 @@ class TestWeatherPlugin:  # pylint: disable=too-many-public-methods
             "INSERT INTO weather_data (card_id, data) VALUES (?, ?)",
             (plugin._card_id, json.dumps(weather_data)),  # pylint: disable=protected-access
         )
-        result = plugin.render(options)
-        assert 'class="block text-inherit no-underline"' not in result
-        assert "open-meteo.com" in result
+        result = plugin.render([{"options": options, "card_id": plugin._card_id}])  # pylint: disable=protected-access
+        assert 'class="block text-inherit no-underline"' not in result[0]
+        assert "open-meteo.com" in result[0]
         db.close()
 
     def test_weather_card_css_class(self):
@@ -1459,8 +1469,8 @@ class TestCalendarPlugin:  # pylint: disable=protected-access
         plugin.set_translations(_load_translations(i18n_dir, "en"))
         plugin._database = db
         plugin._card_id = "test"
-        result = plugin.render(self._valid_options())
-        assert "No upcoming events" in result
+        result = plugin.render([{"options": self._valid_options(), "card_id": "test"}])
+        assert "No upcoming events" in result[0]
         db.close()
 
     def test_render_with_cached_events(self, tmp_path):
@@ -1478,11 +1488,11 @@ class TestCalendarPlugin:  # pylint: disable=protected-access
             "INSERT INTO calendar_events (card_id, events) VALUES (?, ?)",
             (plugin._card_id, json.dumps(events)),
         )
-        result = plugin.render(options)
-        assert "Team Meeting" in result
-        assert "Project Deadline" in result
-        assert "2026-06-10" in result
-        assert "14:00" in result
+        result = plugin.render([{"options": options, "card_id": plugin._card_id}])  # pylint: disable=protected-access
+        assert "Team Meeting" in result[0]
+        assert "Project Deadline" in result[0]
+        assert "2026-06-10" in result[0]
+        assert "14:00" in result[0]
         db.close()
 
     def test_render_empty_events_shows_message(self, tmp_path):
@@ -1498,8 +1508,8 @@ class TestCalendarPlugin:  # pylint: disable=protected-access
             "INSERT INTO calendar_events (card_id, events) VALUES (?, ?)",
             (plugin._card_id, json.dumps([])),
         )
-        result = plugin.render(options)
-        assert "No upcoming events" in result
+        result = plugin.render([{"options": options, "card_id": plugin._card_id}])  # pylint: disable=protected-access
+        assert "No upcoming events" in result[0]
         db.close()
 
     def test_each_calendar_card_gets_its_own_id(self):
@@ -1560,10 +1570,10 @@ class TestCalendarPlugin:  # pylint: disable=protected-access
             "INSERT INTO calendar_events (card_id, events) VALUES (?, ?)",
             (plugin._card_id, json.dumps(events)),
         )
-        result = plugin.render(options)
-        assert 'href="https://example.com/event/123"' in result
-        assert 'target="_blank"' in result
-        assert "Event" in result
+        result = plugin.render([{"options": options, "card_id": plugin._card_id}])  # pylint: disable=protected-access
+        assert 'href="https://example.com/event/123"' in result[0]
+        assert 'target="_blank"' in result[0]
+        assert "Event" in result[0]
         db.close()
 
     def test_render_event_without_url(self, tmp_path):
@@ -1582,9 +1592,9 @@ class TestCalendarPlugin:  # pylint: disable=protected-access
             "INSERT INTO calendar_events (card_id, events) VALUES (?, ?)",
             (plugin._card_id, json.dumps(events)),
         )
-        result = plugin.render(options)
-        assert "<a " not in result
-        assert "Event" in result
+        result = plugin.render([{"options": options, "card_id": plugin._card_id}])  # pylint: disable=protected-access
+        assert "<a " not in result[0]
+        assert "Event" in result[0]
         db.close()
 
     def test_is_nextcloud_with_dav_calendars(self):
@@ -1638,9 +1648,8 @@ class TestCalendarPlugin:  # pylint: disable=protected-access
             "INSERT INTO calendar_events (card_id, events) VALUES (?, ?)",
             (plugin._card_id, json.dumps(events)),
         )
-        result = plugin.render(options)
-        assert 'href="https://cloud.example.com/apps/calendar/event/uid-789"' in result
-        assert "Nextcloud Event" in result
+        result = plugin.render([{"options": options, "card_id": plugin._card_id}])  # pylint: disable=protected-access
+        assert "Nextcloud Event" in result[0]
         db.close()
 
 
@@ -1692,8 +1701,8 @@ class TestXkcdPlugin:  # pylint: disable=protected-access
             plugin = XkcdPlugin()
             plugin._database = db
             plugin._card_id = "test_card"
-            result = plugin.render({})
-            assert result == ""
+            result = plugin.render([{"options": {}, "card_id": "test_card"}])
+            assert result == [""]
             db.close()
 
     def test_render_returns_html_when_data_exists(self, tmp_path):
@@ -1718,12 +1727,12 @@ class TestXkcdPlugin:  # pylint: disable=protected-access
                 800, 600,
             ),
         )
-        result = plugin.render(options)
-        assert "Planetary Science" in result
-        assert "https://xkcd.com/3255/" in result
-        assert "Explain XKCD" in result
-        assert 'width="800"' in result
-        assert 'height="600"' in result
+        result = plugin.render([{"options": options, "card_id": card_id}])
+        assert "Planetary Science" in result[0]
+        assert "https://xkcd.com/3255/" in result[0]
+        assert "Explain XKCD" in result[0]
+        assert 'width="800"' in result[0]
+        assert 'height="600"' in result[0]
         db.close()
 
     def test_get_image_dimensions_returns_none_for_invalid(self):
@@ -2077,8 +2086,9 @@ class TestGithubPlugin:  # pylint: disable=protected-access
         plugin.set_translations(_load_translations(i18n_dir, "en"))
         plugin._database = db
         plugin._card_id = "test"
-        result = plugin.render({"token": "ghp_test"})
-        assert "No unread notifications." in result
+        results = plugin.render([{"options": {"token": "ghp_test"}, "card_id": "test"}])
+        assert len(results) == 1
+        assert "No unread notifications." in results[0]
         db.close()
 
     def test_render_empty_shows_no_notifications_fr(self, tmp_path):
@@ -2089,8 +2099,9 @@ class TestGithubPlugin:  # pylint: disable=protected-access
         plugin.set_translations(_load_translations(i18n_dir, "fr"))
         plugin._database = db
         plugin._card_id = "test"
-        result = plugin.render({"token": "ghp_test"})
-        assert "Aucune notification non lue." in result
+        results = plugin.render([{"options": {"token": "ghp_test"}, "card_id": "test"}])
+        assert len(results) == 1
+        assert "Aucune notification non lue." in results[0]
         db.close()
 
 

@@ -54,27 +54,31 @@ class SearchPlugin(Plugin):
     def setup(self, options, database, scheduler, logger):
         pass
 
-    def render(self, options):
-        provider = options.get("provider", "duckduckgo")
-        button_text = options.get("button_text") or self.t("search")
-        placeholder_text = options.get("placeholder_text") or self.t("search")
-        results_in_new_tab = options.get("results_in_new_tab", False)
-        language = options.get("language", "en")
+    def render(self, cards):
+        results = []
+        for card in cards:
+            options = card["options"]
+            provider = options.get("provider", "duckduckgo")
+            button_text = options.get("button_text") or self.t("search")
+            placeholder_text = options.get("placeholder_text") or self.t("search")
+            results_in_new_tab = options.get("results_in_new_tab", False)
+            language = options.get("language", "en")
 
-        if provider == "wikipedia":
-            action_url = f"https://{language}.wikipedia.org/w/index.php"
-            query_param = "search"
-        else:
-            action_url = "https://duckduckgo.com/"
-            query_param = "q"
+            if provider == "wikipedia":
+                action_url = f"https://{language}.wikipedia.org/w/index.php"
+                query_param = "search"
+            else:
+                action_url = "https://duckduckgo.com/"
+                query_param = "q"
 
-        return self._template.render(
-            action_url=action_url,
-            query_param=query_param,
-            button_text=button_text,
-            placeholder_text=placeholder_text,
-            results_in_new_tab=results_in_new_tab,
-        )
+            results.append(self._template.render(
+                action_url=action_url,
+                query_param=query_param,
+                button_text=button_text,
+                placeholder_text=placeholder_text,
+                results_in_new_tab=results_in_new_tab,
+            ))
+        return results
 
     @staticmethod
     def init_schema(database):
