@@ -126,6 +126,15 @@ app.mount("/cache", StaticFiles(directory=CACHE_DIR), name="cache")
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
 
 
+def _compute_card_id(plugin_name, options, card_idx, card):
+    if "card_id" in card:
+        return card["card_id"]
+    plugin_class = load_plugin_class(plugin_name)
+    if plugin_class and hasattr(plugin_class, "compute_card_id"):
+        return plugin_class.compute_card_id(options)
+    return f"{plugin_name}_{card_idx}"
+
+
 def _render_cards(cards):
     instances = app.state.plugin_instances
 
@@ -139,24 +148,17 @@ def _render_cards(cards):
     rendered = [None] * len(cards)
 
     for plugin_name, group in plugin_groups.items():
-        indices = [idx for idx, _ in group]
+        indices = [card_pos for card_pos, _ in group]
         batch_cards = []
-        for idx, card in group:
+        for card_pos, card in group:
             options = card.get("options", {})
-            if "card_id" in card:
-                card_id = card["card_id"]
-            else:
-                plugin_class = load_plugin_class(plugin_name)
-                if plugin_class and hasattr(plugin_class, "compute_card_id"):
-                    card_id = plugin_class.compute_card_id(options)
-                else:
-                    card_id = f"{plugin_name}_{idx}"
+            card_id = _compute_card_id(plugin_name, options, card_pos, card)
             batch_cards.append({"options": options, "card_id": card_id})
 
         html_list = render_cards_batch(plugin_name, batch_cards, instances)
 
-        for i, idx in enumerate(indices):
-            rendered[idx] = {
+        for i, card_pos in enumerate(indices):
+            rendered[card_pos] = {
                 "title": group[i][1].get("title", ""),
                 "colspan": group[i][1].get("colspan", 1),
                 "column": group[i][1].get("column"),

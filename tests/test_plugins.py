@@ -533,7 +533,10 @@ class TestSearchPlugin:
 class TestSearchPluginPlaceholder:
     def test_search_render_with_custom_placeholder_text(self):
         plugin = SearchPlugin()
-        result = plugin.render([{"options": {"provider": "duckduckgo", "placeholder_text": "Search the web..."}, "card_id": "test"}])
+        result = plugin.render([{
+            "options": {"provider": "duckduckgo", "placeholder_text": "Search the web..."},
+            "card_id": "test",
+        }])
         assert 'placeholder="Search the web..."' in result[0]
 
     def test_search_render_with_default_placeholder_text(self):
@@ -545,7 +548,14 @@ class TestSearchPluginPlaceholder:
 
     def test_search_independent_placeholder_and_button_text(self):
         plugin = SearchPlugin()
-        result = plugin.render([{"options": {"provider": "duckduckgo", "placeholder_text": "Type here...", "button_text": "Go"}, "card_id": "test"}])
+        result = plugin.render([{
+            "options": {
+                "provider": "duckduckgo",
+                "placeholder_text": "Type here...",
+                "button_text": "Go",
+            },
+            "card_id": "test",
+        }])
         assert 'placeholder="Type here..."' in result[0]
         assert "Go" in result[0]
 

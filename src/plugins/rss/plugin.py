@@ -174,6 +174,47 @@ class RssPlugin(Plugin):
             )
         return value
 
+    def _render_feed_item(self, item, truncate_fields):
+        source = item.get("feed_title") or (
+            urlparse(item["feed_url"]).hostname or ""
+        ).replace("www.", "")
+
+        title = item["title"]
+        description = item.get("description", "")
+        author = item.get("author", "")
+
+        display_title = title if title else description
+        display_title_key = "title" if title else "description"
+
+        if display_title_key in truncate_fields:
+            display_title = self._apply_truncation(
+                display_title, truncate_fields[display_title_key]
+            )
+
+        if "description" in truncate_fields and title and description:
+            description = self._apply_truncation(
+                description, truncate_fields["description"]
+            )
+
+        if "author" in truncate_fields and author:
+            author = self._apply_truncation(
+                author, truncate_fields["author"]
+            )
+
+        if "feed_title" in truncate_fields:
+            source = self._apply_truncation(
+                source, truncate_fields["feed_title"]
+            )
+
+        return {
+            "title": display_title,
+            "description": description if title else "",
+            "author": author,
+            "link": item["link"],
+            "image_url": item.get("image_url", ""),
+            "source": source,
+        }
+
     def render(self, cards):
         results = []
         for card in cards:
@@ -186,47 +227,10 @@ class RssPlugin(Plugin):
                 results.append("")
                 continue
 
-            feed_items = []
-            for item in items:
-                source = item.get("feed_title") or (
-                    urlparse(item["feed_url"]).hostname or ""
-                ).replace("www.", "")
-
-                title = item["title"]
-                description = item.get("description", "")
-                author = item.get("author", "")
-
-                display_title = title if title else description
-                display_title_key = "title" if title else "description"
-
-                if display_title_key in truncate_fields:
-                    display_title = self._apply_truncation(
-                        display_title, truncate_fields[display_title_key]
-                    )
-
-                if "description" in truncate_fields and title and description:
-                    description = self._apply_truncation(
-                        description, truncate_fields["description"]
-                    )
-
-                if "author" in truncate_fields and author:
-                    author = self._apply_truncation(
-                        author, truncate_fields["author"]
-                    )
-
-                if "feed_title" in truncate_fields:
-                    source = self._apply_truncation(
-                        source, truncate_fields["feed_title"]
-                    )
-
-                feed_items.append({
-                    "title": display_title,
-                    "description": description if title else "",
-                    "author": author,
-                    "link": item["link"],
-                    "image_url": item.get("image_url", ""),
-                    "source": source,
-                })
+            feed_items = [
+                self._render_feed_item(item, truncate_fields)
+                for item in items
+            ]
 
             results.append(self._template.render(items=feed_items))
         return results
