@@ -174,57 +174,62 @@ class RssPlugin(Plugin):
             )
         return value
 
-    def render(self, options):
-        card_id = ImageCache.compute_card_id(options)
-        items = self._get_feed_items(card_id)
-        truncate_fields = options.get("truncate_fields", {})
+    def render(self, cards):
+        results = []
+        for card in cards:
+            options = card["options"]
+            card_id = card["card_id"]
+            items = self._get_feed_items(card_id)
+            truncate_fields = options.get("truncate_fields", {})
 
-        if not items:
-            return ""
+            if not items:
+                results.append("")
+                continue
 
-        feed_items = []
-        for item in items:
-            source = item.get("feed_title") or (
-                urlparse(item["feed_url"]).hostname or ""
-            ).replace("www.", "")
+            feed_items = []
+            for item in items:
+                source = item.get("feed_title") or (
+                    urlparse(item["feed_url"]).hostname or ""
+                ).replace("www.", "")
 
-            title = item["title"]
-            description = item.get("description", "")
-            author = item.get("author", "")
+                title = item["title"]
+                description = item.get("description", "")
+                author = item.get("author", "")
 
-            display_title = title if title else description
-            display_title_key = "title" if title else "description"
+                display_title = title if title else description
+                display_title_key = "title" if title else "description"
 
-            if display_title_key in truncate_fields:
-                display_title = self._apply_truncation(
-                    display_title, truncate_fields[display_title_key]
-                )
+                if display_title_key in truncate_fields:
+                    display_title = self._apply_truncation(
+                        display_title, truncate_fields[display_title_key]
+                    )
 
-            if "description" in truncate_fields and title and description:
-                description = self._apply_truncation(
-                    description, truncate_fields["description"]
-                )
+                if "description" in truncate_fields and title and description:
+                    description = self._apply_truncation(
+                        description, truncate_fields["description"]
+                    )
 
-            if "author" in truncate_fields and author:
-                author = self._apply_truncation(
-                    author, truncate_fields["author"]
-                )
+                if "author" in truncate_fields and author:
+                    author = self._apply_truncation(
+                        author, truncate_fields["author"]
+                    )
 
-            if "feed_title" in truncate_fields:
-                source = self._apply_truncation(
-                    source, truncate_fields["feed_title"]
-                )
+                if "feed_title" in truncate_fields:
+                    source = self._apply_truncation(
+                        source, truncate_fields["feed_title"]
+                    )
 
-            feed_items.append({
-                "title": display_title,
-                "description": description if title else "",
-                "author": author,
-                "link": item["link"],
-                "image_url": item.get("image_url", ""),
-                "source": source,
-            })
+                feed_items.append({
+                    "title": display_title,
+                    "description": description if title else "",
+                    "author": author,
+                    "link": item["link"],
+                    "image_url": item.get("image_url", ""),
+                    "source": source,
+                })
 
-        return self._template.render(items=feed_items)
+            results.append(self._template.render(items=feed_items))
+        return results
 
     def _fetch_feeds(self, feeds, max_items=10, fetch_images=False, include_fields=None):
         if include_fields is None:

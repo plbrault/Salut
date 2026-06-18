@@ -1,4 +1,6 @@
 from abc import ABC, abstractmethod
+import hashlib
+import json
 from pathlib import Path
 
 from apscheduler.triggers.cron import CronTrigger
@@ -26,8 +28,15 @@ class Plugin(ABC):
         """Initialize the plugin for a card. Called once at startup."""
 
     @abstractmethod
-    def render(self, options):
-        """Return HTML string for the card."""
+    def render(self, cards):
+        """Return list of HTML strings for the cards.
+
+        Args:
+            cards: List of dicts, each with 'options' (plugin config) and 'card_id' (unique identifier).
+
+        Returns:
+            List of HTML strings in the same order as input cards.
+        """
 
     @staticmethod
     @abstractmethod
@@ -63,3 +72,9 @@ class Plugin(ABC):
     def set_translations(self, translations):
         """Set translations directly (for testing)."""
         self._translations = translations
+
+    @staticmethod
+    def compute_card_id(options):
+        """Compute a card ID from options by hashing them."""
+        raw = json.dumps(options, sort_keys=True, default=str)
+        return hashlib.sha256(raw.encode()).hexdigest()[:16]

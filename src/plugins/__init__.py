@@ -38,13 +38,11 @@ def setup_card(card, database, scheduler, language="en"):
     return instance
 
 
-def render_card(card, instances):
-    plugin_name = card.get("plugin")
-    options = card.get("options", {})
+def render_cards_batch(plugin_name, cards, instances):
     instance = instances.get(plugin_name)
     if instance is None:
-        return f'<p class="text-red-500">Plugin "{plugin_name}" not found</p>'
+        return [f'<p class="text-red-500">Plugin "{plugin_name}" not found</p>'] * len(cards)
     try:
-        return instance.render(options)
+        return instance.render(cards)
     except Exception as e:  # pylint: disable=broad-except
-        return f'<p class="text-red-500">Plugin error: {e}</p>'
+        return [f'<p class="text-red-500">Plugin error: {e}</p>'] * len(cards)

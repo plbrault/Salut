@@ -97,38 +97,45 @@ class ImagePlugin(Plugin):
                 replace_existing=True,
             )
 
-    def render(self, options):
-        card_id = ImageCache.compute_card_id(options)
+    def render(self, cards):
+        results = []
+        for card in cards:
+            options = card["options"]
+            card_id = card["card_id"]
 
-        if not options.get("schedule"):
-            row = self._fetch_image(options)
-            if not row:
-                return ""
-            return self._template.render(
-                image_url=row["img_url"],
-                source_url=row["source_url"],
-                img_width=row.get("img_width"),
-                img_height=row.get("img_height"),
-                footer_html=options.get("footer_html", ""),
-                dynamic=True,
+            if not options.get("schedule"):
+                row = self._fetch_image(options)
+                if not row:
+                    results.append("")
+                    continue
+                results.append(self._template.render(
+                    image_url=row["img_url"],
+                    source_url=row["source_url"],
+                    img_width=row.get("img_width"),
+                    img_height=row.get("img_height"),
+                    footer_html=options.get("footer_html", ""),
+                    dynamic=True,
+                ))
+                continue
+
+            row = self._database.fetch_one(
+                "SELECT * FROM image_items WHERE card_id = ?",
+                (card_id,),
             )
 
-        row = self._database.fetch_one(
-            "SELECT * FROM image_items WHERE card_id = ?",
-            (card_id,),
-        )
+            if not row:
+                results.append("")
+                continue
 
-        if not row:
-            return ""
-
-        return self._template.render(
-            image_url=row["img_url"],
-            source_url=row["source_url"],
-            img_width=row["img_width"],
-            img_height=row["img_height"],
-            footer_html=options.get("footer_html", ""),
-            dynamic=False,
-        )
+            results.append(self._template.render(
+                image_url=row["img_url"],
+                source_url=row["source_url"],
+                img_width=row["img_width"],
+                img_height=row["img_height"],
+                footer_html=options.get("footer_html", ""),
+                dynamic=False,
+            ))
+        return results
 
     def _fetch_image(self, options):
         try:

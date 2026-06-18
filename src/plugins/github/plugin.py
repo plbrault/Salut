@@ -89,35 +89,40 @@ class GithubPlugin(Plugin):
             replace_existing=True,
         )
 
-    def render(self, options):
-        token = options.get("token")
-        if not token:
-            return (
-                '<p class="text-sm" style="color: var(--text-muted)">'
-                "GitHub token not configured. "
-                "Add <code>token</code> to your card options "
-                "(recommended: use <code>${secrets.github_token}</code>)."
-                "</p>"
+    def render(self, cards):
+        results = []
+        for card in cards:
+            options = card["options"]
+            card_id = card["card_id"]
+            token = options.get("token")
+            if not token:
+                results.append(
+                    '<p class="text-sm" style="color: var(--text-muted)">'
+                    "GitHub token not configured. "
+                    "Add <code>token</code> to your card options "
+                    "(recommended: use <code>${secrets.github_token}</code>)."
+                    "</p>"
+                )
+                continue
+
+            max_items = options.get("max_items", 10)
+            rows = self._database.fetch_all(
+                "SELECT * FROM github_notifications WHERE card_id = ? ORDER BY updated_at DESC LIMIT ?",
+                (card_id, max_items),
             )
 
-        card_id = self._compute_card_id(options)
-        max_items = options.get("max_items", 10)
-        rows = self._database.fetch_all(
-            "SELECT * FROM github_notifications WHERE card_id = ? ORDER BY updated_at DESC LIMIT ?",
-            (card_id, max_items),
-        )
+            notifications = []
+            for row in rows:
+                notifications.append({
+                    "repo_name": row["repo_name"],
+                    "subject_title": row["subject_title"],
+                    "reason": row["reason"],
+                    "time_ago": self._time_ago(row["updated_at"]),
+                    "web_url": row["web_url"],
+                })
 
-        notifications = []
-        for row in rows:
-            notifications.append({
-                "repo_name": row["repo_name"],
-                "subject_title": row["subject_title"],
-                "reason": row["reason"],
-                "time_ago": self._time_ago(row["updated_at"]),
-                "web_url": row["web_url"],
-            })
-
-        return self._template.render(notifications=notifications)
+            results.append(self._template.render(notifications=notifications))
+        return results
 
     def _fetch_notifications(self, options):
         try:

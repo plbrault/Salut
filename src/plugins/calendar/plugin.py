@@ -131,27 +131,32 @@ class CalendarPlugin(Plugin):
             replace_existing=True,
         )
 
-    def render(self, options):
-        card_id = self._compute_card_id(options)
-        row = self._database.fetch_one(
-            "SELECT events FROM calendar_events WHERE card_id = ?",
-            (card_id,),
-        )
-        if not row:
-            return f'<p style="color: var(--text-muted)">{self.t("no_events")}</p>'
+    def render(self, cards):
+        results = []
+        for card in cards:
+            options = card["options"]
+            card_id = card["card_id"]
+            row = self._database.fetch_one(
+                "SELECT events FROM calendar_events WHERE card_id = ?",
+                (card_id,),
+            )
+            if not row:
+                results.append(f'<p style="color: var(--text-muted)">{self.t("no_events")}</p>')
+                continue
 
-        events = json.loads(row["events"])
-        max_events = options.get("max_events", 10)
+            events = json.loads(row["events"])
+            max_events = options.get("max_events", 10)
 
-        events.sort(key=lambda e: e.get("start", ""))
-        events = events[:max_events]
+            events.sort(key=lambda e: e.get("start", ""))
+            events = events[:max_events]
 
-        if not events:
-            return f'<p style="color: var(--text-muted)">{self.t("no_events")}</p>'
+            if not events:
+                results.append(f'<p style="color: var(--text-muted)">{self.t("no_events")}</p>')
+                continue
 
-        html = self._template.render(events=events)
-
-        return html
+            html = self._template.render(events=events)
+            results.append(html)
+        return results
 
     def _fetch_events(self, calendars, time_window_days):
         self._logger.info(

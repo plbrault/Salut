@@ -111,6 +111,13 @@ def _validate_card(card, card_idx, filename):
             f"{filename}: cards[{card_idx}].options must be a mapping."
         )
 
+    if "card_id" in card:
+        card_id = card["card_id"]
+        if not isinstance(card_id, str) or not card_id:
+            raise ConfigError(
+                f"{filename}: cards[{card_idx}].card_id must be a non-empty string."
+            )
+
     if "colspan" in card:
         colspan = card["colspan"]
         if not isinstance(colspan, int) or colspan < 1:
