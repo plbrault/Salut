@@ -219,7 +219,7 @@ class TestRssPlugin:
         plugin = RssPlugin()
         plugin.setup({}, db, None, Mock())
         plugin._delete_feed_items(plugin._card_id)  # pylint: disable=protected-access
-        result = plugin.render([{"options": {}, "card_id": plugin._card_id}])
+        result = plugin.render([{"options": {}, "card_id": plugin._card_id}])  # pylint: disable=protected-access  # pylint: disable=protected-access
         assert result == [""]
         db.close()
 
@@ -240,7 +240,7 @@ class TestRssPlugin:
             image_url="",
             feed_title="Example Feed",
         )
-        result = plugin.render([{"options": options, "card_id": plugin._card_id}])
+        result = plugin.render([{"options": options, "card_id": plugin._card_id}])  # pylint: disable=protected-access
         assert "Test Article" in result[0]
         assert "Example Feed" in result[0]
         assert 'href="http://example.com/article"' in result[0]
@@ -263,7 +263,7 @@ class TestRssPlugin:
             image_url="",
             feed_title="",
         )
-        result = plugin.render([{"options": options, "card_id": plugin._card_id}])
+        result = plugin.render([{"options": options, "card_id": plugin._card_id}])  # pylint: disable=protected-access
         assert "example.com" in result[0]
         assert ">example.com<" in result[0]
         db.close()
@@ -285,7 +285,7 @@ class TestRssPlugin:
             image_url="",
             feed_title="My Cool Blog",
         )
-        result = plugin.render([{"options": options, "card_id": plugin._card_id}])
+        result = plugin.render([{"options": options, "card_id": plugin._card_id}])  # pylint: disable=protected-access
         assert "My Cool Blog" in result[0]
         assert ">My Cool Blog<" in result[0]
         db.close()
@@ -307,7 +307,7 @@ class TestRssPlugin:
             image_url="/cache/rss/abc123/0.jpg",
             feed_title="Example",
         )
-        result = plugin.render([{"options": options, "card_id": plugin._card_id}])
+        result = plugin.render([{"options": options, "card_id": plugin._card_id}])  # pylint: disable=protected-access
         assert "/cache/rss/abc123/0.jpg" in result[0]
         db.close()
 
@@ -891,7 +891,7 @@ class TestWeatherPlugin:  # pylint: disable=too-many-public-methods
             "INSERT INTO weather_data (card_id, data) VALUES (?, ?)",
             (plugin._card_id, json.dumps(weather_data)),  # pylint: disable=protected-access
         )
-        result = plugin.render([{"options": options, "card_id": plugin._card_id}])
+        result = plugin.render([{"options": options, "card_id": plugin._card_id}])  # pylint: disable=protected-access
         assert "20" in result[0]
         assert "☀️" in result[0]
         assert "Clear sky" in result[0]
@@ -919,7 +919,7 @@ class TestWeatherPlugin:  # pylint: disable=too-many-public-methods
             "INSERT INTO weather_data (card_id, data) VALUES (?, ?)",
             (plugin._card_id, json.dumps(weather_data)),  # pylint: disable=protected-access
         )
-        result = plugin.render([{"options": options, "card_id": plugin._card_id}])
+        result = plugin.render([{"options": options, "card_id": plugin._card_id}])  # pylint: disable=protected-access
         assert "🌙" in result[0]
         db.close()
 
@@ -944,7 +944,7 @@ class TestWeatherPlugin:  # pylint: disable=too-many-public-methods
             "INSERT INTO weather_data (card_id, data) VALUES (?, ?)",
             (plugin._card_id, json.dumps(weather_data)),  # pylint: disable=protected-access
         )
-        result = plugin.render([{"options": options, "card_id": plugin._card_id}])
+        result = plugin.render([{"options": options, "card_id": plugin._card_id}])  # pylint: disable=protected-access
         assert '<a href="https://example.com/weather"' in result[0]
         assert 'target="_blank"' in result[0]
         db.close()
@@ -970,7 +970,7 @@ class TestWeatherPlugin:  # pylint: disable=too-many-public-methods
             "INSERT INTO weather_data (card_id, data) VALUES (?, ?)",
             (plugin._card_id, json.dumps(weather_data)),  # pylint: disable=protected-access
         )
-        result = plugin.render([{"options": options, "card_id": plugin._card_id}])
+        result = plugin.render([{"options": options, "card_id": plugin._card_id}])  # pylint: disable=protected-access
         assert 'class="block text-inherit no-underline"' not in result[0]
         assert "open-meteo.com" in result[0]
         db.close()
@@ -1488,7 +1488,7 @@ class TestCalendarPlugin:  # pylint: disable=protected-access
             "INSERT INTO calendar_events (card_id, events) VALUES (?, ?)",
             (plugin._card_id, json.dumps(events)),
         )
-        result = plugin.render([{"options": options, "card_id": plugin._card_id}])
+        result = plugin.render([{"options": options, "card_id": plugin._card_id}])  # pylint: disable=protected-access
         assert "Team Meeting" in result[0]
         assert "Project Deadline" in result[0]
         assert "2026-06-10" in result[0]
@@ -1508,7 +1508,7 @@ class TestCalendarPlugin:  # pylint: disable=protected-access
             "INSERT INTO calendar_events (card_id, events) VALUES (?, ?)",
             (plugin._card_id, json.dumps([])),
         )
-        result = plugin.render([{"options": options, "card_id": plugin._card_id}])
+        result = plugin.render([{"options": options, "card_id": plugin._card_id}])  # pylint: disable=protected-access
         assert "No upcoming events" in result[0]
         db.close()
 
@@ -1570,7 +1570,7 @@ class TestCalendarPlugin:  # pylint: disable=protected-access
             "INSERT INTO calendar_events (card_id, events) VALUES (?, ?)",
             (plugin._card_id, json.dumps(events)),
         )
-        result = plugin.render([{"options": options, "card_id": plugin._card_id}])
+        result = plugin.render([{"options": options, "card_id": plugin._card_id}])  # pylint: disable=protected-access
         assert 'href="https://example.com/event/123"' in result[0]
         assert 'target="_blank"' in result[0]
         assert "Event" in result[0]
@@ -1592,7 +1592,7 @@ class TestCalendarPlugin:  # pylint: disable=protected-access
             "INSERT INTO calendar_events (card_id, events) VALUES (?, ?)",
             (plugin._card_id, json.dumps(events)),
         )
-        result = plugin.render([{"options": options, "card_id": plugin._card_id}])
+        result = plugin.render([{"options": options, "card_id": plugin._card_id}])  # pylint: disable=protected-access
         assert "<a " not in result[0]
         assert "Event" in result[0]
         db.close()
@@ -1648,7 +1648,7 @@ class TestCalendarPlugin:  # pylint: disable=protected-access
             "INSERT INTO calendar_events (card_id, events) VALUES (?, ?)",
             (plugin._card_id, json.dumps(events)),
         )
-        result = plugin.render([{"options": options, "card_id": plugin._card_id}])
+        result = plugin.render([{"options": options, "card_id": plugin._card_id}])  # pylint: disable=protected-access
         assert "Nextcloud Event" in result[0]
         db.close()
 
