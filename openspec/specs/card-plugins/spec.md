@@ -5,19 +5,19 @@ Plugin-based card rendering system for the starter page. Cards use plugins to re
 ## Requirements
 
 ### Requirement: Plugins render card content
-The system SHALL load plugins from `src/plugins/` and use them to render card content. Each plugin SHALL expose `card_style_rules` as part of its interface.
+The system SHALL load plugins from `src/plugins/` and use them to render card content. Each plugin SHALL expose `card_style_rules` as part of its interface. The system SHALL call each plugin's `render` method once per plugin type, passing a list of all cards using that plugin. The plugin SHALL return a list of HTML strings in the same order as the input list.
 
 #### Scenario: Plugin is loaded and executed
-- **WHEN** a card specifies `plugin: weather` with `options`
-- **THEN** the system loads the corresponding plugin and calls its `render(options)` function
+- **WHEN** one or more cards specify `plugin: weather` with `options`
+- **THEN** the system loads the corresponding plugin and calls its `render(cards)` function once with all weather cards
 
 #### Scenario: Plugin returns rendered HTML
-- **WHEN** a plugin's `render(options)` function is called
-- **THEN** the function returns an HTML string
+- **WHEN** a plugin's `render(cards)` function is called with a list of cards
+- **THEN** the function returns a list of HTML strings, one per card, in the same order
 
 #### Scenario: Plugin error handling
-- **WHEN** a plugin fails to load or raises an exception
-- **THEN** the system displays an error message in the card instead of crashing
+- **WHEN** a plugin fails to load or raises an exception during batch render
+- **THEN** the system displays an error message in all cards using that plugin instead of crashing
 
 #### Scenario: Plugin init_schema is called at startup
 - **WHEN** the server starts
@@ -26,6 +26,21 @@ The system SHALL load plugins from `src/plugins/` and use them to render card co
 #### Scenario: Plugin provides card style rules
 - **WHEN** a plugin is queried for `card_style_rules`
 - **THEN** its class returns a dict mapping sub-selectors to CSS declarations
+
+### Requirement: Custom card_id in YAML config
+The system SHALL accept an optional `card_id` field in the card's YAML config. When provided, this custom `card_id` SHALL override the auto-generated card_id (computed from options hash). The custom `card_id` SHALL be passed to the plugin's `render` method in the batch call.
+
+#### Scenario: Card with custom card_id
+- **WHEN** a card has `card_id: "my-weather"` in its YAML config
+- **THEN** the plugin receives `card_id: "my-weather"` in the batch render call
+
+#### Scenario: Card without custom card_id
+- **WHEN** a card has no `card_id` field in its YAML config
+- **THEN** the plugin receives the auto-generated card_id (computed from options hash)
+
+#### Scenario: Custom card_id persists across option changes
+- **WHEN** a card has `card_id: "my-weather"` and its `options.location_name` changes
+- **THEN** the card_id remains "my-weather" and cached data is preserved
 
 ### Requirement: HTML plugin renders arbitrary HTML
 The system SHALL provide an `html` plugin that renders HTML from the card's `options.html` field. The HTML plugin SHALL implement `card_style_rules` with sensible default styling.
