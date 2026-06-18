@@ -11,6 +11,6 @@
     </a>
     {% endfor %}
     {% if not notifications %}
-    <div class="text-sm" style="color: var(--text-muted)">No unread notifications.</div>
+    <div class="text-sm" style="color: var(--text-muted)">{{ no_notifications_label }}</div>
     {% endif %}
 </div>

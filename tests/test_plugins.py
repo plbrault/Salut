@@ -2069,6 +2069,30 @@ class TestGithubPlugin:  # pylint: disable=protected-access
     def test_github_notifications_card_style_rules_returns_dict(self):
         assert isinstance(GithubPlugin.card_style_rules(), dict)
 
+    def test_render_empty_shows_no_notifications_en(self, tmp_path):
+        db = Database(tmp_path / "test.db")
+        GithubPlugin.init_schema(db)
+        plugin = GithubPlugin()
+        i18n_dir = Path(__file__).resolve().parent.parent / "src" / "plugins" / "github" / "i18n"
+        plugin.set_translations(_load_translations(i18n_dir, "en"))
+        plugin._database = db
+        plugin._card_id = "test"
+        result = plugin.render({"token": "ghp_test"})
+        assert "No unread notifications." in result
+        db.close()
+
+    def test_render_empty_shows_no_notifications_fr(self, tmp_path):
+        db = Database(tmp_path / "test.db")
+        GithubPlugin.init_schema(db)
+        plugin = GithubPlugin()
+        i18n_dir = Path(__file__).resolve().parent.parent / "src" / "plugins" / "github" / "i18n"
+        plugin.set_translations(_load_translations(i18n_dir, "fr"))
+        plugin._database = db
+        plugin._card_id = "test"
+        result = plugin.render({"token": "ghp_test"})
+        assert "Aucune notification non lue." in result
+        db.close()
+
 
 class TestImagePluginCache:  # pylint: disable=protected-access
     def test_download_failure_preserves_old_row(self, tmp_path):
