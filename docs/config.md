@@ -93,7 +93,7 @@ Salut is configured via a YAML file (`config.yml` or `starter.yml`). The `config
 #### cards[].card_id
 
 - **Type:** string (optional)
-- **Description:** Custom unique identifier for this card. When provided, this overrides the auto-generated card_id (computed from options hash). This is useful for preserving cached data when card options change (e.g., renaming a weather location). The card_id must be unique across all cards of the same plugin type.
+- **Description:** Custom unique identifier for this card. When provided, this overrides the auto-generated card_id (computed from options hash).
 - **Example:** `my-weather-card`
 
 ### admin_password
