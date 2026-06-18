@@ -117,7 +117,10 @@ class GithubPlugin(Plugin):
                 "web_url": row["web_url"],
             })
 
-        return self._template.render(notifications=notifications)
+        return self._template.render(
+            notifications=notifications,
+            no_notifications_label=self.t("no_notifications"),
+        )
 
     def _fetch_notifications(self, options):
         try:
