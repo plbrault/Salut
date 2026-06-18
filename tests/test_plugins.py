@@ -2076,8 +2076,9 @@ class TestGithubPlugin:  # pylint: disable=protected-access
         plugin.set_translations(_load_translations(i18n_dir, "en"))
         plugin._database = db
         plugin._card_id = "test"
-        result = plugin.render({"token": "ghp_test"})
-        assert "No unread notifications." in result
+        results = plugin.render([{"options": {"token": "ghp_test"}, "card_id": "test"}])
+        assert len(results) == 1
+        assert "No unread notifications." in results[0]
         db.close()
 
     def test_render_empty_shows_no_notifications_fr(self, tmp_path):
@@ -2088,8 +2089,9 @@ class TestGithubPlugin:  # pylint: disable=protected-access
         plugin.set_translations(_load_translations(i18n_dir, "fr"))
         plugin._database = db
         plugin._card_id = "test"
-        result = plugin.render({"token": "ghp_test"})
-        assert "Aucune notification non lue." in result
+        results = plugin.render([{"options": {"token": "ghp_test"}, "card_id": "test"}])
+        assert len(results) == 1
+        assert "Aucune notification non lue." in results[0]
         db.close()
 
 
