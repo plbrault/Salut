@@ -4,6 +4,8 @@ import tempfile
 from unittest.mock import Mock, MagicMock, patch
 from pathlib import Path
 
+import pytest
+
 from src.plugins import load_plugin_class, render_cards_batch, setup_card
 from src.plugin import Plugin
 from src.plugins.html import HtmlPlugin
@@ -310,6 +312,224 @@ class TestRssPlugin:
         result = plugin.render([{"options": options, "card_id": plugin._card_id}])  # pylint: disable=protected-access
         assert "/cache/rss/abc123/0.jpg" in result[0]
         db.close()
+
+
+class TestRssDistinctFrom:
+    def test_distinct_from_filters_by_link(self, tmp_path):
+        db = Database(tmp_path / "test.db")
+        RssPlugin.init_schema(db)
+
+        ref_plugin = RssPlugin()
+        ref_plugin._database = db  # pylint: disable=protected-access
+        ref_plugin._card_id = "ref-card"  # pylint: disable=protected-access
+        ref_plugin._insert_feed_item(  # pylint: disable=protected-access
+            card_id="ref-card",
+            url="http://example.com/rss",
+            title="Shared Article",
+            link="http://example.com/shared",
+            published="2026-01-01T00:00:00",
+            feed_url="http://example.com/rss",
+            image_url="",
+            feed_title="Ref Feed",
+        )
+
+        plugin = RssPlugin()
+        options = {
+            "feeds": ["http://example.com/rss"],
+            "distinct_from": ["ref-card"],
+        }
+        plugin.setup(options, db, MagicMock(), Mock())
+        plugin._delete_feed_items(plugin._card_id)  # pylint: disable=protected-access
+        plugin._insert_feed_item(  # pylint: disable=protected-access
+            card_id=plugin._card_id,  # pylint: disable=protected-access
+            url="http://example.com/rss",
+            title="My Article",
+            link="http://example.com/mine",
+            published="2026-01-02T00:00:00",
+            feed_url="http://example.com/rss",
+            image_url="",
+            feed_title="My Feed",
+        )
+        plugin._insert_feed_item(  # pylint: disable=protected-access
+            card_id=plugin._card_id,  # pylint: disable=protected-access
+            url="http://example.com/rss",
+            title="Shared Article",
+            link="http://example.com/shared",
+            published="2026-01-01T00:00:00",
+            feed_url="http://example.com/rss",
+            image_url="",
+            feed_title="My Feed",
+        )
+
+        items = plugin._get_feed_items(plugin._card_id)  # pylint: disable=protected-access
+        assert len(items) == 2
+
+        excluded = plugin._build_exclusion_set(["ref-card"])  # pylint: disable=protected-access
+        filtered = [
+            item for item in items
+            if not RssPlugin._is_excluded(item, excluded)  # pylint: disable=protected-access  # pylint: disable=protected-access
+        ]
+        assert len(filtered) == 1
+        assert filtered[0]["link"] == "http://example.com/mine"
+        db.close()
+
+    def test_distinct_from_filters_by_title(self, tmp_path):
+        db = Database(tmp_path / "test.db")
+        RssPlugin.init_schema(db)
+
+        ref_plugin = RssPlugin()
+        ref_plugin._database = db  # pylint: disable=protected-access
+        ref_plugin._card_id = "ref-card"  # pylint: disable=protected-access
+        ref_plugin._insert_feed_item(  # pylint: disable=protected-access
+            card_id="ref-card",
+            url="http://example.com/rss",
+            title="Breaking News",
+            link="http://example.com/breaking",
+            published="2026-01-01T00:00:00",
+            feed_url="http://example.com/rss",
+            image_url="",
+            feed_title="Ref Feed",
+        )
+
+        plugin = RssPlugin()
+        plugin._database = db  # pylint: disable=protected-access
+        plugin._card_id = "my-card"  # pylint: disable=protected-access
+        plugin._insert_feed_item(  # pylint: disable=protected-access
+            card_id="my-card",
+            url="http://other.com/rss",
+            title="Breaking News",
+            link="http://other.com/different-link",
+            published="2026-01-01T00:00:00",
+            feed_url="http://other.com/rss",
+            image_url="",
+            feed_title="Other Feed",
+        )
+
+        excluded = plugin._build_exclusion_set(["ref-card"])  # pylint: disable=protected-access
+        items = plugin._get_feed_items("my-card")  # pylint: disable=protected-access
+        filtered = [
+            item for item in items
+            if not RssPlugin._is_excluded(item, excluded)  # pylint: disable=protected-access
+        ]
+        assert len(filtered) == 0
+        db.close()
+
+    def test_distinct_from_preserves_referenced_items(self, tmp_path):
+        db = Database(tmp_path / "test.db")
+        RssPlugin.init_schema(db)
+
+        ref_plugin = RssPlugin()
+        ref_plugin._database = db  # pylint: disable=protected-access
+        ref_plugin._card_id = "ref-card"  # pylint: disable=protected-access
+        ref_plugin._insert_feed_item(  # pylint: disable=protected-access
+            card_id="ref-card",
+            url="http://example.com/rss",
+            title="Shared Article",
+            link="http://example.com/shared",
+            published="2026-01-01T00:00:00",
+            feed_url="http://example.com/rss",
+            image_url="",
+            feed_title="Ref Feed",
+        )
+
+        ref_items = ref_plugin._get_feed_items("ref-card")  # pylint: disable=protected-access
+        assert len(ref_items) == 1
+        assert ref_items[0]["link"] == "http://example.com/shared"
+        db.close()
+
+    def test_distinct_from_empty_array_no_filter(self, tmp_path):
+        db = Database(tmp_path / "test.db")
+        RssPlugin.init_schema(db)
+
+        plugin = RssPlugin()
+        plugin._database = db  # pylint: disable=protected-access
+        plugin._card_id = "my-card"  # pylint: disable=protected-access
+        plugin._insert_feed_item(  # pylint: disable=protected-access
+            card_id="my-card",
+            url="http://example.com/rss",
+            title="Article",
+            link="http://example.com/article",
+            published="2026-01-01T00:00:00",
+            feed_url="http://example.com/rss",
+            image_url="",
+            feed_title="Feed",
+        )
+
+        excluded = plugin._build_exclusion_set([])  # pylint: disable=protected-access
+        items = plugin._get_feed_items("my-card")  # pylint: disable=protected-access
+        filtered = [
+            item for item in items
+            if not RssPlugin._is_excluded(item, excluded)  # pylint: disable=protected-access
+        ]
+        assert len(filtered) == 1
+        db.close()
+
+    def test_distinct_from_nonexistent_card_id(self, tmp_path):
+        db = Database(tmp_path / "test.db")
+        RssPlugin.init_schema(db)
+
+        plugin = RssPlugin()
+        plugin._database = db  # pylint: disable=protected-access
+        plugin._card_id = "my-card"  # pylint: disable=protected-access
+        plugin._insert_feed_item(  # pylint: disable=protected-access
+            card_id="my-card",
+            url="http://example.com/rss",
+            title="Article",
+            link="http://example.com/article",
+            published="2026-01-01T00:00:00",
+            feed_url="http://example.com/rss",
+            image_url="",
+            feed_title="Feed",
+        )
+
+        excluded = plugin._build_exclusion_set(["nonexistent"])  # pylint: disable=protected-access
+        items = plugin._get_feed_items("my-card")  # pylint: disable=protected-access
+        filtered = [
+            item for item in items
+            if not RssPlugin._is_excluded(item, excluded)  # pylint: disable=protected-access
+        ]
+        assert len(filtered) == 1
+        db.close()
+
+    def test_validate_distinct_from_must_be_list(self):
+        config = {
+            "page_title": "Test",
+            "page_header": "Test",
+            "language": "en",
+            "user_info": {"short_name": "A", "long_name": "B"},
+            "columns": 3,
+            "cards": [{
+                "title": "RSS",
+                "plugin": "rss",
+                "options": {
+                    "feeds": ["http://example.com/rss"],
+                    "schedule": "0 */6 * * *",
+                    "distinct_from": "not-a-list",
+                }
+            }]
+        }
+        with pytest.raises(ConfigError, match="must be a list"):
+            validate_config(config)
+
+    def test_validate_distinct_from_items_must_be_strings(self):
+        config = {
+            "page_title": "Test",
+            "page_header": "Test",
+            "language": "en",
+            "user_info": {"short_name": "A", "long_name": "B"},
+            "columns": 3,
+            "cards": [{
+                "title": "RSS",
+                "plugin": "rss",
+                "options": {
+                    "feeds": ["http://example.com/rss"],
+                    "schedule": "0 */6 * * *",
+                    "distinct_from": [123],
+                }
+            }]
+        }
+        with pytest.raises(ConfigError, match="non-string value"):
+            validate_config(config)
 
 
 class TestLoadTemplate:  # pylint: disable=too-few-public-methods

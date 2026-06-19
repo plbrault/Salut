@@ -51,7 +51,7 @@ class SearchPlugin(Plugin):
                 f"{filename}: cards[{card_idx}].options.results_in_new_tab must be a boolean."
             )
 
-    def setup(self, options, database, scheduler, logger):
+    def setup(self, options, database, scheduler, logger, *, card_id=None):
         pass
 
     def render(self, cards):

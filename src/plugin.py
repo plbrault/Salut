@@ -24,8 +24,16 @@ class Plugin(ABC):
         return {}
 
     @abstractmethod
-    def setup(self, options, database, scheduler, logger):
-        """Initialize the plugin for a card. Called once at startup."""
+    def setup(self, options, database, scheduler, logger, *, card_id=None):
+        """Initialize the plugin for a card. Called once at startup.
+
+        Args:
+            options: Plugin-specific options from config.
+            database: Database instance.
+            scheduler: APScheduler instance.
+            logger: Logger instance.
+            card_id: Optional custom card_id from YAML config.
+        """
 
     @abstractmethod
     def render(self, cards):

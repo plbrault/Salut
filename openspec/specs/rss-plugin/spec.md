@@ -174,3 +174,34 @@ Config validation SHALL delegate plugin-specific option validation to each plugi
 #### Scenario: Unknown plugin skips option validation
 - **WHEN** a card has an unknown plugin name
 - **THEN** config validation skips plugin-specific option validation
+
+### Requirement: RSS plugin supports distinct_from option
+The system SHALL accept an optional `distinct_from` field in the RSS card's options. When provided, the value SHALL be a list of `card_id` strings referencing other RSS cards. During feed fetching, the card SHALL exclude feed items that match items in any referenced card, using the same deduplication rules as within a single card (by `link` URL and `title`). Excluded items SHALL NOT be stored in the database for this card.
+
+#### Scenario: Card filters items from multiple referenced cards at fetch time
+- **WHEN** card A has `distinct_from: ["card-b", "card-c"]` and card B has items with links [X, Y] and card C has items with links [Z, W]
+- **THEN** card A's database contains no items with links X, Y, Z, or W after fetching
+
+#### Scenario: Filtering by title match
+- **WHEN** card A has `distinct_from: ["card-b"]` and card B has an item with title "Breaking News" and a different link URL
+- **THEN** card A excludes any fetched item with the same title "Breaking News"
+
+#### Scenario: Referenced cards have priority
+- **WHEN** card A has `distinct_from: ["card-b"]` and both cards share items with links [X, Y]
+- **THEN** card B retains items X and Y in its database, and card A does not store them
+
+#### Scenario: max_items applies after filtering
+- **WHEN** a card has `max_items: 5` and `distinct_from: ["card-b"]` and 3 items are filtered out
+- **THEN** the card stores and displays up to 5 items (not 5 minus the filtered count)
+
+#### Scenario: No filtering when distinct_from is absent
+- **WHEN** an RSS card has no `distinct_from` option
+- **THEN** all feed items are fetched and stored normally
+
+#### Scenario: Empty distinct_from array
+- **WHEN** a card has `distinct_from: []`
+- **THEN** no items are filtered and all items are fetched normally
+
+#### Scenario: Non-existent referenced card_id
+- **WHEN** a card has `distinct_from: ["nonexistent"]` and no card with that card_id exists
+- **THEN** no items are filtered for that entry and remaining items are fetched normally

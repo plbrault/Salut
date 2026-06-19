@@ -124,10 +124,10 @@ class WeatherPlugin(Plugin):
             """
         )
 
-    def setup(self, options, database, scheduler, logger):
+    def setup(self, options, database, scheduler, logger, *, card_id=None):
         self._database = database
         self._logger = logger
-        self._card_id = self._compute_card_id(options)
+        self._card_id = card_id if card_id else self._compute_card_id(options)
 
         latitude = options["latitude"]
         longitude = options["longitude"]

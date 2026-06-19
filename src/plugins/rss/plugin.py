@@ -120,6 +120,18 @@ class RssPlugin(Plugin):
                 truncate_fields, filename, card_idx
             )
 
+        distinct_from = options.get("distinct_from")
+        if distinct_from is not None:
+            prefix = f"{filename}: cards[{card_idx}].options.distinct_from"
+            if not isinstance(distinct_from, list):
+                raise ConfigError(f"{prefix} must be a list.")
+            for item in distinct_from:
+                if not isinstance(item, str):
+                    raise ConfigError(
+                        f"{prefix} contains non-string value. "
+                        "All items must be strings."
+                    )
+
     @staticmethod
     def init_schema(database):
         database.execute(
@@ -142,23 +154,28 @@ class RssPlugin(Plugin):
             """
         )
 
-    def setup(self, options, database, scheduler, logger):
+    def setup(self, options, database, scheduler, logger, *, card_id=None):
         self._database = database
         self._logger = logger
-        self._card_id = ImageCache.compute_card_id(options)
+        self._card_id = card_id if card_id else ImageCache.compute_card_id(options)
 
         feeds = options.get("feeds", [])
         max_items = options.get("max_items", 10)
         fetch_images = options.get("images", False)
         schedule = options.get("schedule", "0 */6 * * *")
         include_fields = options.get("include_fields", ["title"])
+        distinct_from = options.get("distinct_from", [])
 
         if feeds:
-            self._fetch_feeds(feeds, max_items, fetch_images, include_fields)
+            self._fetch_feeds(
+                feeds, max_items, fetch_images, include_fields,
+                distinct_from=distinct_from
+            )
             scheduler.add_job(
                 self._fetch_feeds,
                 trigger=self.parse_schedule(schedule),
                 args=[feeds, max_items, fetch_images, include_fields],
+                kwargs={"distinct_from": distinct_from},
                 id=f"rss_{self._card_id}",
                 replace_existing=True,
             )
@@ -235,22 +252,25 @@ class RssPlugin(Plugin):
             results.append(self._template.render(items=feed_items))
         return results
 
-    def _fetch_feeds(self, feeds, max_items=10, fetch_images=False, include_fields=None):
+    def _fetch_feeds(
+        self, feeds, max_items=10, fetch_images=False,
+        include_fields=None, *, distinct_from=None
+    ):
         if include_fields is None:
             include_fields = ["title"]
+        if distinct_from is None:
+            distinct_from = []
         self._logger.info("Fetching RSS feeds for card %s (%d feeds)", self._card_id, len(feeds))
 
-        with ThreadPoolExecutor() as executor:
-            results = list(executor.map(
-                lambda url: self._fetch_single_feed(url, fetch_images, include_fields), feeds
-            ))
-
-        all_items = [item for items in results for item in items]
+        all_items = self._fetch_all_feeds(feeds, fetch_images, include_fields)
 
         precedence = {url: idx for idx, url in enumerate(feeds)}
-
         all_items.sort(key=lambda x: (x["published"] != "", x["published"]), reverse=True)
         all_items = self._deduplicate_items(all_items, precedence)
+
+        if distinct_from:
+            all_items = self._filter_distinct(all_items, distinct_from)
+
         all_items = all_items[:max_items]
         self._logger.info("Total items after sort/dedup/truncate: %d", len(all_items))
 
@@ -431,6 +451,48 @@ class RssPlugin(Plugin):
             "SELECT * FROM feed_items WHERE card_id = ? ORDER BY published DESC",
             (card_id,),
         )
+
+    def _build_exclusion_set(self, distinct_from):
+        excluded_links = set()
+        excluded_titles = set()
+        for ref_card_id in distinct_from:
+            items = self._get_feed_items(ref_card_id)
+            for item in items:
+                link = item.get("link", "")
+                if link:
+                    excluded_links.add(link)
+                title = item.get("title", "").strip()
+                if title:
+                    excluded_titles.add(title)
+        return {"links": excluded_links, "titles": excluded_titles}
+
+    @staticmethod
+    def _is_excluded(item, excluded):
+        link = item.get("link", "")
+        if link in excluded["links"]:
+            return True
+        title = item.get("title", "").strip()
+        if title and title in excluded["titles"]:
+            return True
+        return False
+
+    def _fetch_all_feeds(self, feeds, fetch_images, include_fields):
+        with ThreadPoolExecutor() as executor:
+            results = list(executor.map(
+                lambda url: self._fetch_single_feed(url, fetch_images, include_fields), feeds
+            ))
+        return [item for items in results for item in items]
+
+    def _filter_distinct(self, items, distinct_from):
+        excluded = self._build_exclusion_set(distinct_from)
+        filtered = [
+            item for item in items
+            if not self._is_excluded(item, excluded)
+        ]
+        self._logger.info(
+            "Items after distinct_from filter: %d", len(filtered)
+        )
+        return filtered
 
     @staticmethod
     def _deduplicate_items(items, precedence=None):
