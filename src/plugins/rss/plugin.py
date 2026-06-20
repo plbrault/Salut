@@ -8,7 +8,7 @@ from urllib.parse import urlparse
 import feedparser
 import requests
 
-from src.config import ConfigError
+from src.config import ConfigError, load_config
 from src.image_cache import ImageCache
 from src.plugin import Plugin
 
@@ -252,7 +252,7 @@ class RssPlugin(Plugin):
             results.append(self._template.render(items=feed_items))
         return results
 
-    def _fetch_feeds(
+    def _fetch_feeds(  # pylint: disable=too-many-locals
         self, feeds, max_items=10, fetch_images=False,
         include_fields=None, *, distinct_from=None
     ):
@@ -262,14 +262,27 @@ class RssPlugin(Plugin):
             distinct_from = []
         self._logger.info("Fetching RSS feeds for card %s (%d feeds)", self._card_id, len(feeds))
 
+        excluded = None
+        if distinct_from:
+            for ref_card_id in distinct_from:
+                self._ensure_dependency_fetched(ref_card_id)
+            excluded = self._build_exclusion_set(distinct_from)
+
         all_items = self._fetch_all_feeds(feeds, fetch_images, include_fields)
 
         precedence = {url: idx for idx, url in enumerate(feeds)}
         all_items.sort(key=lambda x: (x["published"] != "", x["published"]), reverse=True)
         all_items = self._deduplicate_items(all_items, precedence)
 
-        if distinct_from:
-            all_items = self._filter_distinct(all_items, distinct_from)
+        if excluded is not None:
+            filtered = [
+                item for item in all_items
+                if not self._is_excluded(item, excluded)
+            ]
+            self._logger.info(
+                "Items after distinct_from filter: %d", len(filtered)
+            )
+            all_items = filtered
 
         all_items = all_items[:max_items]
         self._logger.info("Total items after sort/dedup/truncate: %d", len(all_items))
@@ -465,6 +478,63 @@ class RssPlugin(Plugin):
                 if title:
                     excluded_titles.add(title)
         return {"links": excluded_links, "titles": excluded_titles}
+
+    def _ensure_dependency_fetched(self, ref_card_id):
+        if self._get_feed_items(ref_card_id):
+            return
+
+        try:
+            config = load_config()
+        except Exception:  # pylint: disable=broad-except
+            return
+
+        for card in config.get("cards", []):
+            card_id = card.get("card_id")
+            if not card_id:
+                card_id = ImageCache.compute_card_id(
+                    card.get("options", {})
+                )
+            if card_id == ref_card_id and card.get("plugin") == "rss":
+                ref_options = card.get("options", {})
+                ref_distinct = ref_options.get("distinct_from", [])
+                for dep_id in ref_distinct:
+                    self._ensure_dependency_fetched(dep_id)
+                self._fetch_dependency_card(ref_card_id, ref_options)
+                break
+
+    def _fetch_dependency_card(self, ref_card_id, ref_options):
+        ref_feeds = ref_options.get("feeds", [])
+        if not ref_feeds:
+            return
+        ref_include = ref_options.get("include_fields", ["title"])
+        ref_images = ref_options.get("images", False)
+        self._logger.info(
+            "Fetching dependency card %s before %s",
+            ref_card_id, self._card_id
+        )
+        all_items = self._fetch_all_feeds(
+            ref_feeds, ref_images, ref_include
+        )
+        self._database.begin_transaction()
+        try:
+            self._delete_feed_items(ref_card_id)
+            for item in all_items:
+                self._insert_feed_item(
+                    card_id=ref_card_id,
+                    url=item["url"],
+                    title=item["title"],
+                    link=item["link"],
+                    published=item["published"],
+                    feed_url=item["feed_url"],
+                    image_url=item["image_url"],
+                    feed_title=item["feed_title"],
+                    description=item.get("description", ""),
+                    author=item.get("author", ""),
+                )
+            self._database.commit_transaction()
+        except Exception:
+            self._database.rollback_transaction()
+            raise
 
     @staticmethod
     def _is_excluded(item, excluded):
