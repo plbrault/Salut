@@ -531,6 +531,169 @@ class TestRssDistinctFrom:
         with pytest.raises(ConfigError, match="non-string value"):
             validate_config(config)
 
+    def test_ensure_dependency_fetched_skips_when_items_exist(self, tmp_path):
+        db = Database(tmp_path / "test.db")
+        RssPlugin.init_schema(db)
+
+        ref_plugin = RssPlugin()
+        ref_plugin._database = db  # pylint: disable=protected-access
+        ref_plugin._card_id = "ref-card"  # pylint: disable=protected-access
+        ref_plugin._insert_feed_item(  # pylint: disable=protected-access
+            card_id="ref-card",
+            url="http://example.com/rss",
+            title="Existing Item",
+            link="http://example.com/existing",
+            published="2026-01-01T00:00:00",
+            feed_url="http://example.com/rss",
+            image_url="",
+            feed_title="Ref Feed",
+        )
+
+        plugin = RssPlugin()
+        plugin._database = db  # pylint: disable=protected-access
+        with patch(
+            "src.plugins.rss.plugin.load_config",
+            return_value={
+                "page_title": "Test",
+                "page_header": "Test",
+                "language": "en",
+                "user_info": {"short_name": "A", "long_name": "B"},
+                "columns": 3,
+                "cards": [{
+                    "title": "Ref",
+                    "plugin": "rss",
+                    "card_id": "ref-card",
+                    "options": {"feeds": ["http://example.com/rss"]},
+                }],
+            },
+        ):
+            with patch.object(plugin, "_fetch_dependency_card") as mock_fetch:
+                plugin._ensure_dependency_fetched("ref-card")  # pylint: disable=protected-access
+                mock_fetch.assert_not_called()
+        db.close()
+
+    def test_ensure_dependency_fetched_fetches_when_items_missing(self, tmp_path):
+        db = Database(tmp_path / "test.db")
+        RssPlugin.init_schema(db)
+
+        plugin = RssPlugin()
+        plugin._database = db  # pylint: disable=protected-access
+        with patch(
+            "src.plugins.rss.plugin.load_config",
+            return_value={
+                "page_title": "Test",
+                "page_header": "Test",
+                "language": "en",
+                "user_info": {"short_name": "A", "long_name": "B"},
+                "columns": 3,
+                "cards": [{
+                    "title": "Ref",
+                    "plugin": "rss",
+                    "card_id": "ref-card",
+                    "options": {"feeds": ["http://example.com/rss"]},
+                }],
+            },
+        ):
+            with patch.object(plugin, "_fetch_dependency_card") as mock_fetch:
+                plugin._ensure_dependency_fetched("ref-card")  # pylint: disable=protected-access
+                mock_fetch.assert_called_once_with(
+                    "ref-card", {"feeds": ["http://example.com/rss"]}
+                )
+        db.close()
+
+    def test_ensure_dependency_fetched_skips_nonexistent_card(self, tmp_path):
+        db = Database(tmp_path / "test.db")
+        RssPlugin.init_schema(db)
+
+        plugin = RssPlugin()
+        plugin._database = db  # pylint: disable=protected-access
+        with patch(
+            "src.plugins.rss.plugin.load_config",
+            return_value={
+                "page_title": "Test",
+                "page_header": "Test",
+                "language": "en",
+                "user_info": {"short_name": "A", "long_name": "B"},
+                "columns": 3,
+                "cards": [],
+            },
+        ):
+            with patch.object(plugin, "_fetch_dependency_card") as mock_fetch:
+                plugin._ensure_dependency_fetched("nonexistent")  # pylint: disable=protected-access
+                mock_fetch.assert_not_called()
+        db.close()
+
+    def test_ensure_dependency_fetched_handles_config_load_failure(self, tmp_path):
+        db = Database(tmp_path / "test.db")
+        RssPlugin.init_schema(db)
+
+        plugin = RssPlugin()
+        plugin._database = db  # pylint: disable=protected-access
+        with patch(
+            "src.plugins.rss.plugin.load_config",
+            side_effect=Exception("config error"),
+        ):
+            with patch.object(plugin, "_fetch_dependency_card") as mock_fetch:
+                plugin._ensure_dependency_fetched("ref-card")  # pylint: disable=protected-access
+                mock_fetch.assert_not_called()
+        db.close()
+
+    def test_ensure_dependency_fetched_resolves_transitive_deps(self, tmp_path):
+        db = Database(tmp_path / "test.db")
+        RssPlugin.init_schema(db)
+
+        plugin = RssPlugin()
+        plugin._database = db  # pylint: disable=protected-access
+
+        config = {
+            "page_title": "Test",
+            "page_header": "Test",
+            "language": "en",
+            "user_info": {"short_name": "A", "long_name": "B"},
+            "columns": 3,
+            "cards": [
+                {
+                    "title": "Chain A",
+                    "plugin": "rss",
+                    "card_id": "card-a",
+                    "options": {
+                        "feeds": ["http://example.com/a"],
+                        "distinct_from": [],
+                    },
+                },
+                {
+                    "title": "Chain B",
+                    "plugin": "rss",
+                    "card_id": "card-b",
+                    "options": {
+                        "feeds": ["http://example.com/b"],
+                        "distinct_from": ["card-a"],
+                    },
+                },
+                {
+                    "title": "Chain C",
+                    "plugin": "rss",
+                    "card_id": "card-c",
+                    "options": {
+                        "feeds": ["http://example.com/c"],
+                        "distinct_from": ["card-b"],
+                    },
+                },
+            ],
+        }
+
+        with patch("src.plugins.rss.plugin.load_config", return_value=config):
+            with patch.object(
+                plugin, "_fetch_dependency_card"
+            ) as mock_fetch:
+                plugin._ensure_dependency_fetched("card-c")  # pylint: disable=protected-access
+                assert mock_fetch.call_count == 3
+                calls = [str(c) for c in mock_fetch.call_args_list]
+                assert any("card-a" in c for c in calls)
+                assert any("card-b" in c for c in calls)
+                assert any("card-c" in c for c in calls)
+        db.close()
+
 
 class TestLoadTemplate:  # pylint: disable=too-few-public-methods
     def test_load_template_returns_template(self):
