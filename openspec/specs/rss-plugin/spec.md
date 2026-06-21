@@ -205,3 +205,23 @@ The system SHALL accept an optional `distinct_from` field in the RSS card's opti
 #### Scenario: Non-existent referenced card_id
 - **WHEN** a card has `distinct_from: ["nonexistent"]` and no card with that card_id exists
 - **THEN** no items are filtered for that entry and remaining items are fetched normally
+
+#### Scenario: Dependency resolution ensures referenced card is fetched first
+- **WHEN** card A has `distinct_from: ["card-b"]` and card B's items are not yet in the database (e.g. server just started or card B is on a longer schedule)
+- **THEN** before building its exclusion set, card A fetches card B's feeds so the exclusion set is populated correctly
+
+#### Scenario: Transitive dependency resolution
+- **WHEN** card C has `distinct_from: ["card-b"]` and card B has `distinct_from: ["card-a"]`
+- **THEN** card C ensures card A is fetched first, then card B, then card C builds its exclusion set from both cards
+
+#### Scenario: Dependency resolution skips already-fetched cards
+- **WHEN** card A has `distinct_from: ["card-b"]` and card B's items already exist in the database from a previous fetch
+- **THEN** card A does not re-fetch card B's feeds
+
+#### Scenario: Dependency resolution handles missing config gracefully
+- **WHEN** a card has `distinct_from: ["card-b"]` but the config file cannot be loaded (e.g. file deleted or invalid YAML)
+- **THEN** the dependency fetch is skipped and card A proceeds with an empty exclusion set
+
+#### Scenario: Dependency resolution handles non-rss referenced card gracefully
+- **WHEN** a card has `distinct_from: ["card-b"]` and card B is configured with a non-RSS plugin (e.g. `plugin: html`)
+- **THEN** no RSS fetch is attempted for card B and card A proceeds with an empty exclusion set for that entry
