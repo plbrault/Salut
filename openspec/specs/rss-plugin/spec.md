@@ -9,11 +9,11 @@ The system SHALL provide an abstract `Plugin` base class in `src/plugin.py` with
 
 #### Scenario: Plugin class has setup method
 - **WHEN** a plugin class extends `Plugin`
-- **THEN** it implements `setup(self, options, database, scheduler, logger)`
+- **THEN** it implements `setup(self, cards, database, scheduler, logger)` where `cards` is a list of card dicts
 
 #### Scenario: Plugin class has render method
 - **WHEN** a plugin class extends `Plugin`
-- **THEN** it implements `render(self, options) → str` returning an HTML string
+- **THEN** it implements `render(self, cards) → list[str]` returning a list of HTML strings
 
 #### Scenario: Plugin class has init_schema method
 - **WHEN** a plugin class extends `Plugin`
@@ -31,12 +31,13 @@ The system SHALL load plugins by importing their class from `src/plugins/<name>/
 - **THEN** it imports `RssPlugin` from `src.plugins.rss.plugin` and creates an instance
 
 #### Scenario: Plugin setup is called at startup
-- **WHEN** the server starts and a card has a plugin
-- **THEN** the system calls `plugin_instance.setup(options, database, scheduler, logger)`
+- **WHEN** the server starts and cards use a plugin
+- **THEN** the system calls `setup_plugin(plugin_name, cards, database, scheduler, language, card_ids)`
+- **AND** `setup_plugin` creates a single instance and calls `instance.setup(cards, database, scheduler, logger)`
 
 #### Scenario: Plugin render is called on request
 - **WHEN** the index page is requested
-- **THEN** the system calls `plugin_instance.render(options)` for each card
+- **THEN** the system calls `plugin_instance.render(cards)` with all cards of that plugin type
 
 ### Requirement: HTML plugin uses Plugin class
 The system SHALL provide an `HtmlPlugin` class extending `Plugin` that renders HTML from options.
@@ -53,8 +54,8 @@ The system SHALL provide an `HtmlPlugin` class extending `Plugin` that renders H
 The system SHALL provide an `RssPlugin` class extending `Plugin` that fetches RSS feeds and renders items.
 
 #### Scenario: RSS plugin setup fetches feeds and schedules refresh
-- **WHEN** `RssPlugin.setup()` is called with valid options
-- **THEN** it fetches feeds, stores items in the database, and registers a cron job with the scheduler
+- **WHEN** `RssPlugin.setup()` is called with a list of cards
+- **THEN** it iterates over each card, fetches feeds, stores items in the database, and registers a cron job with the scheduler per card
 
 #### Scenario: RSS plugin renders items from database
 - **WHEN** a card has `plugin: rss` with items in the database
@@ -146,19 +147,21 @@ The system SHALL wrap the DELETE and INSERT operations in a database transaction
 - **WHEN** two different remote image URLs are cached
 - **THEN** they produce different cache filenames
 
-### Requirement: Each card gets its own setup
-The system SHALL call `setup_card` for every card, even when multiple cards use the same plugin. Each card requires its own feed fetching and scheduler registration. The `setup_card` function SHALL receive the pre-computed `card_ids` map from `main.py` and forward it to each plugin's `setup` method.
+### Requirement: Plugin setup is called once per plugin type
+The system SHALL call `setup_plugin` once for each plugin type, passing all cards using that plugin as a list. The `setup_plugin` function SHALL create a single plugin instance, store the `card_ids` map on it, and call `setup(cards, database, scheduler, logger)`. The plugin iterates over the card list internally, fetching data and scheduling jobs per card.
 
 #### Scenario: Multiple cards with same plugin
 - **WHEN** two cards both have `plugin: rss`
-- **THEN** the system calls `setup_card` for each card independently, and each card fetches its own feeds
+- **THEN** the system calls `setup_plugin` once for the `rss` plugin type, passing both cards as a list
+- **AND** the plugin fetches feeds and registers scheduler jobs for each card independently
 
-#### Scenario: Card IDs map is forwarded to plugins
-- **WHEN** `setup_card` is called for a card
-- **THEN** it passes the `card_ids` map to the plugin's `setup` method so the plugin can resolve references to other cards
+#### Scenario: Card IDs map is stored on instance
+- **WHEN** `setup_plugin` is called with a `card_ids` map
+- **THEN** the map is stored on the plugin instance as `instance._card_ids` before `setup` is called
+- **AND** plugins can access it via `self._card_ids` to resolve cross-card references
 
 ### Requirement: Main is plugin-agnostic
-`main.py` SHALL NOT contain any plugin-specific logic. It SHALL iterate over cards, load each plugin via the generic interface, and call `setup` and `render`. `main.py` SHALL pre-compute all card IDs (from explicit `card_id` fields or by hashing options) and pass the resulting map to `setup_card`, so plugins receive resolved card IDs without computing them themselves.
+`main.py` SHALL NOT contain any plugin-specific logic. It SHALL group cards by plugin type, call `setup_plugin` once per plugin type with the full card list, and call `render` with the full card list. `main.py` SHALL pre-compute all card IDs (from explicit `card_id` fields or by hashing options) and pass the resulting map to `setup_plugin`, so plugins receive resolved card IDs without computing them themselves.
 
 #### Scenario: No plugin imports in main
 - **WHEN** `main.py` is loaded
@@ -166,11 +169,11 @@ The system SHALL call `setup_card` for every card, even when multiple cards use 
 
 #### Scenario: Plugin-agnostic card processing
 - **WHEN** the server starts
-- **THEN** `main.py` loops over cards, instantiates each plugin, and calls `setup`
+- **THEN** `main.py` groups cards by plugin type, calls `setup_plugin` once per type, and calls `render` once per type
 
 #### Scenario: Main computes card IDs for all cards
 - **WHEN** the server starts and processes the card list
-- **THEN** `main.py` computes a card ID for each card (using the explicit `card_id` if present, otherwise by hashing options) and passes the full `card_ids` map to `setup_card`
+- **THEN** `main.py` computes a card ID for each card (using the explicit `card_id` if present, otherwise by hashing options) and passes the full `card_ids` map to `setup_plugin`
 
 ### Requirement: Config validation is plugin-agnostic
 Config validation SHALL delegate plugin-specific option validation to each plugin's `validate_options` method rather than hardcoding plugin-specific logic.
