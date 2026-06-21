@@ -62,10 +62,11 @@ class XkcdPlugin(Plugin):
             """
         )
 
-    def setup(self, options, database, scheduler, logger, *, card_id=None):
+    def setup(self, options, database, scheduler, logger, *, card_id=None,
+              card_ids=None):
         self._database = database
         self._logger = logger
-        self._card_id = card_id if card_id else ImageCache.compute_card_id(options)
+        self._card_id = card_id if card_id else self.compute_card_id(options)
 
         schedule = options.get("schedule", "0 9 * * *")
 

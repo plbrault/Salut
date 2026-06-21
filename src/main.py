@@ -82,10 +82,18 @@ def reload_app_state():
     app.state.config = resolved_config
 
     plugin_instances = {}
+    card_ids = {}
+    for card in app.state.config.get("cards", []):
+        card_pos = len(card_ids)
+        card_id = _compute_card_id(
+            card.get("plugin"), card.get("options", {}), card_pos, card
+        )
+        card_ids[card_id] = card
     for card in app.state.config.get("cards", []):
         plugin_name = card.get("plugin")
         if plugin_name:
-            instance = setup_card(card, db, scheduler, language)
+            instance = setup_card(card, db, scheduler, language,
+                                  card_ids=card_ids)
             if instance is not None and plugin_name not in plugin_instances:
                 plugin_instances[plugin_name] = instance
     app.state.plugin_instances = plugin_instances

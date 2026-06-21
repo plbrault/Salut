@@ -8,7 +8,7 @@ from urllib.parse import urlparse
 import feedparser
 import requests
 
-from src.config import ConfigError, load_config
+from src.config import ConfigError
 from src.image_cache import ImageCache
 from src.plugin import Plugin
 
@@ -22,6 +22,7 @@ class RssPlugin(Plugin):
         self._database = None
         self._logger = None
         self._card_id = None
+        self._card_ids = {}
         self._template = self.load_template(Path(__file__).resolve().parent, "template.html")
 
     @staticmethod
@@ -154,10 +155,12 @@ class RssPlugin(Plugin):
             """
         )
 
-    def setup(self, options, database, scheduler, logger, *, card_id=None):
+    def setup(self, options, database, scheduler, logger, *, card_id=None,
+              card_ids=None):
         self._database = database
         self._logger = logger
-        self._card_id = card_id if card_id else ImageCache.compute_card_id(options)
+        self._card_id = card_id if card_id else self.compute_card_id(options)
+        self._card_ids = card_ids or {}
 
         feeds = options.get("feeds", [])
         max_items = options.get("max_items", 10)
@@ -483,24 +486,13 @@ class RssPlugin(Plugin):
         if self._get_feed_items(ref_card_id):
             return
 
-        try:
-            config = load_config()
-        except Exception:  # pylint: disable=broad-except
-            return
-
-        for card in config.get("cards", []):
-            card_id = card.get("card_id")
-            if not card_id:
-                card_id = ImageCache.compute_card_id(
-                    card.get("options", {})
-                )
-            if card_id == ref_card_id and card.get("plugin") == "rss":
-                ref_options = card.get("options", {})
-                ref_distinct = ref_options.get("distinct_from", [])
-                for dep_id in ref_distinct:
-                    self._ensure_dependency_fetched(dep_id)
-                self._fetch_dependency_card(ref_card_id, ref_options)
-                break
+        card = self._card_ids.get(ref_card_id)
+        if card and card.get("plugin") == "rss":
+            ref_options = card.get("options", {})
+            ref_distinct = ref_options.get("distinct_from", [])
+            for dep_id in ref_distinct:
+                self._ensure_dependency_fetched(dep_id)
+            self._fetch_dependency_card(ref_card_id, ref_options)
 
     def _fetch_dependency_card(self, ref_card_id, ref_options):
         ref_feeds = ref_options.get("feeds", [])

@@ -69,7 +69,7 @@ class TestServer:
 
     def test_card_divs_have_plugin_css_class(self):
         with patch("src.main.setup_card") as real_setup:
-            def fake_setup(card, _db, _scheduler, _language):
+            def fake_setup(card, _db, _scheduler, _language, **_kwargs):
                 name = card.get("plugin")
                 if name == "html":
                     return HtmlPlugin()
@@ -83,7 +83,7 @@ class TestServer:
 
     def test_plugin_style_rules_rendered(self):
         with patch("src.main.setup_card") as real_setup:
-            def fake_setup(card, _db, _scheduler, _language):
+            def fake_setup(card, _db, _scheduler, _language, **_kwargs):
                 name = card.get("plugin")
                 if name == "html":
                     return HtmlPlugin()
