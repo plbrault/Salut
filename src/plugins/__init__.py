@@ -35,8 +35,8 @@ def setup_card(card, database, scheduler, language="en", card_ids=None):
     logger.setLevel(logging.INFO)
     instance = plugin_class()
     instance.load_i18n(language)
-    instance.setup(options, database, scheduler, logger, card_id=card_id,
-                   card_ids=card_ids)
+    instance._card_ids = card_ids or {}  # pylint: disable=protected-access
+    instance.setup(options, database, scheduler, logger, card_id=card_id)
     return instance
 
 
