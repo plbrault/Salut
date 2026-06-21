@@ -69,7 +69,7 @@ class GithubPlugin(Plugin):
             """
         )
 
-    def setup(self, options, database, scheduler, logger, *, card_id=None):
+    def setup(self, options, card_id, database, scheduler, logger):
         self._database = database
         self._logger = logger
         self._card_id = card_id if card_id else self._compute_card_id(options)

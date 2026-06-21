@@ -36,7 +36,7 @@ def setup_card(card, database, scheduler, language="en", card_ids=None):
     instance = plugin_class()
     instance.load_i18n(language)
     instance._card_ids = card_ids or {}  # pylint: disable=protected-access
-    instance.setup(options, database, scheduler, logger, card_id=card_id)
+    instance.setup(options, card_id, database, scheduler, logger)
     return instance
 
 
