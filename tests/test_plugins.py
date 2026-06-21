@@ -219,7 +219,7 @@ class TestRssPlugin:
         db = Database(tmp_path / "test.db")
         RssPlugin.init_schema(db)
         plugin = RssPlugin()
-        plugin.setup({}, db, None, Mock())
+        plugin.setup({}, db, None, Mock(), card_id="test")
         plugin._delete_feed_items(plugin._card_id)  # pylint: disable=protected-access
         result = plugin.render([{"options": {}, "card_id": plugin._card_id}])  # pylint: disable=protected-access  # pylint: disable=protected-access
         assert result == [""]
@@ -230,7 +230,7 @@ class TestRssPlugin:
         RssPlugin.init_schema(db)
         options = {"feeds": ["http://example.com/rss"]}
         plugin = RssPlugin()
-        plugin.setup(options, db, MagicMock(), Mock())
+        plugin.setup(options, db, MagicMock(), Mock(), card_id="test")
         plugin._delete_feed_items(plugin._card_id)  # pylint: disable=protected-access
         plugin._insert_feed_item(  # pylint: disable=protected-access
             card_id=plugin._card_id,  # pylint: disable=protected-access
@@ -253,7 +253,7 @@ class TestRssPlugin:
         RssPlugin.init_schema(db)
         options = {"feeds": ["https://www.example.com/rss"]}
         plugin = RssPlugin()
-        plugin.setup(options, db, MagicMock(), Mock())
+        plugin.setup(options, db, MagicMock(), Mock(), card_id="test")
         plugin._delete_feed_items(plugin._card_id)  # pylint: disable=protected-access
         plugin._insert_feed_item(  # pylint: disable=protected-access
             card_id=plugin._card_id,  # pylint: disable=protected-access
@@ -275,7 +275,7 @@ class TestRssPlugin:
         RssPlugin.init_schema(db)
         options = {"feeds": ["https://www.example.com/rss"]}
         plugin = RssPlugin()
-        plugin.setup(options, db, MagicMock(), Mock())
+        plugin.setup(options, db, MagicMock(), Mock(), card_id="test")
         plugin._delete_feed_items(plugin._card_id)  # pylint: disable=protected-access
         plugin._insert_feed_item(  # pylint: disable=protected-access
             card_id=plugin._card_id,  # pylint: disable=protected-access
@@ -297,7 +297,7 @@ class TestRssPlugin:
         RssPlugin.init_schema(db)
         options = {"feeds": ["http://example.com/rss"]}
         plugin = RssPlugin()
-        plugin.setup(options, db, MagicMock(), Mock())
+        plugin.setup(options, db, MagicMock(), Mock(), card_id="test")
         plugin._delete_feed_items(plugin._card_id)  # pylint: disable=protected-access
         plugin._insert_feed_item(  # pylint: disable=protected-access
             card_id=plugin._card_id,  # pylint: disable=protected-access
@@ -338,7 +338,7 @@ class TestRssDistinctFrom:
             "feeds": ["http://example.com/rss"],
             "distinct_from": ["ref-card"],
         }
-        plugin.setup(options, db, MagicMock(), Mock())
+        plugin.setup(options, db, MagicMock(), Mock(), card_id="test")
         plugin._delete_feed_items(plugin._card_id)  # pylint: disable=protected-access
         plugin._insert_feed_item(  # pylint: disable=protected-access
             card_id=plugin._card_id,  # pylint: disable=protected-access
@@ -669,11 +669,11 @@ class TestMultipleRssCards:  # pylint: disable=too-few-public-methods
     def test_each_card_gets_its_own_setup(self):
         db = Mock()
         sched = Mock()
-        card1 = {"plugin": "rss", "options": {
+        card1 = {"plugin": "rss", "card_id": "card-a", "options": {
             "feeds": ["http://a.com/rss"],
             "schedule": "0 */6 * * *",
         }}
-        card2 = {"plugin": "rss", "options": {
+        card2 = {"plugin": "rss", "card_id": "card-b", "options": {
             "feeds": ["http://b.com/rss"],
             "schedule": "0 */6 * * *",
         }}
@@ -2056,7 +2056,7 @@ class TestXkcdPlugin:  # pylint: disable=protected-access
         plugin = XkcdPlugin()
         plugin._database = db
         options = {"schedule": "0 9 * * *"}
-        card_id = ImageCache.compute_card_id(options)
+        card_id = "test_card"
         plugin._card_id = card_id
         db.execute(
             "INSERT INTO xkcd_comics"
@@ -2539,7 +2539,7 @@ class TestRssImageCache:  # pylint: disable=protected-access
         RssPlugin.init_schema(db)
         options = {"feeds": ["http://example.com/rss"]}
         plugin = RssPlugin()
-        plugin.setup(options, db, MagicMock(), Mock())
+        plugin.setup(options, db, MagicMock(), Mock(), card_id="test")
         plugin._delete_feed_items(plugin._card_id)
 
         plugin._insert_feed_item(
