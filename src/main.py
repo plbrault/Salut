@@ -21,7 +21,7 @@ from src.config import ConfigError, load_config, load_secrets, validate_config
 from src.database import Database
 from src.i18n import load_global_i18n
 from src.template import resolve_all_config_vars
-from src.plugins import setup_card, render_cards_batch, init_plugins_schemas
+from src.plugins import setup_plugin, render_cards_batch, init_plugins_schemas
 from src.admin import (
     COOKIE_NAME, COOKIE_MAX_AGE,
     is_admin_enabled, check_admin_auth,
@@ -87,13 +87,22 @@ def reload_app_state():
         card_id = _compute_card_id(card)
         card["card_id"] = card_id
         card_ids[card_id] = card
+
+    plugin_groups = {}
     for card in app.state.config.get("cards", []):
         plugin_name = card.get("plugin")
         if plugin_name:
-            instance = setup_card(card, db, scheduler, language,
-                                  card_ids=card_ids)
-            if instance is not None and plugin_name not in plugin_instances:
-                plugin_instances[plugin_name] = instance
+            if plugin_name not in plugin_groups:
+                plugin_groups[plugin_name] = []
+            plugin_groups[plugin_name].append(card)
+
+    for plugin_name, group in plugin_groups.items():
+        batch_cards = [{"card_id": c["card_id"], "options": c.get("options", {})}
+                       for c in group]
+        instance = setup_plugin(plugin_name, batch_cards, db, scheduler,
+                                language, card_ids=card_ids)
+        if instance is not None:
+            plugin_instances[plugin_name] = instance
     app.state.plugin_instances = plugin_instances
 
 

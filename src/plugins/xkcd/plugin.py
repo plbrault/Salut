@@ -13,7 +13,6 @@ class XkcdPlugin(Plugin):
         super().__init__()
         self._database = None
         self._logger = None
-        self._card_id = None
         self._template = self.load_template(
             Path(__file__).resolve().parent, "template.html"
         )
@@ -62,20 +61,24 @@ class XkcdPlugin(Plugin):
             """
         )
 
-    def setup(self, card_id, options, database, scheduler, logger):
+    def setup(self, cards, database, scheduler, logger):
         self._database = database
         self._logger = logger
-        self._card_id = card_id
 
-        schedule = options.get("schedule", "0 9 * * *")
+        for card in cards:
+            card_id = card["card_id"]
+            options = card.get("options", {})
 
-        self._fetch_comic()
-        scheduler.add_job(
-            self._fetch_comic,
-            trigger=self.parse_schedule(schedule),
-            id=f"xkcd_{self._card_id}",
-            replace_existing=True,
-        )
+            schedule = options.get("schedule", "0 9 * * *")
+
+            self._fetch_comic_for_card(card_id)
+            scheduler.add_job(
+                self._fetch_comic_for_card,
+                trigger=self.parse_schedule(schedule),
+                args=[card_id],
+                id=f"xkcd_{card_id}",
+                replace_existing=True,
+            )
 
     def render(self, cards):
         results = []
@@ -102,9 +105,9 @@ class XkcdPlugin(Plugin):
             ))
         return results
 
-    def _fetch_comic(self):
+    def _fetch_comic_for_card(self, card_id):
         try:
-            self._logger.info("Fetching latest XKCD comic for card %s", self._card_id)
+            self._logger.info("Fetching latest XKCD comic for card %s", card_id)
             response = requests.get(
                 "https://xkcd.com/info.0.json", timeout=10
             )
@@ -118,18 +121,18 @@ class XkcdPlugin(Plugin):
             comic_url = f"https://xkcd.com/{comic_num}/"
             explain_url = f"https://www.explainxkcd.com/wiki/index.php/{comic_num}"
 
-            cache = ImageCache("xkcd", self._card_id, self._logger)
+            cache = ImageCache("xkcd", card_id, self._logger)
             local_url = cache.download(img_url, filename="comic.jpg")
             if not local_url:
-                self._logger.warning("Failed to download XKCD image for card %s, keeping previous", self._card_id)
+                self._logger.warning("Failed to download XKCD image for card %s, keeping previous", card_id)
                 return
 
             data = (cache.directory / "comic.jpg").read_bytes()
             img_width, img_height = self._get_image_dimensions(data)
 
-            self._delete_previous_comic()
+            self._delete_previous_comic(card_id)
             self._store_comic(
-                card_id=self._card_id,
+                card_id=card_id,
                 comic_num=comic_num,
                 title=title,
                 img_url=img_url,
@@ -140,14 +143,14 @@ class XkcdPlugin(Plugin):
                 img_height=img_height,
             )
 
-            self._logger.info("XKCD comic #%d fetched for card %s", comic_num, self._card_id)
+            self._logger.info("XKCD comic #%d fetched for card %s", comic_num, card_id)
         except Exception as e:  # pylint: disable=broad-except
             self._logger.warning("Failed to fetch XKCD comic: %s", e)
 
-    def _delete_previous_comic(self):
+    def _delete_previous_comic(self, card_id):
         self._database.execute(
             "DELETE FROM xkcd_comics WHERE card_id = ?",
-            (self._card_id,),
+            (card_id,),
         )
 
     def _store_comic(self, **kwargs):

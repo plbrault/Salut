@@ -22,12 +22,11 @@ class Plugin(ABC):
         return {}
 
     @abstractmethod
-    def setup(self, card_id, options, database, scheduler, logger):
-        """Initialize the plugin for a card. Called once at startup.
+    def setup(self, cards, database, scheduler, logger):
+        """Initialize the plugin for all cards using this plugin.
 
         Args:
-            card_id: Resolved card_id string computed by main.py.
-            options: Plugin-specific options from config.
+            cards: List of dicts, each with 'card_id' and 'options'.
             database: Database instance.
             scheduler: APScheduler instance.
             logger: Logger instance.

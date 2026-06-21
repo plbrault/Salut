@@ -14,7 +14,6 @@ class GithubPlugin(Plugin):
         super().__init__()
         self._database = None
         self._logger = None
-        self._card_id = None
         self._template = self.load_template(
             Path(__file__).resolve().parent, "template.html"
         )
@@ -69,25 +68,28 @@ class GithubPlugin(Plugin):
             """
         )
 
-    def setup(self, card_id, options, database, scheduler, logger):
+    def setup(self, cards, database, scheduler, logger):
         self._database = database
         self._logger = logger
-        self._card_id = card_id if card_id else self._compute_card_id(options)
 
-        token = options.get("token")
-        if not token:
-            return
+        for card in cards:
+            card_id = card["card_id"]
+            options = card.get("options", {})
 
-        schedule = options.get("schedule", "*/5 * * * *")
+            token = options.get("token")
+            if not token:
+                return
 
-        self._fetch_notifications(options)
-        scheduler.add_job(
-            self._fetch_notifications,
-            trigger=self.parse_schedule(schedule),
-            args=[options],
-            id=f"github_notifications_{self._card_id}",
-            replace_existing=True,
-        )
+            schedule = options.get("schedule", "*/5 * * * *")
+
+            self._fetch_notifications_for_card(card_id, options)
+            scheduler.add_job(
+                self._fetch_notifications_for_card,
+                trigger=self.parse_schedule(schedule),
+                args=[card_id, options],
+                id=f"github_notifications_{card_id}",
+                replace_existing=True,
+            )
 
     def render(self, cards):
         results = []
@@ -127,10 +129,10 @@ class GithubPlugin(Plugin):
             ))
         return results
 
-    def _fetch_notifications(self, options):
+    def _fetch_notifications_for_card(self, card_id, options):
         try:
             token = options["token"]
-            self._logger.info("Fetching GitHub notifications for card %s", self._card_id)
+            self._logger.info("Fetching GitHub notifications for card %s", card_id)
 
             response = requests.get(
                 "https://api.github.com/notifications",
@@ -142,7 +144,7 @@ class GithubPlugin(Plugin):
             )
             response.raise_for_status()
 
-            self._delete_previous_notifications()
+            self._delete_previous_notifications(card_id)
 
             for thread in response.json():
                 thread_id = thread["id"]
@@ -153,7 +155,7 @@ class GithubPlugin(Plugin):
                 web_url = self._build_web_url(thread["subject"]["url"])
 
                 self._store_notification(
-                    card_id=self._card_id,
+                    card_id=card_id,
                     thread_id=thread_id,
                     repo_name=repo_name,
                     subject_title=subject_title,
@@ -162,14 +164,14 @@ class GithubPlugin(Plugin):
                     web_url=web_url,
                 )
 
-            self._logger.info("GitHub notifications fetched for card %s", self._card_id)
+            self._logger.info("GitHub notifications fetched for card %s", card_id)
         except Exception as e:  # pylint: disable=broad-except
             self._logger.warning("Failed to fetch GitHub notifications: %s", e)
 
-    def _delete_previous_notifications(self):
+    def _delete_previous_notifications(self, card_id):
         self._database.execute(
             "DELETE FROM github_notifications WHERE card_id = ?",
-            (self._card_id,),
+            (card_id,),
         )
 
     def _store_notification(self, **kwargs):

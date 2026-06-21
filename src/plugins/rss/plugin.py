@@ -21,7 +21,6 @@ class RssPlugin(Plugin):
         super().__init__()
         self._database = None
         self._logger = None
-        self._card_id = None
         self._card_ids = {}
         self._template = self.load_template(Path(__file__).resolve().parent, "template.html")
 
@@ -155,31 +154,38 @@ class RssPlugin(Plugin):
             """
         )
 
-    def setup(self, card_id, options, database, scheduler, logger):
+    def setup(self, cards, database, scheduler, logger):
         self._database = database
         self._logger = logger
-        self._card_id = card_id
 
-        feeds = options.get("feeds", [])
-        max_items = options.get("max_items", 10)
-        fetch_images = options.get("images", False)
-        schedule = options.get("schedule", "0 */6 * * *")
-        include_fields = options.get("include_fields", ["title"])
-        distinct_from = options.get("distinct_from", [])
+        for card in cards:
+            self._card_ids[card["card_id"]] = card
 
-        if feeds:
-            self._fetch_feeds(
-                feeds, max_items, fetch_images, include_fields,
-                distinct_from=distinct_from
-            )
-            scheduler.add_job(
-                self._fetch_feeds,
-                trigger=self.parse_schedule(schedule),
-                args=[feeds, max_items, fetch_images, include_fields],
-                kwargs={"distinct_from": distinct_from},
-                id=f"rss_{self._card_id}",
-                replace_existing=True,
-            )
+        for card in cards:
+            card_id = card["card_id"]
+            options = card.get("options", {})
+
+            feeds = options.get("feeds", [])
+            max_items = options.get("max_items", 10)
+            fetch_images = options.get("images", False)
+            schedule = options.get("schedule", "0 */6 * * *")
+            include_fields = options.get("include_fields", ["title"])
+            distinct_from = options.get("distinct_from", [])
+
+            if feeds:
+                self._fetch_feeds_for_card(
+                    card_id, feeds, max_items, fetch_images, include_fields,
+                    distinct_from=distinct_from
+                )
+                scheduler.add_job(
+                    self._fetch_feeds_for_card,
+                    trigger=self.parse_schedule(schedule),
+                    args=[card_id, feeds, max_items, fetch_images,
+                          include_fields],
+                    kwargs={"distinct_from": distinct_from},
+                    id=f"rss_{card_id}",
+                    replace_existing=True,
+                )
 
     def _apply_truncation(self, value, config):
         if isinstance(config, int):
@@ -253,15 +259,15 @@ class RssPlugin(Plugin):
             results.append(self._template.render(items=feed_items))
         return results
 
-    def _fetch_feeds(  # pylint: disable=too-many-locals
-        self, feeds, max_items=10, fetch_images=False,
+    def _fetch_feeds_for_card(  # pylint: disable=too-many-locals
+        self, card_id, feeds, max_items=10, fetch_images=False,
         include_fields=None, *, distinct_from=None
     ):
         if include_fields is None:
             include_fields = ["title"]
         if distinct_from is None:
             distinct_from = []
-        self._logger.info("Fetching RSS feeds for card %s (%d feeds)", self._card_id, len(feeds))
+        self._logger.info("Fetching RSS feeds for card %s (%d feeds)", card_id, len(feeds))
 
         excluded = None
         if distinct_from:
@@ -290,15 +296,15 @@ class RssPlugin(Plugin):
 
         if fetch_images:
             self._logger.info("Downloading images...")
-            self._download_images(all_items)
+            self._download_images(card_id, all_items)
 
         self._database.begin_transaction()
         try:
-            self._delete_feed_items(self._card_id)
+            self._delete_feed_items(card_id)
 
             for item in all_items:
                 self._insert_feed_item(
-                    card_id=self._card_id,
+                    card_id=card_id,
                     url=item["url"],
                     title=item["title"],
                     link=item["link"],
@@ -311,19 +317,19 @@ class RssPlugin(Plugin):
                 )
 
             self._database.commit_transaction()
-            self._logger.info("Finished fetching RSS feeds for card %s", self._card_id)
+            self._logger.info("Finished fetching RSS feeds for card %s", card_id)
         except Exception:
             self._database.rollback_transaction()
             raise
 
         if fetch_images:
             referenced = set()
-            rows = self._get_feed_items(self._card_id)
+            rows = self._get_feed_items(card_id)
             for row in rows:
                 img = row.get("image_url", "")
                 if img:
                     referenced.add(Path(img).name)
-            ImageCache("rss", self._card_id, self._logger).cleanup_orphans(referenced)
+            ImageCache("rss", card_id, self._logger).cleanup_orphans(referenced)
 
     @staticmethod
     def _get_published_date(entry):
@@ -430,8 +436,8 @@ class RssPlugin(Plugin):
             truncated = truncated[:last_space]
         return truncated + suffix
 
-    def _download_images(self, items):
-        cache = ImageCache("rss", self._card_id, self._logger)
+    def _download_images(self, card_id, items):
+        cache = ImageCache("rss", card_id, self._logger)
         for idx, item in enumerate(items):
             if not item["image_url"]:
                 continue
@@ -499,8 +505,8 @@ class RssPlugin(Plugin):
         ref_include = ref_options.get("include_fields", ["title"])
         ref_images = ref_options.get("images", False)
         self._logger.info(
-            "Fetching dependency card %s before %s",
-            ref_card_id, self._card_id
+            "Fetching dependency card %s",
+            ref_card_id,
         )
         all_items = self._fetch_all_feeds(
             ref_feeds, ref_images, ref_include

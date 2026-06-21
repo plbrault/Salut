@@ -24,10 +24,8 @@ def init_plugins_schemas(database):
             plugin_class.init_schema(database)
 
 
-def setup_card(card, database, scheduler, language="en", card_ids=None):
-    plugin_name = card.get("plugin")
-    options = card.get("options", {})
-    card_id = card.get("card_id")
+def setup_plugin(plugin_name, cards, database, scheduler, language="en",
+                 card_ids=None):
     plugin_class = load_plugin_class(plugin_name)
     if plugin_class is None:
         return None
@@ -36,7 +34,7 @@ def setup_card(card, database, scheduler, language="en", card_ids=None):
     instance = plugin_class()
     instance.load_i18n(language)
     instance._card_ids = card_ids or {}  # pylint: disable=protected-access
-    instance.setup(card_id, options, database, scheduler, logger)
+    instance.setup(cards, database, scheduler, logger)
     return instance
 
 

@@ -170,11 +170,12 @@ class TestAutoFallback:  # pylint: disable=too-few-public-methods
         RssPlugin.init_schema(db)
         options = {"feeds": ["http://example.com/rss"]}
         plugin = RssPlugin()
-        plugin.setup("test", options, db, MagicMock(), Mock())
-        plugin._delete_feed_items(plugin._card_id)  # pylint: disable=protected-access
+        plugin._card_ids = {"test": "test"}  # pylint: disable=protected-access
+        plugin.setup([{"card_id": "test", "options": options}], db, MagicMock(), Mock())
+        plugin._delete_feed_items("test")  # pylint: disable=protected-access
 
         plugin._insert_feed_item(  # pylint: disable=protected-access
-            card_id=plugin._card_id,  # pylint: disable=protected-access
+            card_id="test",
             url="http://example.com/rss",
             title="",
             link="http://example.com/1",
@@ -186,7 +187,7 @@ class TestAutoFallback:  # pylint: disable=too-few-public-methods
             author="",
         )
 
-        result = plugin.render([{"options": options, "card_id": plugin._card_id}])  # pylint: disable=protected-access
+        result = plugin.render([{"options": options, "card_id": "test"}])
         assert "Post content here" in result[0]
         db.close()
 
@@ -267,13 +268,14 @@ class TestTemplateRendering:
         if options is None:
             options = {"feeds": ["http://example.com/rss"]}
         plugin = RssPlugin()
-        plugin.setup("test", options, db, MagicMock(), Mock())
+        plugin._card_ids = {"test": "test"}  # pylint: disable=protected-access
+        plugin.setup([{"card_id": "test", "options": options}], db, MagicMock(), Mock())
         return plugin, db, options
 
     def test_render_with_description_when_title_empty(self, tmp_path):
         plugin, db, options = self._make_plugin(tmp_path)
         plugin._insert_feed_item(  # pylint: disable=protected-access
-            card_id=plugin._card_id,  # pylint: disable=protected-access
+            card_id="test",  # pylint: disable=protected-access
             url="http://example.com/rss",
             title="",
             link="http://example.com/1",
@@ -284,7 +286,7 @@ class TestTemplateRendering:
             description="This is the post content",
             author="",
         )
-        result = plugin.render([{"options": options, "card_id": plugin._card_id}])  # pylint: disable=protected-access
+        result = plugin.render([{"options": options, "card_id": "test"}])  # pylint: disable=protected-access
         assert "This is the post content" in result[0]
         assert "Test Feed" in result[0]
         db.close()
@@ -292,7 +294,7 @@ class TestTemplateRendering:
     def test_render_with_author(self, tmp_path):
         plugin, db, options = self._make_plugin(tmp_path)
         plugin._insert_feed_item(  # pylint: disable=protected-access
-            card_id=plugin._card_id,  # pylint: disable=protected-access
+            card_id="test",  # pylint: disable=protected-access
             url="http://example.com/rss",
             title="Test Title",
             link="http://example.com/1",
@@ -303,7 +305,7 @@ class TestTemplateRendering:
             description="",
             author="John Doe",
         )
-        result = plugin.render([{"options": options, "card_id": plugin._card_id}])  # pylint: disable=protected-access
+        result = plugin.render([{"options": options, "card_id": "test"}])  # pylint: disable=protected-access
         assert "John Doe" in result[0]
         db.close()
 
@@ -314,7 +316,7 @@ class TestTemplateRendering:
         }
         plugin, db, _ = self._make_plugin(tmp_path, options)
         plugin._insert_feed_item(  # pylint: disable=protected-access
-            card_id=plugin._card_id,  # pylint: disable=protected-access
+            card_id="test",  # pylint: disable=protected-access
             url="http://example.com/rss",
             title="",
             link="http://example.com/1",
@@ -325,7 +327,7 @@ class TestTemplateRendering:
             description="This is a very long description that should be truncated at some point",
             author="",
         )
-        result = plugin.render([{"options": options, "card_id": plugin._card_id}])  # pylint: disable=protected-access
+        result = plugin.render([{"options": options, "card_id": "test"}])  # pylint: disable=protected-access
         assert "This is a very long..." in result[0]
         assert "that should be truncated" not in result[0]
         db.close()
@@ -337,7 +339,7 @@ class TestTemplateRendering:
         }
         plugin, db, _ = self._make_plugin(tmp_path, options)
         plugin._insert_feed_item(  # pylint: disable=protected-access
-            card_id=plugin._card_id,  # pylint: disable=protected-access
+            card_id="test",  # pylint: disable=protected-access
             url="http://example.com/rss",
             title="Test Title",
             link="http://example.com/1",
@@ -348,7 +350,7 @@ class TestTemplateRendering:
             description="",
             author="",
         )
-        result = plugin.render([{"options": options, "card_id": plugin._card_id}])  # pylint: disable=protected-access
+        result = plugin.render([{"options": options, "card_id": "test"}])  # pylint: disable=protected-access
         assert "A Very Long Feed..." in result[0]
         db.close()
 
@@ -359,7 +361,7 @@ class TestTemplateRendering:
         }
         plugin, db, _ = self._make_plugin(tmp_path, options)
         plugin._insert_feed_item(  # pylint: disable=protected-access
-            card_id=plugin._card_id,  # pylint: disable=protected-access
+            card_id="test",  # pylint: disable=protected-access
             url="http://example.com/rss",
             title="Test Title",
             link="http://example.com/1",
@@ -370,7 +372,7 @@ class TestTemplateRendering:
             description="This is the description",
             author="",
         )
-        result = plugin.render([{"options": options, "card_id": plugin._card_id}])  # pylint: disable=protected-access
+        result = plugin.render([{"options": options, "card_id": "test"}])  # pylint: disable=protected-access
         assert "Test Title" in result[0]
         assert "This is the description" in result[0]
         db.close()

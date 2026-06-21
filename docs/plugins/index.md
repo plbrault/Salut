@@ -7,7 +7,7 @@ Plugins render card content. Each plugin lives in `src/plugins/<name>/` and exte
 Each plugin is a class that extends `Plugin` with these methods and properties:
 
 - `card_style_rules()` — Static method returning a `dict[str, str]` mapping sub-selectors to CSS declarations. Keys are relative to the card's CSS class (e.g. `"img"` becomes `.html-card img`). Returns an empty dict by default; override only if custom styling is needed.
-- `setup(options, database, scheduler, logger)` — Initialize the plugin for a card. Called once at startup.
+- `setup(cards, database, scheduler, logger)` — Initialize the plugin for all cards using this plugin. Called once at startup with a list of card dicts, each containing `card_id` and `options`.
 - `render(cards)` — Accept a list of card dicts and return a list of HTML strings. Each card dict contains `options` (plugin config) and `card_id` (unique identifier). Must return HTML strings in the same order as input cards.
 - `validate_options(options, card_idx, filename)` — Validate plugin-specific options. Raise `ConfigError` if invalid.
 - `init_schema(database)` — Initialize database tables for this plugin. Called once at startup.
@@ -40,7 +40,7 @@ class MyPlugin(Plugin):
             "img": "max-width: 100%; height: auto;",
         }
 
-    def setup(self, options, database, scheduler, logger):
+    def setup(self, cards, database, scheduler, logger):
         pass
 
     def render(self, cards):

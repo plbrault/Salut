@@ -12,7 +12,7 @@ Fetches and displays RSS feed items. Items are fetched on startup and refreshed 
 | `images` | boolean | no | false | Fetch and cache feed images locally |
 | `include_fields` | list of strings | no | `["title"]` | Which RSS fields to extract. Valid values: `title`, `description`, `author`. `link` and `published` are always extracted. Feeds without titles automatically include `description`. |
 | `truncate_fields` | dict | no | - | Max character lengths for fields. Keys: `title`, `description`, `author`, `feed_title`. Values can be integers or objects with `max_length` (integer) and optional `suffix` (string, default `"..."`). Truncation is word-boundary aware and applied at render time. |
-| `distinct_from` | list of strings | no | - | List of card IDs to exclude items from. Items that appear in any of the referenced cards (matched by link URL or title) will be filtered out before `max_items` is applied. |
+| `distinct_from` | list of strings | no | - | List of card IDs to exclude items from. Items that appear in any of the referenced cards (matched by link URL or title) will be filtered out before `max_items` is applied. If a referenced card's items are not yet in the database (e.g. server just started), the plugin fetches them first. Transitive dependencies are resolved recursively. |
 
 ## Example
 

@@ -28,7 +28,7 @@ class HtmlPlugin(Plugin):
             "pre code": "padding: 0; background: none;",
         }
 
-    def setup(self, card_id, options, database, scheduler, logger):
+    def setup(self, cards, database, scheduler, logger):
         pass
 
     def render(self, cards):
