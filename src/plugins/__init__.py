@@ -38,7 +38,7 @@ def setup_plugin(plugin_name, cards, database, scheduler, language="en",
     return instance
 
 
-def render_cards_batch(plugin_name, cards, instances):
+def render_cards(plugin_name, cards, instances):
     instance = instances.get(plugin_name)
     if instance is None:
         return [f'<p class="text-red-500">Plugin "{plugin_name}" not found</p>'] * len(cards)

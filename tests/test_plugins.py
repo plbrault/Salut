@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from src.plugins import load_plugin_class, render_cards_batch, setup_plugin
+from src.plugins import load_plugin_class, render_cards, setup_plugin
 from src.plugin import Plugin
 from src.plugins.html import HtmlPlugin
 from src.plugins.rss import RssPlugin
@@ -89,12 +89,12 @@ class TestRenderCard:
     def test_render_html_card(self):
         instances = {"html": HtmlPlugin()}
         cards = [{"options": {"html": "<p>Test</p>"}, "card_id": "test"}]
-        result = render_cards_batch("html", cards, instances)
+        result = render_cards("html", cards, instances)
         assert result == ["<p>Test</p>"]
 
     def test_render_unknown_plugin(self):
         cards = [{"options": {}, "card_id": "test"}]
-        result = render_cards_batch("unknown", cards, {})
+        result = render_cards("unknown", cards, {})
         assert "not found" in result[0]
 
 

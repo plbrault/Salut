@@ -21,7 +21,7 @@ from src.config import ConfigError, load_config, load_secrets, validate_config
 from src.database import Database
 from src.i18n import load_global_i18n
 from src.template import resolve_all_config_vars
-from src.plugins import setup_plugin, render_cards_batch, init_plugins_schemas
+from src.plugins import setup_plugin, render_cards, init_plugins_schemas
 from src.admin import (
     COOKIE_NAME, COOKIE_MAX_AGE,
     is_admin_enabled, check_admin_auth,
@@ -167,7 +167,7 @@ def _render_cards(cards):
             batch_cards.append({"options": card.get("options", {}),
                                 "card_id": card.get("card_id")})
 
-        html_list = render_cards_batch(plugin_name, batch_cards, instances)
+        html_list = render_cards(plugin_name, batch_cards, instances)
 
         for i, card_pos in enumerate(indices):
             rendered[card_pos] = {
