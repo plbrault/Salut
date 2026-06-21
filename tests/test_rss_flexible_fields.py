@@ -170,7 +170,7 @@ class TestAutoFallback:  # pylint: disable=too-few-public-methods
         RssPlugin.init_schema(db)
         options = {"feeds": ["http://example.com/rss"]}
         plugin = RssPlugin()
-        plugin.setup(options, "test", db, MagicMock(), Mock())
+        plugin.setup("test", options, db, MagicMock(), Mock())
         plugin._delete_feed_items(plugin._card_id)  # pylint: disable=protected-access
 
         plugin._insert_feed_item(  # pylint: disable=protected-access
@@ -267,7 +267,7 @@ class TestTemplateRendering:
         if options is None:
             options = {"feeds": ["http://example.com/rss"]}
         plugin = RssPlugin()
-        plugin.setup(options, "test", db, MagicMock(), Mock())
+        plugin.setup("test", options, db, MagicMock(), Mock())
         return plugin, db, options
 
     def test_render_with_description_when_title_empty(self, tmp_path):

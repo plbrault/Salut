@@ -124,7 +124,7 @@ class WeatherPlugin(Plugin):
             """
         )
 
-    def setup(self, options, card_id, database, scheduler, logger):
+    def setup(self, card_id, options, database, scheduler, logger):
         self._database = database
         self._logger = logger
         self._card_id = card_id if card_id else self._compute_card_id(options)
