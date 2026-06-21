@@ -147,14 +147,18 @@ The system SHALL wrap the DELETE and INSERT operations in a database transaction
 - **THEN** they produce different cache filenames
 
 ### Requirement: Each card gets its own setup
-The system SHALL call `setup_card` for every card, even when multiple cards use the same plugin. Each card requires its own feed fetching and scheduler registration.
+The system SHALL call `setup_card` for every card, even when multiple cards use the same plugin. Each card requires its own feed fetching and scheduler registration. The `setup_card` function SHALL receive the pre-computed `card_ids` map from `main.py` and forward it to each plugin's `setup` method.
 
 #### Scenario: Multiple cards with same plugin
 - **WHEN** two cards both have `plugin: rss`
 - **THEN** the system calls `setup_card` for each card independently, and each card fetches its own feeds
 
+#### Scenario: Card IDs map is forwarded to plugins
+- **WHEN** `setup_card` is called for a card
+- **THEN** it passes the `card_ids` map to the plugin's `setup` method so the plugin can resolve references to other cards
+
 ### Requirement: Main is plugin-agnostic
-`main.py` SHALL NOT contain any plugin-specific logic. It SHALL iterate over cards, load each plugin via the generic interface, and call `setup` and `render`.
+`main.py` SHALL NOT contain any plugin-specific logic. It SHALL iterate over cards, load each plugin via the generic interface, and call `setup` and `render`. `main.py` SHALL pre-compute all card IDs (from explicit `card_id` fields or by hashing options) and pass the resulting map to `setup_card`, so plugins receive resolved card IDs without computing them themselves.
 
 #### Scenario: No plugin imports in main
 - **WHEN** `main.py` is loaded
@@ -163,6 +167,10 @@ The system SHALL call `setup_card` for every card, even when multiple cards use 
 #### Scenario: Plugin-agnostic card processing
 - **WHEN** the server starts
 - **THEN** `main.py` loops over cards, instantiates each plugin, and calls `setup`
+
+#### Scenario: Main computes card IDs for all cards
+- **WHEN** the server starts and processes the card list
+- **THEN** `main.py` computes a card ID for each card (using the explicit `card_id` if present, otherwise by hashing options) and passes the full `card_ids` map to `setup_card`
 
 ### Requirement: Config validation is plugin-agnostic
 Config validation SHALL delegate plugin-specific option validation to each plugin's `validate_options` method rather than hardcoding plugin-specific logic.
@@ -218,9 +226,9 @@ The system SHALL accept an optional `distinct_from` field in the RSS card's opti
 - **WHEN** card A has `distinct_from: ["card-b"]` and card B's items already exist in the database from a previous fetch
 - **THEN** card A does not re-fetch card B's feeds
 
-#### Scenario: Dependency resolution handles missing config gracefully
-- **WHEN** a card has `distinct_from: ["card-b"]` but the config file cannot be loaded (e.g. file deleted or invalid YAML)
-- **THEN** the dependency fetch is skipped and card A proceeds with an empty exclusion set
+#### Scenario: Dependency resolution handles missing card_id gracefully
+- **WHEN** a card has `distinct_from: ["card-b"]` but no card with that card_id exists in the pre-computed card_ids map
+- **THEN** the dependency fetch is skipped and card A proceeds with an empty exclusion set for that entry
 
 #### Scenario: Dependency resolution handles non-rss referenced card gracefully
 - **WHEN** a card has `distinct_from: ["card-b"]` and card B is configured with a non-RSS plugin (e.g. `plugin: html`)
