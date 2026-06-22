@@ -1,6 +1,7 @@
 import json
 import struct
 import tempfile
+from datetime import datetime, timezone
 from unittest.mock import Mock, MagicMock, patch
 from pathlib import Path
 
@@ -220,7 +221,7 @@ class TestRssPlugin:
         RssPlugin.init_schema(db)
         plugin = RssPlugin()
         plugin._card_ids = {"test": "test"}  # pylint: disable=protected-access
-        plugin.setup([{"card_id": "test", "options": {}}], db, None, Mock())
+        plugin.setup([{"card_id": "test", "options": {}}], db, MagicMock(), Mock())
         plugin._delete_feed_items("test")  # pylint: disable=protected-access
         result = plugin.render([{"options": {}, "card_id": "test"}])
         assert result == [""]
@@ -537,130 +538,72 @@ class TestRssDistinctFrom:
         with pytest.raises(ConfigError, match="non-string value"):
             validate_config(config)
 
-    def test_ensure_dependency_fetched_skips_when_items_exist(self, tmp_path):
-        db = Database(tmp_path / "test.db")
-        RssPlugin.init_schema(db)
-
-        ref_plugin = RssPlugin()
-        ref_plugin._database = db  # pylint: disable=protected-access
-        ref_plugin._card_id = "ref-card"  # pylint: disable=protected-access
-        ref_plugin._insert_feed_item(  # pylint: disable=protected-access
-            card_id="ref-card",
-            url="http://example.com/rss",
-            title="Existing Item",
-            link="http://example.com/existing",
-            published="2026-01-01T00:00:00",
-            feed_url="http://example.com/rss",
-            image_url="",
-            feed_title="Ref Feed",
-        )
-
+    def test_topological_sort_linear_chain(self):
         plugin = RssPlugin()
-        plugin._database = db  # pylint: disable=protected-access
         plugin._card_ids = {  # pylint: disable=protected-access
-            "ref-card": {
-                "title": "Ref",
-                "plugin": "rss",
-                "options": {"feeds": ["http://example.com/rss"]},
-            },
+            "card-a": {"options": {"distinct_from": []}},
+            "card-b": {"options": {"distinct_from": ["card-a"]}},
+            "card-c": {"options": {"distinct_from": ["card-b"]}},
         }
-        with patch.object(plugin, "_fetch_dependency_card") as mock_fetch:
-            plugin._ensure_dependency_fetched("ref-card")  # pylint: disable=protected-access
-            mock_fetch.assert_not_called()
-        db.close()
+        order = plugin._topological_sort(["card-c", "card-a", "card-b"])  # pylint: disable=protected-access
+        assert order.index("card-a") < order.index("card-b")
+        assert order.index("card-b") < order.index("card-c")
 
-    def test_ensure_dependency_fetched_fetches_when_items_missing(self, tmp_path):
-        db = Database(tmp_path / "test.db")
-        RssPlugin.init_schema(db)
-
+    def test_topological_sort_independent_cards(self):
         plugin = RssPlugin()
-        plugin._database = db  # pylint: disable=protected-access
         plugin._card_ids = {  # pylint: disable=protected-access
-            "ref-card": {
-                "title": "Ref",
-                "plugin": "rss",
-                "options": {"feeds": ["http://example.com/rss"]},
-            },
+            "card-a": {"options": {"distinct_from": []}},
+            "card-b": {"options": {"distinct_from": []}},
         }
-        with patch.object(plugin, "_fetch_dependency_card") as mock_fetch:
-            plugin._ensure_dependency_fetched("ref-card")  # pylint: disable=protected-access
-            mock_fetch.assert_called_once_with(
-                "ref-card", {"feeds": ["http://example.com/rss"]}
-            )
-        db.close()
+        order = plugin._topological_sort(["card-a", "card-b"])  # pylint: disable=protected-access
+        assert len(order) == 2
 
-    def test_ensure_dependency_fetched_skips_nonexistent_card(self, tmp_path):
-        db = Database(tmp_path / "test.db")
-        RssPlugin.init_schema(db)
-
+    def test_topological_sort_detects_cycle(self):
         plugin = RssPlugin()
-        plugin._database = db  # pylint: disable=protected-access
-        plugin._card_ids = {}  # pylint: disable=protected-access
-        with patch.object(plugin, "_fetch_dependency_card") as mock_fetch:
-            plugin._ensure_dependency_fetched("nonexistent")  # pylint: disable=protected-access
-            mock_fetch.assert_not_called()
-        db.close()
-
-    def test_ensure_dependency_fetched_skips_non_rss_card(self, tmp_path):
-        db = Database(tmp_path / "test.db")
-        RssPlugin.init_schema(db)
-
-        plugin = RssPlugin()
-        plugin._database = db  # pylint: disable=protected-access
         plugin._card_ids = {  # pylint: disable=protected-access
-            "html-card": {
-                "title": "HTML",
-                "plugin": "html",
-                "options": {"html": "<p>Hello</p>"},
-            },
+            "card-a": {"options": {"distinct_from": ["card-b"]}},
+            "card-b": {"options": {"distinct_from": ["card-a"]}},
         }
-        with patch.object(plugin, "_fetch_dependency_card") as mock_fetch:
-            plugin._ensure_dependency_fetched("html-card")  # pylint: disable=protected-access
-            mock_fetch.assert_not_called()
-        db.close()
+        with pytest.raises(ConfigError, match="Dependency cycle"):
+            plugin._topological_sort(["card-a", "card-b"])  # pylint: disable=protected-access
 
-    def test_ensure_dependency_fetched_resolves_transitive_deps(self, tmp_path):
-        db = Database(tmp_path / "test.db")
-        RssPlugin.init_schema(db)
-
+    def test_topological_sort_ignores_nonexistent_deps(self):
         plugin = RssPlugin()
-        plugin._database = db  # pylint: disable=protected-access
         plugin._card_ids = {  # pylint: disable=protected-access
-            "card-a": {
-                "title": "Chain A",
-                "plugin": "rss",
-                "options": {
-                    "feeds": ["http://example.com/a"],
-                    "distinct_from": [],
-                },
-            },
-            "card-b": {
-                "title": "Chain B",
-                "plugin": "rss",
-                "options": {
-                    "feeds": ["http://example.com/b"],
-                    "distinct_from": ["card-a"],
-                },
-            },
-            "card-c": {
-                "title": "Chain C",
-                "plugin": "rss",
-                "options": {
-                    "feeds": ["http://example.com/c"],
-                    "distinct_from": ["card-b"],
-                },
-            },
+            "card-a": {"options": {"distinct_from": ["nonexistent"]}},
         }
-        with patch.object(
-            plugin, "_fetch_dependency_card"
-        ) as mock_fetch:
-            plugin._ensure_dependency_fetched("card-c")  # pylint: disable=protected-access
-            assert mock_fetch.call_count == 3
-            calls = [str(c) for c in mock_fetch.call_args_list]
-            assert any("card-a" in c for c in calls)
-            assert any("card-b" in c for c in calls)
-            assert any("card-c" in c for c in calls)
-        db.close()
+        order = plugin._topological_sort(["card-a"])  # pylint: disable=protected-access
+        assert order == ["card-a"]
+
+    def test_is_card_due_uses_schedule(self):
+        plugin = RssPlugin()
+        plugin._card_ids = {  # pylint: disable=protected-access
+            "card-a": {"options": {"schedule": "0 */6 * * *"}},
+        }
+        plugin._last_refresh = {"card-a": datetime(2020, 1, 1, tzinfo=timezone.utc)}  # pylint: disable=protected-access
+        assert plugin._is_card_due("card-a")  # pylint: disable=protected-access
+
+    def test_is_card_due_returns_false_when_recently_refreshed(self):
+        plugin = RssPlugin()
+        plugin._card_ids = {  # pylint: disable=protected-access
+            "card-a": {"options": {"schedule": "0 */6 * * *"}},
+        }
+        plugin._last_refresh = {"card-a": datetime.now(timezone.utc)}  # pylint: disable=protected-access
+        assert not plugin._is_card_due("card-a")  # pylint: disable=protected-access
+
+    def test_get_due_cards_filters_correctly(self):
+        plugin = RssPlugin()
+        plugin._card_ids = {  # pylint: disable=protected-access
+            "card-a": {"options": {"schedule": "0 */6 * * *"}},
+            "card-b": {"options": {"schedule": "0 */6 * * *"}},
+        }
+        plugin._last_refresh = {  # pylint: disable=protected-access
+            "card-a": datetime(2020, 1, 1, tzinfo=timezone.utc),
+            "card-b": datetime.now(timezone.utc),
+        }
+        due = plugin._get_due_cards()  # pylint: disable=protected-access
+        assert "card-a" in due
+        assert "card-b" not in due
 
 
 class TestLoadTemplate:  # pylint: disable=too-few-public-methods

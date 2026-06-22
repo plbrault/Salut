@@ -53,9 +53,10 @@ The system SHALL provide an `HtmlPlugin` class extending `Plugin` that renders H
 ### Requirement: RSS plugin uses Plugin class
 The system SHALL provide an `RssPlugin` class extending `Plugin` that fetches RSS feeds and renders items.
 
-#### Scenario: RSS plugin setup fetches feeds and schedules refresh
+#### Scenario: RSS plugin setup registers global tick
 - **WHEN** `RssPlugin.setup()` is called with a list of cards
-- **THEN** it iterates over each card, fetches feeds, stores items in the database, and registers a cron job with the scheduler per card
+- **THEN** it stores card configs and registers a single cron job (the "tick") with the scheduler, evaluated every 5 minutes
+- **AND** it does NOT register per-card cron jobs
 
 #### Scenario: RSS plugin renders items from database
 - **WHEN** a card has `plugin: rss` with items in the database
@@ -148,12 +149,12 @@ The system SHALL wrap the DELETE and INSERT operations in a database transaction
 - **THEN** they produce different cache filenames
 
 ### Requirement: Plugin setup is called once per plugin type
-The system SHALL call `setup_plugin` once for each plugin type, passing all cards using that plugin as a list. The `setup_plugin` function SHALL create a single plugin instance, store the `card_ids` map on it, and call `setup(cards, database, scheduler, logger)`. The plugin iterates over the card list internally, fetching data and scheduling jobs per card.
+The system SHALL call `setup_plugin` once for each plugin type, passing all cards using that plugin as a list. The `setup_plugin` function SHALL create a single plugin instance, store the `card_ids` map on it, and call `setup(cards, database, scheduler, logger)`. The plugin iterates over the card list internally, handling scheduling and data fetching.
 
 #### Scenario: Multiple cards with same plugin
 - **WHEN** two cards both have `plugin: rss`
 - **THEN** the system calls `setup_plugin` once for the `rss` plugin type, passing both cards as a list
-- **AND** the plugin fetches feeds and registers scheduler jobs for each card independently
+- **AND** the plugin registers a single global tick and stores card configs
 
 #### Scenario: Card IDs map is stored on instance
 - **WHEN** `setup_plugin` is called with a `card_ids` map
@@ -187,7 +188,7 @@ Config validation SHALL delegate plugin-specific option validation to each plugi
 - **THEN** config validation skips plugin-specific option validation
 
 ### Requirement: RSS plugin supports distinct_from option
-The system SHALL accept an optional `distinct_from` field in the RSS card's options. When provided, the value SHALL be a list of `card_id` strings referencing other RSS cards. During feed fetching, the card SHALL exclude feed items that match items in any referenced card, using the same deduplication rules as within a single card (by `link` URL and `title`). Excluded items SHALL NOT be stored in the database for this card.
+The system SHALL accept an optional `distinct_from` field in the RSS card's options. When provided, the value SHALL be a list of `card_id` strings referencing other RSS cards. During the global tick, due cards SHALL be topologically sorted so that when a dependency and its dependent are both due in the same tick, the dependency is refreshed first. A card's dependency SHALL NOT be refreshed more often than its own schedule — dependents use whatever data the dependency currently has in the database. Cards SHALL exclude feed items that match items in any referenced card (by `link` URL and `title`). Excluded items SHALL NOT be stored in the database for this card.
 
 #### Scenario: Card filters items from multiple referenced cards at fetch time
 - **WHEN** card A has `distinct_from: ["card-b", "card-c"]` and card B has items with links [X, Y] and card C has items with links [Z, W]
@@ -217,22 +218,14 @@ The system SHALL accept an optional `distinct_from` field in the RSS card's opti
 - **WHEN** a card has `distinct_from: ["nonexistent"]` and no card with that card_id exists
 - **THEN** no items are filtered for that entry and remaining items are fetched normally
 
-#### Scenario: Dependency resolution ensures referenced card is fetched first
-- **WHEN** card A has `distinct_from: ["card-b"]` and card B's items are not yet in the database (e.g. server just started or card B is on a longer schedule)
-- **THEN** before building its exclusion set, card A fetches card B's feeds so the exclusion set is populated correctly
+#### Scenario: Tick orders simultaneous refreshes by dependency
+- **WHEN** the global tick fires and both card A and card B are due, with card B having `distinct_from: ["card-a"]`
+- **THEN** card A is refreshed first, then card B
 
-#### Scenario: Transitive dependency resolution
-- **WHEN** card C has `distinct_from: ["card-b"]` and card B has `distinct_from: ["card-a"]`
-- **THEN** card C ensures card A is fetched first, then card B, then card C builds its exclusion set from both cards
+#### Scenario: Dependency is not refreshed more often than its schedule
+- **WHEN** card B is due with `distinct_from: ["card-a"]` and card A is NOT due by its own schedule
+- **THEN** card A is NOT refreshed — card B uses card A's existing data in the database
 
-#### Scenario: Dependency resolution skips already-fetched cards
-- **WHEN** card A has `distinct_from: ["card-b"]` and card B's items already exist in the database from a previous fetch
-- **THEN** card A does not re-fetch card B's feeds
-
-#### Scenario: Dependency resolution handles missing card_id gracefully
-- **WHEN** a card has `distinct_from: ["card-b"]` but no card with that card_id exists in the pre-computed card_ids map
-- **THEN** the dependency fetch is skipped and card A proceeds with an empty exclusion set for that entry
-
-#### Scenario: Dependency resolution handles non-rss referenced card gracefully
-- **WHEN** a card has `distinct_from: ["card-b"]` and card B is configured with a non-RSS plugin (e.g. `plugin: html`)
-- **THEN** no RSS fetch is attempted for card B and card A proceeds with an empty exclusion set for that entry
+#### Scenario: Dependency cycle is rejected at validation
+- **WHEN** config has card A with `distinct_from: ["card-b"]` and card B with `distinct_from: ["card-a"]`
+- **THEN** `validate_options` raises a configuration error
