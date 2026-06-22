@@ -1,12 +1,13 @@
 import json
 import struct
 import tempfile
+from datetime import datetime, timezone
 from unittest.mock import Mock, MagicMock, patch
 from pathlib import Path
 
 import pytest
 
-from src.plugins import load_plugin_class, render_cards_batch, setup_card
+from src.plugins import load_plugin_class, render_cards, setup_plugin
 from src.plugin import Plugin
 from src.plugins.html import HtmlPlugin
 from src.plugins.rss import RssPlugin
@@ -79,7 +80,7 @@ class TestHtmlPlugin:
 
     def test_setup_is_noop(self):
         plugin = HtmlPlugin()
-        plugin.setup({}, None, None, None)
+        plugin.setup([{"card_id": "test", "options": {}}], None, None, None)
 
     def test_init_schema_is_noop(self, tmp_path):
         HtmlPlugin.init_schema(Database(tmp_path / "test.db"))
@@ -89,12 +90,12 @@ class TestRenderCard:
     def test_render_html_card(self):
         instances = {"html": HtmlPlugin()}
         cards = [{"options": {"html": "<p>Test</p>"}, "card_id": "test"}]
-        result = render_cards_batch("html", cards, instances)
+        result = render_cards("html", cards, instances)
         assert result == ["<p>Test</p>"]
 
     def test_render_unknown_plugin(self):
         cards = [{"options": {}, "card_id": "test"}]
-        result = render_cards_batch("unknown", cards, {})
+        result = render_cards("unknown", cards, {})
         assert "not found" in result[0]
 
 
@@ -219,9 +220,10 @@ class TestRssPlugin:
         db = Database(tmp_path / "test.db")
         RssPlugin.init_schema(db)
         plugin = RssPlugin()
-        plugin.setup({}, db, None, Mock())
-        plugin._delete_feed_items(plugin._card_id)  # pylint: disable=protected-access
-        result = plugin.render([{"options": {}, "card_id": plugin._card_id}])  # pylint: disable=protected-access  # pylint: disable=protected-access
+        plugin._card_ids = {"test": "test"}  # pylint: disable=protected-access
+        plugin.setup([{"card_id": "test", "options": {}}], db, MagicMock(), Mock())
+        plugin._delete_feed_items("test")  # pylint: disable=protected-access
+        result = plugin.render([{"options": {}, "card_id": "test"}])
         assert result == [""]
         db.close()
 
@@ -230,10 +232,11 @@ class TestRssPlugin:
         RssPlugin.init_schema(db)
         options = {"feeds": ["http://example.com/rss"]}
         plugin = RssPlugin()
-        plugin.setup(options, db, MagicMock(), Mock())
-        plugin._delete_feed_items(plugin._card_id)  # pylint: disable=protected-access
+        plugin._card_ids = {"test": "test"}  # pylint: disable=protected-access
+        plugin.setup([{"card_id": "test", "options": options}], db, MagicMock(), Mock())
+        plugin._delete_feed_items("test")  # pylint: disable=protected-access
         plugin._insert_feed_item(  # pylint: disable=protected-access
-            card_id=plugin._card_id,  # pylint: disable=protected-access
+            card_id="test",
             url="http://example.com/rss",
             title="Test Article",
             link="http://example.com/article",
@@ -242,7 +245,7 @@ class TestRssPlugin:
             image_url="",
             feed_title="Example Feed",
         )
-        result = plugin.render([{"options": options, "card_id": plugin._card_id}])  # pylint: disable=protected-access
+        result = plugin.render([{"options": options, "card_id": "test"}])
         assert "Test Article" in result[0]
         assert "Example Feed" in result[0]
         assert 'href="http://example.com/article"' in result[0]
@@ -253,10 +256,11 @@ class TestRssPlugin:
         RssPlugin.init_schema(db)
         options = {"feeds": ["https://www.example.com/rss"]}
         plugin = RssPlugin()
-        plugin.setup(options, db, MagicMock(), Mock())
-        plugin._delete_feed_items(plugin._card_id)  # pylint: disable=protected-access
+        plugin._card_ids = {"test": "test"}  # pylint: disable=protected-access
+        plugin.setup([{"card_id": "test", "options": options}], db, MagicMock(), Mock())
+        plugin._delete_feed_items("test")  # pylint: disable=protected-access
         plugin._insert_feed_item(  # pylint: disable=protected-access
-            card_id=plugin._card_id,  # pylint: disable=protected-access
+            card_id="test",
             url="https://www.example.com/rss",
             title="Test",
             link="https://www.example.com/article",
@@ -265,7 +269,7 @@ class TestRssPlugin:
             image_url="",
             feed_title="",
         )
-        result = plugin.render([{"options": options, "card_id": plugin._card_id}])  # pylint: disable=protected-access
+        result = plugin.render([{"options": options, "card_id": "test"}])
         assert "example.com" in result[0]
         assert ">example.com<" in result[0]
         db.close()
@@ -275,10 +279,11 @@ class TestRssPlugin:
         RssPlugin.init_schema(db)
         options = {"feeds": ["https://www.example.com/rss"]}
         plugin = RssPlugin()
-        plugin.setup(options, db, MagicMock(), Mock())
-        plugin._delete_feed_items(plugin._card_id)  # pylint: disable=protected-access
+        plugin._card_ids = {"test": "test"}  # pylint: disable=protected-access
+        plugin.setup([{"card_id": "test", "options": options}], db, MagicMock(), Mock())
+        plugin._delete_feed_items("test")  # pylint: disable=protected-access
         plugin._insert_feed_item(  # pylint: disable=protected-access
-            card_id=plugin._card_id,  # pylint: disable=protected-access
+            card_id="test",
             url="https://www.example.com/rss",
             title="Test",
             link="https://www.example.com/article",
@@ -287,7 +292,7 @@ class TestRssPlugin:
             image_url="",
             feed_title="My Cool Blog",
         )
-        result = plugin.render([{"options": options, "card_id": plugin._card_id}])  # pylint: disable=protected-access
+        result = plugin.render([{"options": options, "card_id": "test"}])
         assert "My Cool Blog" in result[0]
         assert ">My Cool Blog<" in result[0]
         db.close()
@@ -297,10 +302,11 @@ class TestRssPlugin:
         RssPlugin.init_schema(db)
         options = {"feeds": ["http://example.com/rss"]}
         plugin = RssPlugin()
-        plugin.setup(options, db, MagicMock(), Mock())
-        plugin._delete_feed_items(plugin._card_id)  # pylint: disable=protected-access
+        plugin._card_ids = {"test": "test"}  # pylint: disable=protected-access
+        plugin.setup([{"card_id": "test", "options": options}], db, MagicMock(), Mock())
+        plugin._delete_feed_items("test")  # pylint: disable=protected-access
         plugin._insert_feed_item(  # pylint: disable=protected-access
-            card_id=plugin._card_id,  # pylint: disable=protected-access
+            card_id="test",
             url="http://example.com/rss",
             title="Test",
             link="http://example.com/article",
@@ -309,7 +315,7 @@ class TestRssPlugin:
             image_url="/cache/rss/abc123/0.jpg",
             feed_title="Example",
         )
-        result = plugin.render([{"options": options, "card_id": plugin._card_id}])  # pylint: disable=protected-access
+        result = plugin.render([{"options": options, "card_id": "test"}])
         assert "/cache/rss/abc123/0.jpg" in result[0]
         db.close()
 
@@ -334,14 +340,15 @@ class TestRssDistinctFrom:
         )
 
         plugin = RssPlugin()
+        plugin._card_ids = {"test": "test"}  # pylint: disable=protected-access
         options = {
             "feeds": ["http://example.com/rss"],
             "distinct_from": ["ref-card"],
         }
-        plugin.setup(options, db, MagicMock(), Mock())
-        plugin._delete_feed_items(plugin._card_id)  # pylint: disable=protected-access
+        plugin.setup([{"card_id": "test", "options": options}], db, MagicMock(), Mock())
+        plugin._delete_feed_items("test")  # pylint: disable=protected-access
         plugin._insert_feed_item(  # pylint: disable=protected-access
-            card_id=plugin._card_id,  # pylint: disable=protected-access
+            card_id="test",
             url="http://example.com/rss",
             title="My Article",
             link="http://example.com/mine",
@@ -351,7 +358,7 @@ class TestRssDistinctFrom:
             feed_title="My Feed",
         )
         plugin._insert_feed_item(  # pylint: disable=protected-access
-            card_id=plugin._card_id,  # pylint: disable=protected-access
+            card_id="test",
             url="http://example.com/rss",
             title="Shared Article",
             link="http://example.com/shared",
@@ -361,7 +368,7 @@ class TestRssDistinctFrom:
             feed_title="My Feed",
         )
 
-        items = plugin._get_feed_items(plugin._card_id)  # pylint: disable=protected-access
+        items = plugin._get_feed_items("test")  # pylint: disable=protected-access
         assert len(items) == 2
 
         excluded = plugin._build_exclusion_set(["ref-card"])  # pylint: disable=protected-access
@@ -531,6 +538,73 @@ class TestRssDistinctFrom:
         with pytest.raises(ConfigError, match="non-string value"):
             validate_config(config)
 
+    def test_topological_sort_linear_chain(self):
+        plugin = RssPlugin()
+        plugin._card_ids = {  # pylint: disable=protected-access
+            "card-a": {"options": {"distinct_from": []}},
+            "card-b": {"options": {"distinct_from": ["card-a"]}},
+            "card-c": {"options": {"distinct_from": ["card-b"]}},
+        }
+        order = plugin._topological_sort(["card-c", "card-a", "card-b"])  # pylint: disable=protected-access
+        assert order.index("card-a") < order.index("card-b")
+        assert order.index("card-b") < order.index("card-c")
+
+    def test_topological_sort_independent_cards(self):
+        plugin = RssPlugin()
+        plugin._card_ids = {  # pylint: disable=protected-access
+            "card-a": {"options": {"distinct_from": []}},
+            "card-b": {"options": {"distinct_from": []}},
+        }
+        order = plugin._topological_sort(["card-a", "card-b"])  # pylint: disable=protected-access
+        assert len(order) == 2
+
+    def test_topological_sort_detects_cycle(self):
+        plugin = RssPlugin()
+        plugin._card_ids = {  # pylint: disable=protected-access
+            "card-a": {"options": {"distinct_from": ["card-b"]}},
+            "card-b": {"options": {"distinct_from": ["card-a"]}},
+        }
+        with pytest.raises(ConfigError, match="Dependency cycle"):
+            plugin._topological_sort(["card-a", "card-b"])  # pylint: disable=protected-access
+
+    def test_topological_sort_ignores_nonexistent_deps(self):
+        plugin = RssPlugin()
+        plugin._card_ids = {  # pylint: disable=protected-access
+            "card-a": {"options": {"distinct_from": ["nonexistent"]}},
+        }
+        order = plugin._topological_sort(["card-a"])  # pylint: disable=protected-access
+        assert order == ["card-a"]
+
+    def test_is_card_due_uses_schedule(self):
+        plugin = RssPlugin()
+        plugin._card_ids = {  # pylint: disable=protected-access
+            "card-a": {"options": {"schedule": "0 */6 * * *"}},
+        }
+        plugin._last_refresh = {"card-a": datetime(2020, 1, 1, tzinfo=timezone.utc)}  # pylint: disable=protected-access
+        assert plugin._is_card_due("card-a")  # pylint: disable=protected-access
+
+    def test_is_card_due_returns_false_when_recently_refreshed(self):
+        plugin = RssPlugin()
+        plugin._card_ids = {  # pylint: disable=protected-access
+            "card-a": {"options": {"schedule": "0 */6 * * *"}},
+        }
+        plugin._last_refresh = {"card-a": datetime.now(timezone.utc)}  # pylint: disable=protected-access
+        assert not plugin._is_card_due("card-a")  # pylint: disable=protected-access
+
+    def test_get_due_cards_filters_correctly(self):
+        plugin = RssPlugin()
+        plugin._card_ids = {  # pylint: disable=protected-access
+            "card-a": {"options": {"schedule": "0 */6 * * *"}},
+            "card-b": {"options": {"schedule": "0 */6 * * *"}},
+        }
+        plugin._last_refresh = {  # pylint: disable=protected-access
+            "card-a": datetime(2020, 1, 1, tzinfo=timezone.utc),
+            "card-b": datetime.now(timezone.utc),
+        }
+        due = plugin._get_due_cards()  # pylint: disable=protected-access
+        assert "card-a" in due
+        assert "card-b" not in due
+
 
 class TestLoadTemplate:  # pylint: disable=too-few-public-methods
     def test_load_template_returns_template(self):
@@ -544,19 +618,19 @@ class TestMultipleRssCards:  # pylint: disable=too-few-public-methods
     def test_each_card_gets_its_own_setup(self):
         db = Mock()
         sched = Mock()
-        card1 = {"plugin": "rss", "options": {
+        card1 = {"plugin": "rss", "card_id": "card-a", "options": {
             "feeds": ["http://a.com/rss"],
             "schedule": "0 */6 * * *",
         }}
-        card2 = {"plugin": "rss", "options": {
+        card2 = {"plugin": "rss", "card_id": "card-b", "options": {
             "feeds": ["http://b.com/rss"],
             "schedule": "0 */6 * * *",
         }}
-        inst1 = setup_card(card1, db, sched)
-        inst2 = setup_card(card2, db, sched)
-        assert inst1 is not None
-        assert inst2 is not None
-        assert inst1._card_id != inst2._card_id  # pylint: disable=protected-access
+        card_ids = {"card-a": "card-a", "card-b": "card-b"}
+        inst = setup_plugin("rss", [card1, card2], db, sched, card_ids=card_ids)
+        assert inst is not None
+        assert inst._card_ids["card-a"]["card_id"] == "card-a"  # pylint: disable=protected-access
+        assert inst._card_ids["card-b"]["card_id"] == "card-b"  # pylint: disable=protected-access
 
 
 class TestSearchPlugin:
@@ -1222,13 +1296,14 @@ class TestWeatherPlugin:  # pylint: disable=too-many-public-methods
     def test_each_weather_card_gets_its_own_id(self):
         db = Mock()
         sched = Mock()
-        card1 = {"plugin": "weather", "options": self._valid_options(location_name="Paris")}
-        card2 = {"plugin": "weather", "options": self._valid_options(location_name="London")}
-        inst1 = setup_card(card1, db, sched)
-        inst2 = setup_card(card2, db, sched)
-        assert inst1 is not None
-        assert inst2 is not None
-        assert inst1._card_id != inst2._card_id  # pylint: disable=protected-access
+        card1 = {"plugin": "weather", "card_id": "weather-paris", "options": self._valid_options(location_name="Paris")}
+        card2 = {"plugin": "weather", "card_id": "weather-london",
+                 "options": self._valid_options(location_name="London")}
+        card_ids = {"weather-paris": "weather-paris", "weather-london": "weather-london"}
+        inst = setup_plugin("weather", [card1, card2], db, sched, card_ids=card_ids)
+        assert inst is not None
+        assert inst._card_ids["weather-paris"] == "weather-paris"  # pylint: disable=protected-access
+        assert inst._card_ids["weather-london"] == "weather-london"  # pylint: disable=protected-access
 
 
 class TestPluginDarkMode:
@@ -1735,17 +1810,17 @@ class TestCalendarPlugin:  # pylint: disable=protected-access
     def test_each_calendar_card_gets_its_own_id(self):
         db = Mock()
         sched = Mock()
-        card1 = {"plugin": "calendar", "options": self._valid_options(
+        card1 = {"plugin": "calendar", "card_id": "cal-1", "options": self._valid_options(
             calendars=[{"url": "https://cal1.example.com", "name": "Cal1"}]
         )}
-        card2 = {"plugin": "calendar", "options": self._valid_options(
+        card2 = {"plugin": "calendar", "card_id": "cal-2", "options": self._valid_options(
             calendars=[{"url": "https://cal2.example.com", "name": "Cal2"}]
         )}
-        inst1 = setup_card(card1, db, sched)
-        inst2 = setup_card(card2, db, sched)
-        assert inst1 is not None
-        assert inst2 is not None
-        assert inst1._card_id != inst2._card_id  # pylint: disable=protected-access
+        card_ids = {"cal-1": "cal-1", "cal-2": "cal-2"}
+        inst = setup_plugin("calendar", [card1, card2], db, sched, card_ids=card_ids)
+        assert inst is not None
+        assert inst._card_ids["cal-1"] == "cal-1"  # pylint: disable=protected-access
+        assert inst._card_ids["cal-2"] == "cal-2"  # pylint: disable=protected-access
 
     def test_calendar_rejects_link_url(self):
         config = {
@@ -1931,7 +2006,7 @@ class TestXkcdPlugin:  # pylint: disable=protected-access
         plugin = XkcdPlugin()
         plugin._database = db
         options = {"schedule": "0 9 * * *"}
-        card_id = ImageCache.compute_card_id(options)
+        card_id = "test_card"
         plugin._card_id = card_id
         db.execute(
             "INSERT INTO xkcd_comics"
@@ -1999,7 +2074,7 @@ class TestXkcdPluginCache:  # pylint: disable=protected-access
         )
 
         with patch("src.image_cache.requests.get", side_effect=Exception("fail")):
-            plugin._fetch_comic()
+            plugin._fetch_comic_for_card("testcard")
 
         row = db.fetch_one("SELECT * FROM xkcd_comics WHERE card_id = ?", ("testcard",))
         assert row is not None
@@ -2034,7 +2109,7 @@ class TestXkcdPluginCache:  # pylint: disable=protected-access
 
         with patch("src.image_cache.requests.get", side_effect=mock_get):
             with patch("src.plugins.xkcd.plugin.requests.get", side_effect=mock_get):
-                plugin._fetch_comic()
+                plugin._fetch_comic_for_card("testcard")
 
         row = db.fetch_one("SELECT * FROM xkcd_comics WHERE card_id = ?", ("testcard",))
         assert row is not None
@@ -2343,7 +2418,8 @@ class TestImagePluginCache:  # pylint: disable=protected-access
 
         with patch("src.image_cache.requests.get", side_effect=Exception("fail")):
             with patch("src.image_cache.CACHE_DIR", tmp_path):
-                plugin._fetch_image(
+                plugin._fetch_image_for_card(
+                    "testcard",
                     {"provider_type": "rest",
                      "url": "http://new.com/img",
                      "schedule": "0 * * * *"}
@@ -2372,7 +2448,8 @@ class TestImagePluginCache:  # pylint: disable=protected-access
 
         with patch("src.image_cache.requests.get", return_value=mock_resp):
             with patch("src.image_cache.CACHE_DIR", tmp_path):
-                plugin._fetch_image(
+                plugin._fetch_image_for_card(
+                    "testcard",
                     {"provider_type": "rest",
                      "url": "http://new.com/img",
                      "schedule": "0 * * * *"}
@@ -2394,7 +2471,8 @@ class TestImagePluginCache:  # pylint: disable=protected-access
 
         with patch("src.image_cache.requests.get", side_effect=Exception("fail")):
             with patch("src.image_cache.CACHE_DIR", tmp_path):
-                plugin._fetch_image(
+                plugin._fetch_image_for_card(
+                    "testcard",
                     {"provider_type": "rest",
                      "url": "http://new.com/img",
                      "schedule": "0 * * * *"}
@@ -2414,11 +2492,12 @@ class TestRssImageCache:  # pylint: disable=protected-access
         RssPlugin.init_schema(db)
         options = {"feeds": ["http://example.com/rss"]}
         plugin = RssPlugin()
-        plugin.setup(options, db, MagicMock(), Mock())
-        plugin._delete_feed_items(plugin._card_id)
+        plugin._card_ids = {"test": "test"}  # pylint: disable=protected-access
+        plugin.setup([{"card_id": "test", "options": options}], db, MagicMock(), Mock())
+        plugin._delete_feed_items("test")  # pylint: disable=protected-access
 
         plugin._insert_feed_item(
-            card_id=plugin._card_id,
+            card_id="test",
             url="http://example.com/rss",
             title="Article 1",
             link="http://example.com/1",
@@ -2428,7 +2507,7 @@ class TestRssImageCache:  # pylint: disable=protected-access
             feed_title="Feed",
         )
         plugin._insert_feed_item(
-            card_id=plugin._card_id,
+            card_id="test",
             url="http://example.com/rss",
             title="Article 2",
             link="http://example.com/2",
@@ -2437,7 +2516,7 @@ class TestRssImageCache:  # pylint: disable=protected-access
             image_url="/cache/rss/abc123/a1b2c3d4e5f6.jpg",
             feed_title="Feed",
         )
-        items = plugin._get_feed_items(plugin._card_id)
+        items = plugin._get_feed_items("test")
         assert items[0]["image_url"] == items[1]["image_url"]
         db.close()
 

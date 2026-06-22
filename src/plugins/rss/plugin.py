@@ -1,5 +1,5 @@
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime
+from datetime import datetime, timezone
 from html import unescape
 from pathlib import Path
 from re import sub
@@ -14,6 +14,7 @@ from src.plugin import Plugin
 
 VALID_INCLUDE_FIELDS = {"title", "description", "author"}
 VALID_TRUNCATE_KEYS = {"title", "description", "author", "feed_title"}
+_TICK_INTERVAL_SECONDS = 300
 
 
 class RssPlugin(Plugin):
@@ -21,7 +22,8 @@ class RssPlugin(Plugin):
         super().__init__()
         self._database = None
         self._logger = None
-        self._card_id = None
+        self._card_ids = {}
+        self._last_refresh = {}
         self._template = self.load_template(Path(__file__).resolve().parent, "template.html")
 
     @staticmethod
@@ -154,31 +156,164 @@ class RssPlugin(Plugin):
             """
         )
 
-    def setup(self, options, database, scheduler, logger, *, card_id=None):
+    def setup(self, cards, database, scheduler, logger):
         self._database = database
         self._logger = logger
-        self._card_id = card_id if card_id else ImageCache.compute_card_id(options)
 
+        for card in cards:
+            self._card_ids[card["card_id"]] = card
+
+        now = datetime.now(timezone.utc)
+        epoch = datetime.fromtimestamp(0, tz=timezone.utc)
+        for card in cards:
+            self._last_refresh[card["card_id"]] = epoch
+
+        if cards:
+            self._rss_tick()
+            scheduler.add_job(
+                self._rss_tick,
+                "interval",
+                seconds=_TICK_INTERVAL_SECONDS,
+                id="rss_tick",
+                replace_existing=True,
+            )
+
+    def _is_card_due(self, card_id):
+        card = self._card_ids[card_id]
+        options = card.get("options", {})
+        schedule_str = options.get("schedule", "0 */6 * * *")
+        trigger = self.parse_schedule(schedule_str)
+        now = datetime.now(timezone.utc)
+        last = self._last_refresh.get(card_id)
+        if last is None:
+            return True
+        next_fire = trigger.get_next_fire_time(None, last)
+        if next_fire is None:
+            return False
+        return next_fire <= now
+
+    def _get_due_cards(self):
+        return [
+            card_id for card_id in self._card_ids
+            if self._is_card_due(card_id)
+        ]
+
+    def _topological_sort(self, card_ids):
+        adjacency = {cid: [] for cid in card_ids}
+        in_degree = {cid: 0 for cid in card_ids}
+
+        for cid in card_ids:
+            card = self._card_ids[cid]
+            options = card.get("options", {})
+            distinct_from = options.get("distinct_from", [])
+            for dep_id in distinct_from:
+                if dep_id in adjacency:
+                    adjacency[dep_id].append(cid)
+                    in_degree[cid] += 1
+
+        queue = [cid for cid in card_ids if in_degree[cid] == 0]
+        order = []
+        while queue:
+            node = queue.pop(0)
+            order.append(node)
+            for neighbor in adjacency[node]:
+                in_degree[neighbor] -= 1
+                if in_degree[neighbor] == 0:
+                    queue.append(neighbor)
+
+        if len(order) != len(card_ids):
+            missing = set(card_ids) - set(order)
+            raise ConfigError(
+                f"Dependency cycle detected among RSS cards: {missing}"
+            )
+        return order
+
+    def _rss_tick(self):
+        due = self._get_due_cards()
+        if not due:
+            return
+        ordered = self._topological_sort(due)
+        for card_id in ordered:
+            self._fetch_card(card_id)
+            self._last_refresh[card_id] = datetime.now(timezone.utc)
+
+    def _fetch_card(self, card_id):
+        card = self._card_ids[card_id]
+        options = card.get("options", {})
         feeds = options.get("feeds", [])
+        if not feeds:
+            return
         max_items = options.get("max_items", 10)
         fetch_images = options.get("images", False)
-        schedule = options.get("schedule", "0 */6 * * *")
         include_fields = options.get("include_fields", ["title"])
         distinct_from = options.get("distinct_from", [])
 
-        if feeds:
-            self._fetch_feeds(
-                feeds, max_items, fetch_images, include_fields,
-                distinct_from=distinct_from
+        self._logger.info("Fetching RSS feeds for card %s (%d feeds)", card_id, len(feeds))
+
+        excluded = None
+        if distinct_from:
+            excluded = self._build_exclusion_set(distinct_from)
+
+        all_items = self._fetch_all_feeds(feeds, fetch_images, include_fields)
+        all_items = self._sort_and_deduplicate(all_items, feeds, excluded)
+        all_items = all_items[:max_items]
+        self._logger.info("Total items after sort/dedup/truncate: %d", len(all_items))
+
+        if fetch_images:
+            self._logger.info("Downloading images...")
+            self._download_images(card_id, all_items)
+
+        self._persist_items(card_id, all_items)
+        self._logger.info("Finished fetching RSS feeds for card %s", card_id)
+
+        if fetch_images:
+            self._cleanup_image_orphans(card_id)
+
+    def _sort_and_deduplicate(self, all_items, feeds, excluded):
+        precedence = {url: idx for idx, url in enumerate(feeds)}
+        all_items.sort(key=lambda x: (x["published"] != "", x["published"]), reverse=True)
+        all_items = self._deduplicate_items(all_items, precedence)
+        if excluded is not None:
+            filtered = [
+                item for item in all_items
+                if not self._is_excluded(item, excluded)
+            ]
+            self._logger.info(
+                "Items after distinct_from filter: %d", len(filtered)
             )
-            scheduler.add_job(
-                self._fetch_feeds,
-                trigger=self.parse_schedule(schedule),
-                args=[feeds, max_items, fetch_images, include_fields],
-                kwargs={"distinct_from": distinct_from},
-                id=f"rss_{self._card_id}",
-                replace_existing=True,
-            )
+            all_items = filtered
+        return all_items
+
+    def _persist_items(self, card_id, all_items):
+        self._database.begin_transaction()
+        try:
+            self._delete_feed_items(card_id)
+            for item in all_items:
+                self._insert_feed_item(
+                    card_id=card_id,
+                    url=item["url"],
+                    title=item["title"],
+                    link=item["link"],
+                    published=item["published"],
+                    feed_url=item["feed_url"],
+                    image_url=item["image_url"],
+                    feed_title=item["feed_title"],
+                    description=item.get("description", ""),
+                    author=item.get("author", ""),
+                )
+            self._database.commit_transaction()
+        except Exception:
+            self._database.rollback_transaction()
+            raise
+
+    def _cleanup_image_orphans(self, card_id):
+        referenced = set()
+        rows = self._get_feed_items(card_id)
+        for row in rows:
+            img = row.get("image_url", "")
+            if img:
+                referenced.add(Path(img).name)
+        ImageCache("rss", card_id, self._logger).cleanup_orphans(referenced)
 
     def _apply_truncation(self, value, config):
         if isinstance(config, int):
@@ -251,65 +386,6 @@ class RssPlugin(Plugin):
 
             results.append(self._template.render(items=feed_items))
         return results
-
-    def _fetch_feeds(
-        self, feeds, max_items=10, fetch_images=False,
-        include_fields=None, *, distinct_from=None
-    ):
-        if include_fields is None:
-            include_fields = ["title"]
-        if distinct_from is None:
-            distinct_from = []
-        self._logger.info("Fetching RSS feeds for card %s (%d feeds)", self._card_id, len(feeds))
-
-        all_items = self._fetch_all_feeds(feeds, fetch_images, include_fields)
-
-        precedence = {url: idx for idx, url in enumerate(feeds)}
-        all_items.sort(key=lambda x: (x["published"] != "", x["published"]), reverse=True)
-        all_items = self._deduplicate_items(all_items, precedence)
-
-        if distinct_from:
-            all_items = self._filter_distinct(all_items, distinct_from)
-
-        all_items = all_items[:max_items]
-        self._logger.info("Total items after sort/dedup/truncate: %d", len(all_items))
-
-        if fetch_images:
-            self._logger.info("Downloading images...")
-            self._download_images(all_items)
-
-        self._database.begin_transaction()
-        try:
-            self._delete_feed_items(self._card_id)
-
-            for item in all_items:
-                self._insert_feed_item(
-                    card_id=self._card_id,
-                    url=item["url"],
-                    title=item["title"],
-                    link=item["link"],
-                    published=item["published"],
-                    feed_url=item["feed_url"],
-                    image_url=item["image_url"],
-                    feed_title=item["feed_title"],
-                    description=item.get("description", ""),
-                    author=item.get("author", ""),
-                )
-
-            self._database.commit_transaction()
-            self._logger.info("Finished fetching RSS feeds for card %s", self._card_id)
-        except Exception:
-            self._database.rollback_transaction()
-            raise
-
-        if fetch_images:
-            referenced = set()
-            rows = self._get_feed_items(self._card_id)
-            for row in rows:
-                img = row.get("image_url", "")
-                if img:
-                    referenced.add(Path(img).name)
-            ImageCache("rss", self._card_id, self._logger).cleanup_orphans(referenced)
 
     @staticmethod
     def _get_published_date(entry):
@@ -416,8 +492,8 @@ class RssPlugin(Plugin):
             truncated = truncated[:last_space]
         return truncated + suffix
 
-    def _download_images(self, items):
-        cache = ImageCache("rss", self._card_id, self._logger)
+    def _download_images(self, card_id, items):
+        cache = ImageCache("rss", card_id, self._logger)
         for idx, item in enumerate(items):
             if not item["image_url"]:
                 continue
@@ -482,17 +558,6 @@ class RssPlugin(Plugin):
                 lambda url: self._fetch_single_feed(url, fetch_images, include_fields), feeds
             ))
         return [item for items in results for item in items]
-
-    def _filter_distinct(self, items, distinct_from):
-        excluded = self._build_exclusion_set(distinct_from)
-        filtered = [
-            item for item in items
-            if not self._is_excluded(item, excluded)
-        ]
-        self._logger.info(
-            "Items after distinct_from filter: %d", len(filtered)
-        )
-        return filtered
 
     @staticmethod
     def _deduplicate_items(items, precedence=None):
