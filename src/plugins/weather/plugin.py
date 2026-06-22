@@ -44,7 +44,6 @@ class WeatherPlugin(Plugin):
         super().__init__()
         self._database = None
         self._logger = None
-        self._card_id = None
         self._template = self.load_template(
             Path(__file__).resolve().parent, "template.html"
         )
@@ -124,25 +123,28 @@ class WeatherPlugin(Plugin):
             """
         )
 
-    def setup(self, options, database, scheduler, logger, *, card_id=None):
+    def setup(self, cards, database, scheduler, logger):
         self._database = database
         self._logger = logger
-        self._card_id = card_id if card_id else self._compute_card_id(options)
 
-        latitude = options["latitude"]
-        longitude = options["longitude"]
-        units = options.get("units", "celsius")
-        language = options.get("language", "en")
-        schedule = options["schedule"]
+        for card in cards:
+            card_id = card["card_id"]
+            options = card.get("options", {})
 
-        self._fetch_weather(latitude, longitude, units, language)
-        scheduler.add_job(
-            self._fetch_weather,
-            trigger=self.parse_schedule(schedule),
-            args=[latitude, longitude, units, language],
-            id=f"weather_{self._card_id}",
-            replace_existing=True,
-        )
+            latitude = options["latitude"]
+            longitude = options["longitude"]
+            units = options.get("units", "celsius")
+            language = options.get("language", "en")
+            schedule = options["schedule"]
+
+            self._fetch_weather_for_card(card_id, latitude, longitude, units, language)
+            scheduler.add_job(
+                self._fetch_weather_for_card,
+                trigger=self.parse_schedule(schedule),
+                args=[card_id, latitude, longitude, units, language],
+                id=f"weather_{card_id}",
+                replace_existing=True,
+            )
 
     def _render_weather_card(self, options, card_id):
         row = self._database.fetch_one(
@@ -192,7 +194,7 @@ class WeatherPlugin(Plugin):
             results.append(self._render_weather_card(options, card_id))
         return results
 
-    def _fetch_weather(self, latitude, longitude, units, language):
+    def _fetch_weather_for_card(self, card_id, latitude, longitude, units, language):
         try:
             self._logger.info("Fetching weather for %s, %s", latitude, longitude)
             temp_unit = "fahrenheit" if units == "fahrenheit" else "celsius"
@@ -217,13 +219,13 @@ class WeatherPlugin(Plugin):
 
             self._database.execute(
                 "DELETE FROM weather_data WHERE card_id = ?",
-                (self._card_id,),
+                (card_id,),
             )
             self._database.execute(
                 "INSERT INTO weather_data (card_id, data) VALUES (?, ?)",
-                (self._card_id, json.dumps(data)),
+                (card_id, json.dumps(data)),
             )
-            self._logger.info("Weather fetched and cached for card %s", self._card_id)
+            self._logger.info("Weather fetched and cached for card %s", card_id)
         except Exception as e:  # pylint: disable=broad-except
             self._logger.warning("Failed to fetch weather: %s", e)
 

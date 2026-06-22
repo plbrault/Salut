@@ -48,3 +48,23 @@ Plugins MAY use the batch render call to optimize data fetching across multiple 
 #### Scenario: Individual card processing
 - **WHEN** a plugin receives multiple cards
 - **THEN** the plugin SHALL still produce independent HTML output for each card
+
+### Requirement: Plugin batch setup interface
+The system SHALL call each plugin's `setup` method once per plugin type, passing a list of all cards using that plugin. The `setup` method SHALL receive `(self, cards, database, scheduler, logger)` where `cards` is a list of card dicts, each containing `card_id` and `options`. The plugin SHALL iterate over the card list internally, fetching data and scheduling refresh jobs per card.
+
+#### Scenario: Single card plugin setup
+- **WHEN** only one card uses a particular plugin
+- **THEN** the plugin's `setup` method receives a list with one card dict
+
+#### Scenario: Multiple card plugin setup
+- **WHEN** three cards use the `rss` plugin
+- **THEN** the `rss` plugin's `setup` method is called once with a list of three card dicts
+
+#### Scenario: Plugin schedules per card
+- **WHEN** a plugin's `setup` receives multiple cards with different schedules
+- **THEN** the plugin registers a separate scheduler job for each card
+
+#### Scenario: setup_plugin stores card_ids on instance
+- **WHEN** `setup_plugin` is called with a `card_ids` map
+- **THEN** the map is stored on the plugin instance as `instance._card_ids` before `setup` is called
+- **AND** plugins can access it via `self._card_ids` to resolve cross-card references
