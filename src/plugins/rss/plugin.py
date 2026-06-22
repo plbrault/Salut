@@ -163,7 +163,6 @@ class RssPlugin(Plugin):
         for card in cards:
             self._card_ids[card["card_id"]] = card
 
-        now = datetime.now(timezone.utc)
         epoch = datetime.fromtimestamp(0, tz=timezone.utc)
         for card in cards:
             self._last_refresh[card["card_id"]] = epoch
