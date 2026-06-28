@@ -58,7 +58,7 @@ class SearchPlugin(Plugin):
         results = []
         for card in cards:
             options = card["options"]
-            provider = options.get("provider", "duckduckgo", "google")
+            provider = options.get("provider", "google")
             button_text = options.get("button_text") or self.t("search")
             placeholder_text = options.get("placeholder_text") or self.t("search")
             results_in_new_tab = options.get("results_in_new_tab", False)
