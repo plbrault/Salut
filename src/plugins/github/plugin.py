@@ -148,17 +148,17 @@ class GithubPlugin(Plugin):
 
             for thread in response.json():
                 thread_id = thread.get("id")
-                repo_name = (thread.get("repository") or {}).get("full_name")
-                subject_title = (thread.get("subject") or {}).get("title")
-                reason = thread.get("reason")
-                updated_at = thread.get("updated_at")
-                api_url = (thread.get("subject") or {}).get("url")
+                repo_name = (thread.get("repository") or {}).get("full_name", "")
+                subject_title = (thread.get("subject") or {}).get("title", "")
+                reason = thread.get("reason", "")
+                updated_at = thread.get("updated_at", "")
+                api_url = (thread.get("subject") or {}).get("url", "")
 
-                if not all([thread_id, repo_name, subject_title, reason, updated_at, api_url]):
+                if not thread_id:
                     continue
 
                 reason = self._format_reason(reason)
-                web_url = self._build_web_url(api_url)
+                web_url = self._build_web_url(api_url) if api_url else ""
 
                 self._store_notification(
                     card_id=card_id,
