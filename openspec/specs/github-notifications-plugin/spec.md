@@ -39,6 +39,10 @@ The system SHALL fetch notifications from `GET https://api.github.com/notificati
 - **WHEN** the GitHub API returns an error
 - **THEN** a warning is logged and the card shows no notifications
 
+#### Scenario: Notification with missing fields
+- **WHEN** a notification has null or missing values for `subject.url`, `reason`, `subject.title`, or `repository.full_name`
+- **THEN** the notification is still stored and displayed, with missing fields defaulting to empty strings
+
 ### Requirement: Notifications grouped by thread
 The system SHALL display each notification thread as a separate item. Each thread is identified by its `thread_id`.
 
@@ -47,7 +51,7 @@ The system SHALL display each notification thread as a separate item. Each threa
 - **THEN** each notification is displayed as a separate item
 
 ### Requirement: Notification display format
-The system SHALL display each notification with: repository name, subject title, reason (lowercased, underscores replaced with spaces), and relative time.
+The system SHALL display each notification with: repository name, subject title, reason (lowercased, underscores replaced with spaces), and relative time. If any of these fields is missing or empty, it SHALL be displayed as an empty string.
 
 #### Scenario: Notification item display
 - **WHEN** a notification is rendered
