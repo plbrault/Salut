@@ -51,11 +51,23 @@ The system SHALL display each notification thread as a separate item. Each threa
 - **THEN** each notification is displayed as a separate item
 
 ### Requirement: Notification display format
-The system SHALL display each notification with: repository name, subject title, reason (lowercased, underscores replaced with spaces), and relative time. If any of these fields is missing or empty, it SHALL be displayed as an empty string.
+The system SHALL display each notification with: repository name, subject title, subject type (lowercased, PascalCase split into words), reason (lowercased, underscores replaced with spaces), and relative time. If any of these fields is missing or empty, it SHALL be displayed as an empty string.
 
 #### Scenario: Notification item display
 - **WHEN** a notification is rendered
-- **THEN** the card shows the repo name, subject title, reason, and time since update
+- **THEN** the card shows the repo name, subject title, subject type, reason, and time since update
+
+#### Scenario: Subject type formatting
+- **WHEN** a notification has `subject.type` of `PullRequest`
+- **THEN** the displayed type is `pull request`
+
+#### Scenario: Unknown subject type
+- **WHEN** a notification has an unrecognized `subject.type` value like `CustomThing`
+- **THEN** the displayed type is `custom thing` (split on camelCase boundaries, lowercased)
+
+#### Scenario: Missing subject type
+- **WHEN** a notification has an empty or missing `subject.type`
+- **THEN** the type is not displayed, and the metadata line shows only reason and time
 
 ### Requirement: Clickable notifications
 The system SHALL make each notification clickable, opening the notification URL in a new browser tab. The URL SHALL be derived from the `subject.url` API field by replacing `api.github.com/repos` with `github.com`.
