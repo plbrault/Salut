@@ -1,5 +1,6 @@
 import hashlib
 import json
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -60,6 +61,7 @@ class GithubPlugin(Plugin):
                 thread_id INTEGER NOT NULL,
                 repo_name TEXT NOT NULL,
                 subject_title TEXT NOT NULL,
+                subject_type TEXT NOT NULL DEFAULT '',
                 reason TEXT NOT NULL,
                 updated_at TEXT NOT NULL,
                 web_url TEXT NOT NULL,
@@ -118,6 +120,7 @@ class GithubPlugin(Plugin):
                 notifications.append({
                     "repo_name": row["repo_name"],
                     "subject_title": row["subject_title"],
+                    "subject_type": row["subject_type"],
                     "reason": row["reason"],
                     "time_ago": self._time_ago(row["updated_at"]),
                     "web_url": row["web_url"],
@@ -150,6 +153,7 @@ class GithubPlugin(Plugin):
                 thread_id = thread.get("id")
                 repo_name = (thread.get("repository") or {}).get("full_name", "")
                 subject_title = (thread.get("subject") or {}).get("title", "")
+                subject_type = (thread.get("subject") or {}).get("type", "")
                 reason = thread.get("reason", "")
                 updated_at = thread.get("updated_at", "")
                 api_url = (thread.get("subject") or {}).get("url", "")
@@ -158,6 +162,7 @@ class GithubPlugin(Plugin):
                     continue
 
                 reason = self._format_reason(reason)
+                subject_type = self._format_subject_type(subject_type)
                 web_url = self._build_web_url(api_url) if api_url else ""
 
                 self._store_notification(
@@ -165,6 +170,7 @@ class GithubPlugin(Plugin):
                     thread_id=thread_id,
                     repo_name=repo_name,
                     subject_title=subject_title,
+                    subject_type=subject_type,
                     reason=reason,
                     updated_at=updated_at,
                     web_url=web_url,
@@ -184,8 +190,8 @@ class GithubPlugin(Plugin):
         self._database.execute(
             """
             INSERT INTO github_notifications
-            (card_id, thread_id, repo_name, subject_title, reason, updated_at, web_url)
-            VALUES (:card_id, :thread_id, :repo_name, :subject_title, :reason, :updated_at, :web_url)
+            (card_id, thread_id, repo_name, subject_title, subject_type, reason, updated_at, web_url)
+            VALUES (:card_id, :thread_id, :repo_name, :subject_title, :subject_type, :reason, :updated_at, :web_url)
             """,
             kwargs,
         )
@@ -204,6 +210,13 @@ class GithubPlugin(Plugin):
     @staticmethod
     def _format_reason(reason):
         return reason.replace("_", " ").lower()
+
+    @staticmethod
+    def _format_subject_type(subject_type):
+        if not subject_type:
+            return ""
+        result = re.sub(r"([A-Z])", r" \1", subject_type).strip().lower()
+        return result
 
     @staticmethod
     def _time_ago(iso_timestamp):
