@@ -2399,6 +2399,41 @@ class TestGithubPlugin:  # pylint: disable=protected-access
         assert "Aucune notification non lue." in results[0]
         db.close()
 
+    def test_format_subject_type_known_types(self):
+        assert GithubPlugin._format_subject_type("Issue") == "issue"
+        assert GithubPlugin._format_subject_type("PullRequest") == "pull request"
+        assert GithubPlugin._format_subject_type("Discussion") == "discussion"
+        assert GithubPlugin._format_subject_type("DiscussionComment") == "discussion comment"
+        assert GithubPlugin._format_subject_type("CheckSuite") == "check suite"
+
+    def test_format_subject_type_unknown_camelcase(self):
+        assert GithubPlugin._format_subject_type("CustomThing") == "custom thing"
+        assert GithubPlugin._format_subject_type("SecurityAlert") == "security alert"
+
+    def test_format_subject_type_empty(self):
+        assert GithubPlugin._format_subject_type("") == ""
+        assert GithubPlugin._format_subject_type(None) == ""
+
+    def test_render_includes_subject_type(self, tmp_path):
+        db = Database(tmp_path / "test.db")
+        GithubPlugin.init_schema(db)
+        db.execute(
+            """INSERT INTO github_notifications
+            (card_id, thread_id, repo_name, subject_title, subject_type, reason, updated_at, web_url)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            ("test", 1, "owner/repo", "Fix bug", "pull request",
+             "mention", "2026-06-30T12:00:00Z",
+             "https://github.com/owner/repo/pull/1"),
+        )
+        plugin = GithubPlugin()
+        i18n_dir = Path(__file__).resolve().parent.parent / "src" / "plugins" / "github" / "i18n"
+        plugin.set_translations(_load_translations(i18n_dir, "en"))
+        plugin._database = db
+        results = plugin.render([{"options": {"token": "ghp_test"}, "card_id": "test"}])
+        assert len(results) == 1
+        assert "pull request" in results[0]
+        db.close()
+
 
 class TestImagePluginCache:  # pylint: disable=protected-access
     def test_download_failure_preserves_old_row(self, tmp_path):
