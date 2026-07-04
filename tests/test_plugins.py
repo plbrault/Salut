@@ -688,7 +688,7 @@ class TestSearchPlugin:
             "cards": [{
                 "title": "Search",
                 "plugin": "search",
-                "options": {"provider": "google"}
+                "options": {"provider": "invalid-provider"}
             }]
         }
         try:
