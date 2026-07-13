@@ -6,11 +6,11 @@ Renders a search bar that submits to a search engine or Wikipedia.
 
 | Option | Type | Required | Default | Description |
 |--------|------|----------|---------|-------------|
-| `provider` | string | yes | - | Search provider: `"duckduckgo"` or `"wikipedia"` |
+| `provider` | string | yes | - | Search provider: `"duckduckgo"`, `"google"` or `"wikipedia"` |
 | `button_text` | string | no | i18n `"search"` key | Text displayed on the search button and input placeholder |
 | `placeholder_text` | string | no | i18n `"search"` key | Placeholder text for the search input |
 | `results_in_new_tab` | boolean | no | false | Open search results in a new browser tab |
-| `language` | string | no | "en" | Language code for Wikipedia (e.g., `"fr"`, `"de"`) |
+| `language` | string | no | "en" | Language code for Wikipedia and Google (e.g., `"fr"`, `"de"`) |
 
 ## Examples
 
