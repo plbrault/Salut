@@ -22,9 +22,9 @@ class SearchPlugin(Plugin):
                 f"{filename}: cards[{card_idx}].options.provider is required."
             )
 
-        if provider not in ("duckduckgo", "wikipedia"):
+        if provider not in ("duckduckgo", "google", "wikipedia"):
             raise ConfigError(
-                f"{filename}: cards[{card_idx}].options.provider must be 'duckduckgo' or 'wikipedia'."
+                f"{filename}: cards[{card_idx}].options.provider must be 'duckduckgo', 'google' or 'wikipedia'."
             )
 
         language = options.get("language")
@@ -67,6 +67,9 @@ class SearchPlugin(Plugin):
             if provider == "wikipedia":
                 action_url = f"https://{language}.wikipedia.org/w/index.php"
                 query_param = "search"
+            elif provider == "google":
+                action_url = f"https://www.google.com/search?hl={language}"
+                query_param = "q"
             else:
                 action_url = "https://duckduckgo.com/"
                 query_param = "q"
