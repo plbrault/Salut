@@ -254,6 +254,10 @@
             }
 
             layout();
+            window.addEventListener('load', layout);
+            if (document.fonts && document.fonts.ready) {
+                document.fonts.ready.then(layout);
+            }
             var resizeTimer;
             window.addEventListener('resize', function() {
                 clearTimeout(resizeTimer);
