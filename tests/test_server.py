@@ -1,10 +1,11 @@
 from unittest.mock import patch
 
 from apscheduler.schedulers.background import BackgroundScheduler
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from src.config import ConfigError, load_config
-from src.main import app
+from src.main import app, _mount_theme_static_dirs
 from src.plugins.html import HtmlPlugin
 from src.plugins.search import SearchPlugin
 
@@ -241,3 +242,28 @@ class TestServer:
         s.start()
         assert s._job_defaults["misfire_grace_time"] is None  # pylint: disable=protected-access
         s.shutdown(wait=False)
+
+    def test_theme_package_files_not_served(self):
+        """Package internals and theme.yml should not be reachable via /themes."""
+        with TestClient(app) as client:
+            assert client.get("/themes/__init__.py").status_code == 404
+            assert client.get("/themes/default-light/theme.yml").status_code == 404
+            assert client.get("/themes/unknown/fonts.css").status_code == 404
+
+    def test_theme_static_files_served(self):
+        """Theme static assets should be served from /themes/<name>/."""
+        with TestClient(app) as client:
+            assert client.get("/themes/default-light/fonts.css").status_code == 200
+            assert client.get("/themes/default-light/Inter-Variable.woff2").status_code == 200
+            assert client.get("/themes/default-light/Inter-License.txt").status_code == 200
+
+    def test_mount_helper_creates_routes(self):
+        """Mount helper creates correct routes on a fresh FastAPI app."""
+        fresh_app = FastAPI()
+        fresh_app.state._mounted_theme_names = set()  # pylint: disable=protected-access
+        _mount_theme_static_dirs(fresh_app)
+
+        routes = {r.path for r in fresh_app.routes}
+        assert any("/themes/default-light" in str(r) for r in routes)
+        # default-dark has no static/ so it should not be mounted
+        assert not any("/themes/default-dark" in str(r) for r in routes)

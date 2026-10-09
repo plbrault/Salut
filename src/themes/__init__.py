@@ -35,6 +35,11 @@ def _themes_root(themes_dir=None):
     return Path(themes_dir) if themes_dir else THEMES_DIR
 
 
+def theme_static_dir(name, themes_dir=None):
+    """Return the static directory for a theme (where servable assets live)."""
+    return _themes_root(themes_dir) / name / "static"
+
+
 def discover_themes(themes_dir=None):
     """Return the names of all theme directories that contain a theme.yml file."""
     root = _themes_root(themes_dir)
@@ -156,7 +161,8 @@ def font_css_links(names, themes_dir=None):
     links = []
     for name in names:
         for theme_name in theme_chain(name, themes_dir):
-            if not (root / theme_name / "fonts.css").is_file():
+            static_dir = root / theme_name / "static"
+            if not (static_dir / "fonts.css").is_file():
                 continue
             url = f"{THEMES_URL_PREFIX}/{theme_name}/fonts.css"
             if url not in links:

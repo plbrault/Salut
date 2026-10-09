@@ -231,7 +231,8 @@ class TestGenerateThemeCss:
 
     def test_font_links_deduplicate_shared_parent(self, tmp_path):
         _write_theme(tmp_path, "parent", FULL_THEME)
-        (tmp_path / "parent" / "fonts.css").write_text("@font-face {}", encoding="utf-8")
+        (tmp_path / "parent" / "static").mkdir()
+        (tmp_path / "parent" / "static" / "fonts.css").write_text("@font-face {}", encoding="utf-8")
         _write_theme(tmp_path, "light", {"extends": "parent"})
         _write_theme(tmp_path, "dark", {"extends": "parent"})
 

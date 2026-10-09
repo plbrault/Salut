@@ -75,13 +75,18 @@ When only one theme is configured, the `{{theme_toggle}}` variable SHALL still r
 
 ### Requirement: Themes can include local font files
 
-A theme directory MAY contain font files (e.g., `.woff2`) and a `fonts.css` file with `@font-face` rules referencing them. The server SHALL serve theme directories statically and include any `fonts.css` files from the active themes' inheritance chains in the rendered page.
+A theme directory MAY contain font files (e.g., `.woff2`) and a `fonts.css` file with `@font-face` rules referencing them. The servable assets SHALL be placed in a `static/` subdirectory within the theme directory. The server SHALL serve only the `static/` subdirectory under `/themes/<theme-name>/`. The theme's `theme.yml` file, Python modules, and any other non-static files SHALL NOT be reachable via HTTP.
 
 #### Scenario: Built-in theme references bundled Inter font
 
-- **GIVEN** `default-light` contains `Inter-Variable.woff2` and a `fonts.css` referencing it, and `default-dark` extends `default-light`
+- **GIVEN** `default-light` contains a `static/` subdirectory with `Inter-Variable.woff2` and a `fonts.css` referencing it, and `default-dark` extends `default-light`
 - **WHEN** the page renders with the default light/dark config
 - **THEN** the Inter font face is loaded for both modes via the `default-light` inheritance chain
+
+#### Scenario: Only theme static content is served
+
+- **WHEN** a request is made for `/themes/__init__.py`, `/themes/default-light/theme.yml`, or `/themes/default-light/__pycache__/x.pyc`
+- **THEN** the response is 404 Not Found
 
 ### Requirement: Layout is not themable
 

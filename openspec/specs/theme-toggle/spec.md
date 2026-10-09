@@ -47,11 +47,11 @@ The system SHALL persist the user's theme choice in local storage under the key 
 The system SHALL provide a `{{theme_toggle}}` client-side template variable that renders a theme toggle button. Users SHALL be able to place `{{theme_toggle}}` in the `page_header` config field or in an HTML card's content. When a single theme is configured, the button SHALL render disabled.
 
 #### Scenario: Toggle in page header
-- **WHEN** the `page_header` config contains `{{theme_toggle}}
+- **WHEN** the `page_header` config contains `{{theme_toggle}}`
 - **THEN** a theme toggle button is rendered in the header
 
 #### Scenario: Toggle in HTML card
-- **WHEN** an HTML card's `html` option contains `{{theme_toggle}}
+- **WHEN** an HTML card's `html` option contains `{{theme_toggle}}`
 - **THEN** a theme toggle button is rendered inside that card
 
 #### Scenario: Toggle appearance

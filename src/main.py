@@ -21,7 +21,7 @@ from src.config import ConfigError, load_config, load_secrets, validate_config
 from src.database import Database
 from src.i18n import load_global_i18n
 from src.template import resolve_all_config_vars
-from src.themes import ThemeError, built_in_theme_styles, generate_theme_css
+from src.themes import ThemeError, built_in_theme_styles, generate_theme_css, discover_themes, theme_static_dir
 from src.plugins import setup_plugin, render_cards, init_plugins_schemas
 from src.admin import (
     COOKIE_NAME, COOKIE_MAX_AGE,
@@ -69,6 +69,8 @@ def reload_app_state():
     app.state.config_error = None
     app.state.theme_styles = styles
     app.state.secrets = load_secrets()
+
+    _mount_theme_static_dirs(app)
 
     language = app.state.config.get("language", "en")
     if isinstance(language, str) and "-" in language:
@@ -125,6 +127,7 @@ async def lifespan(application):
     db = Database()
     application.state.database = db
     application.state.config_error = None
+    application.state._mounted_theme_names = set()  # pylint: disable=protected-access
 
     if os.environ.get("DEVELOPMENT"):
         logging.getLogger("uvicorn.access").addFilter(_dev_reload_filter)
@@ -139,11 +142,22 @@ async def lifespan(application):
 
 app = FastAPI(title="Salut", lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=BASE_DIR.parent / "static"), name="static")
-app.mount("/themes", StaticFiles(directory=BASE_DIR / "themes"), name="themes")
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
 app.mount("/cache", StaticFiles(directory=CACHE_DIR), name="cache")
 
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
+
+
+def _mount_theme_static_dirs(fastapi_app):
+    """Mount each theme's static/ directory at /themes/<name>."""
+    mounted = fastapi_app.state._mounted_theme_names  # pylint: disable=protected-access
+    for name in discover_themes():
+        if name in mounted:
+            continue
+        static_dir = theme_static_dir(name)
+        if static_dir.is_dir():
+            fastapi_app.mount(f"/themes/{name}", StaticFiles(directory=static_dir), name=f"themes-{name}")
+            mounted.add(name)
 
 
 def _theme_context(styles):

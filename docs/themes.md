@@ -1,6 +1,6 @@
 # Themes
 
-Themes control the visual tokens of your start page: colors, font family, and card border radius. Each theme is a directory under `src/themes/` containing a `theme.yml` file, plus optional font assets.
+Themes control the visual tokens of your start page: colors, font family, and card border radius. Each theme is a directory under `src/themes/` containing a `theme.yml` file, plus an optional `static/` subdirectory for servable font assets.
 
 ## Selecting a theme
 
@@ -26,13 +26,17 @@ The page still switches modes with `data-theme="light"` and `data-theme="dark"`;
 src/themes/
 ├── default-light/
 │   ├── theme.yml
-│   ├── fonts.css
-│   └── Inter-Variable.woff2
+│   └── static/
+│       ├── fonts.css
+│       ├── Inter-Variable.woff2
+│       └── Inter-License.txt
 └── default-dark/
     └── theme.yml
 ```
 
 A theme is discovered when its directory contains a `theme.yml` file. The directory name is the name used in the config.
+
+Only the `static/` subdirectory is served under `/themes/<theme-name>/`. Files outside `static/` (such as `theme.yml` and Python modules) are not accessible via HTTP.
 
 ## theme.yml
 
@@ -98,7 +102,7 @@ colors:
 
 ## Fonts
 
-A theme directory can bundle its own font files and declare them in a `fonts.css` file:
+A theme can bundle its own font files and declare them in a `fonts.css` file placed in the theme's `static/` subdirectory:
 
 ```css
 @font-face {
@@ -110,13 +114,13 @@ A theme directory can bundle its own font files and declare them in a `fonts.css
 }
 ```
 
-Font files are referenced relative to the `fonts.css` file itself. Theme directories are served under `/themes/`, so the example above resolves to `/themes/<theme-name>/Inter-Variable.woff2`.
+Font files are referenced relative to the `fonts.css` file itself. The `static/` subdirectory is served under `/themes/<theme-name>/`, so the example above resolves to `/themes/<theme-name>/Inter-Variable.woff2`.
 
 At render time, the page includes a `<link>` tag for every `fonts.css` found in the inheritance chains of the active light and dark themes, so a child theme automatically picks up its parent's fonts.
 
 ## Built-in themes
 
-- `default-light` — the original light palette, bundles the Inter font.
+- `default-light` — the original light palette, bundles the Inter font in `static/`.
 - `default-dark` — extends `default-light` and overrides only the colors.
 
 The configuration error page always uses the built-in themes, since the configured theme may be the very thing that failed to load.

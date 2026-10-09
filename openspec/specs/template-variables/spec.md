@@ -30,7 +30,7 @@ The system SHALL recursively resolve `${...}` template variables in all string v
 - **THEN** the resolved value is `"Chris"`
 
 ### Requirement: Client-side `{{...}}` variable replacement
-The system SHALL replace all `{{...}}` placeholders in the rendered page HTML using client-side JavaScript. Built-in variables include `{{time_emoji}}`, `{{date}}`, and `{{theme_toggle}}`.
+The system SHALL replace all `{{...}}` placeholders in the rendered page HTML using client-side JavaScript. Built-in variables include `{{time_emoji}}`, `{{date}}`, and `{{theme_toggle}}`. When a single theme is configured, `{{theme_toggle}}` SHALL render a disabled button that does not switch modes.
 
 #### Scenario: Time emoji replacement
 - **WHEN** the page renders and contains `{{time_emoji}}`
@@ -43,6 +43,10 @@ The system SHALL replace all `{{...}}` placeholders in the rendered page HTML us
 #### Scenario: Theme toggle replacement
 - **WHEN** the page renders and contains `{{theme_toggle}}`
 - **THEN** the placeholder is replaced with a theme toggle button
+
+#### Scenario: Theme toggle disabled for single theme
+- **WHEN** the config selects a single theme and the page renders with `{{theme_toggle}}`
+- **THEN** the placeholder is replaced with a disabled theme toggle button that does not switch modes
 
 #### Scenario: Variable in card content
 - **WHEN** an HTML card's rendered content contains `{{time_emoji}}`
