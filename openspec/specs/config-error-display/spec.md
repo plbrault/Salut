@@ -1,5 +1,5 @@
 ### Requirement: Application displays error page for invalid config
-The application SHALL start even when the configuration file contains invalid YAML or fails validation. It SHALL display a user-friendly error page with the specific error message instead of crashing.
+The application SHALL start even when the configuration file contains invalid YAML or fails validation. It SHALL display a user-friendly error page with the specific error message instead of crashing. The error page SHALL apply a usable light/dark color scheme generated from the built-in default themes, since the configured theme may be the cause of the error.
 
 #### Scenario: Invalid YAML syntax
 - **WHEN** `config.yml` contains invalid YAML syntax (e.g., unclosed quotes, bad indentation)
@@ -16,6 +16,10 @@ The application SHALL start even when the configuration file contains invalid YA
 #### Scenario: Empty config file
 - **WHEN** `config.yml` exists but is empty
 - **THEN** the application starts and the web page displays an error message indicating the config file is empty
+
+#### Scenario: Error page uses built-in theme fallback
+- **WHEN** the error page renders because the config contains an invalid `theme` value
+- **THEN** the page still applies a usable light/dark color scheme from the built-in default themes
 
 #### Scenario: Valid config
 - **WHEN** `config.yml` is valid and passes all validation

@@ -7,7 +7,7 @@ Light/dark theme system with browser preference detection, local storage persist
 ## Requirements
 
 ### Requirement: Theme system with light and dark modes
-The system SHALL provide light and dark color schemes using CSS custom properties. Colors SHALL be defined as variables on `:root` for light mode and `[data-theme="dark"]` for dark mode.
+The system SHALL provide light and dark color schemes using CSS custom properties generated from the configured themes. Colors SHALL be defined as variables on `:root` and `[data-theme="light"]` for light mode and `[data-theme="dark"]` for dark mode. When a single theme is configured, both modes SHALL use the same palette.
 
 #### Scenario: Light mode by default
 - **WHEN** a user visits the page with no stored preference and browser prefers light mode
@@ -16,6 +16,10 @@ The system SHALL provide light and dark color schemes using CSS custom propertie
 #### Scenario: Dark mode by default
 - **WHEN** a user visits the page with no stored preference and browser prefers dark mode
 - **THEN** the page renders with dark theme colors
+
+#### Scenario: Single theme applies to both modes
+- **WHEN** a single theme is configured and the page renders
+- **THEN** both light and dark modes use the single theme's palette
 
 ### Requirement: Browser preference detection
 The system SHALL detect the browser's `prefers-color-scheme` media feature on initial load when no local storage override exists.
@@ -40,14 +44,14 @@ The system SHALL persist the user's theme choice in local storage under the key 
 - **THEN** the page applies dark mode regardless of browser preference
 
 ### Requirement: Theme toggle template variable
-The system SHALL provide a `{{theme_toggle}}` client-side template variable that renders a theme toggle button. Users SHALL be able to place `{{theme_toggle}}` in the `page_header` config field or in an HTML card's content.
+The system SHALL provide a `{{theme_toggle}}` client-side template variable that renders a theme toggle button. Users SHALL be able to place `{{theme_toggle}}` in the `page_header` config field or in an HTML card's content. When a single theme is configured, the button SHALL render disabled.
 
 #### Scenario: Toggle in page header
-- **WHEN** the `page_header` config contains `{{theme_toggle}}`
+- **WHEN** the `page_header` config contains `{{theme_toggle}}
 - **THEN** a theme toggle button is rendered in the header
 
 #### Scenario: Toggle in HTML card
-- **WHEN** an HTML card's `html` option contains `{{theme_toggle}}`
+- **WHEN** an HTML card's `html` option contains `{{theme_toggle}}
 - **THEN** a theme toggle button is rendered inside that card
 
 #### Scenario: Toggle appearance
@@ -57,6 +61,10 @@ The system SHALL provide a `{{theme_toggle}}` client-side template variable that
 #### Scenario: Toggle switches theme
 - **WHEN** the user clicks the theme toggle button
 - **THEN** the theme switches from light to dark or dark to light
+
+#### Scenario: Toggle disabled for single theme
+- **WHEN** the config selects a single theme and the page renders with `{{theme_toggle}}`
+- **THEN** the theme toggle button is rendered but disabled and does not switch modes
 
 ### Requirement: Theme toggle button styling
 The theme toggle button SHALL have a standard appearance: a minimal circular button with an icon, hover effect, and no visible border.
