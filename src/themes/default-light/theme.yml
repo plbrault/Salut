@@ -1,0 +1,18 @@
+name: "Default Light"
+
+colors:
+  bg: "#f3f4f6"
+  card_bg: "white"
+  text: "#111827"
+  text_muted: "#6b7280"
+  text_faint: "#9ca3af"
+  border: "#e5e7eb"
+  link: "#2563eb"
+  link_hover: "#1d4ed8"
+  code_bg: "#f3f4f6"
+
+fonts:
+  family: "'Inter', sans-serif"
+
+radius:
+  card: "0.5rem"

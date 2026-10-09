@@ -7,13 +7,20 @@
     {% if favicon %}<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>{{ favicon }}</text></svg>">{% endif %}
     <script src="/static/tailwindcss.js"></script>
     <script src="/static/htmx.min.js"></script>
+    {% for href in theme_font_links %}
+    <link rel="stylesheet" href="{{ href }}">
+    {% endfor %}
     <script>
+        window.themeConfig = {{ theme_config | safe }};
         (function() {
-            var stored = localStorage.getItem('theme');
-            var theme = stored || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            var theme = 'light';
+            if (!window.themeConfig.single) {
+                theme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            }
             document.documentElement.dataset.theme = theme;
 
             window.toggleTheme = function() {
+                if (window.themeConfig.single) return;
                 var current = document.documentElement.dataset.theme;
                 var next = current === 'dark' ? 'light' : 'dark';
                 document.documentElement.dataset.theme = next;
@@ -29,42 +36,14 @@
         })();
     </script>
     <style>
-        @font-face {
-            font-family: 'Inter';
-            font-style: normal;
-            font-weight: 100 900;
-            font-display: swap;
-            src: url('/static/fonts/Inter-Variable.woff2') format('woff2');
-        }
-        :root {
-            --bg: #f3f4f6;
-            --card-bg: white;
-            --text: #111827;
-            --text-muted: #6b7280;
-            --text-faint: #9ca3af;
-            --border: #e5e7eb;
-            --link: #2563eb;
-            --link-hover: #1d4ed8;
-            --code-bg: #f3f4f6;
-        }
-        [data-theme="dark"] {
-            --bg: #111827;
-            --card-bg: #1f2937;
-            --text: #f9fafb;
-            --text-muted: #9ca3af;
-            --text-faint: #6b7280;
-            --border: #374151;
-            --link: #60a5fa;
-            --link-hover: #93bbfd;
-            --code-bg: #283548;
-        }
+        {{ theme_css | safe }}
         header {
             display: flex;
             justify-content: space-between;
             align-items: baseline;
         }
         header h1 {
-            font-family: 'Inter', sans-serif;
+            font-family: var(--font-family);
             font-size: 2.5rem;
             font-weight: bold;
             color: var(--text);
@@ -81,14 +60,14 @@
         .card {
             position: absolute;
             background: var(--card-bg);
-            border-radius: 0.5rem;
+            border-radius: var(--card-radius);
             border: 1px solid var(--border);
             padding: 1rem;
             box-sizing: border-box;
             color: var(--text);
         }
         .card h3 {
-            font-family: 'Inter', sans-serif;
+            font-family: var(--font-family);
             color: var(--text);
         }
         .theme-toggle {
@@ -106,6 +85,10 @@
         .theme-toggle:hover {
             background-color: var(--border);
         }
+        .theme-toggle:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
     </style>
     {% if plugin_style_rules %}
     <style>
@@ -113,7 +96,7 @@
     </style>
     {% endif %}
 </head>
-<body class="p-8" style="background: var(--bg); font-family: 'Inter', sans-serif;">
+<body class="p-8" style="background: var(--bg); font-family: var(--font-family);">
     <header>
         {{ page_header | safe }}
     </header>
@@ -167,8 +150,9 @@
 
             // Theme toggle button
             var theme = document.documentElement.dataset.theme || 'light';
-            var toggleHtml = '<button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">'
-                + (theme === 'dark' ? window.themeIcons.moon : window.themeIcons.sun)
+            var single = window.themeConfig.single;
+            var toggleHtml = '<button class="theme-toggle"' + (single ? ' disabled' : '') + ' onclick="toggleTheme()" aria-label="Toggle theme">'
+                + (theme === 'dark' && !single ? window.themeIcons.moon : window.themeIcons.sun)
                 + '</button>';
 
             document.body.innerHTML = document.body.innerHTML

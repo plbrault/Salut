@@ -3,6 +3,7 @@ from pathlib import Path
 import yaml
 
 from src.plugins import load_plugin_class
+from src.themes import ThemeError, load_resolved_theme
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -172,6 +173,40 @@ def _validate_admin_password(config, filename):
             raise ConfigError(f"{filename}: 'admin_password' must be a non-empty string.")
 
 
+def _validate_theme(config, filename):
+    """Validate the theme field and the themes it references."""
+    theme = config.get("theme")
+    if theme is None:
+        return
+
+    if isinstance(theme, str):
+        if not theme:
+            raise ConfigError(f"{filename}: 'theme' must be a non-empty string.")
+        names = [theme]
+    elif isinstance(theme, dict):
+        unknown = set(theme) - {"light", "dark"}
+        if unknown:
+            raise ConfigError(
+                f"{filename}: 'theme' has unknown key(s): {', '.join(sorted(unknown))}."
+            )
+        names = []
+        for key in ("light", "dark"):
+            value = theme.get(key)
+            if not value or not isinstance(value, str):
+                raise ConfigError(f"{filename}: 'theme.{key}' must be a non-empty string.")
+            names.append(value)
+    else:
+        raise ConfigError(
+            f"{filename}: 'theme' must be a string or a mapping with 'light' and 'dark'."
+        )
+
+    for name in names:
+        try:
+            load_resolved_theme(name)
+        except ThemeError as e:
+            raise ConfigError(f"{filename}: {e.message}") from e
+
+
 def validate_config(config, filename="config"):
     if not isinstance(config, dict):
         raise ConfigError(f"{filename}: config must be a mapping (key-value pairs).")
@@ -182,3 +217,4 @@ def validate_config(config, filename="config"):
     _validate_user_info(config, filename)
     _validate_cards(config, filename)
     _validate_admin_password(config, filename)
+    _validate_theme(config, filename)

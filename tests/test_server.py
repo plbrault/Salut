@@ -3,7 +3,7 @@ from unittest.mock import patch
 from apscheduler.schedulers.background import BackgroundScheduler
 from fastapi.testclient import TestClient
 
-from src.config import ConfigError
+from src.config import ConfigError, load_config
 from src.main import app
 from src.plugins.html import HtmlPlugin
 from src.plugins.search import SearchPlugin
@@ -192,6 +192,51 @@ class TestServer:
             response = client.get("/")
             assert response.status_code == 200
             assert "Configuration Error" not in response.text
+
+    def test_index_contains_generated_theme_css(self):
+        with TestClient(app) as client:
+            response = client.get("/")
+            assert "--font-family:" in response.text
+            assert "--card-radius:" in response.text
+            assert ':root,' in response.text
+            assert '[data-theme="light"]' in response.text
+
+    def test_index_links_theme_fonts_css(self):
+        with TestClient(app) as client:
+            response = client.get("/")
+            assert 'href="/themes/default-light/fonts.css"' in response.text
+
+    def test_index_defines_theme_config(self):
+        with TestClient(app) as client:
+            response = client.get("/")
+            assert "window.themeConfig" in response.text
+            assert '"single": false' in response.text
+
+    def test_theme_files_are_served(self):
+        with TestClient(app) as client:
+            assert client.get("/themes/default-light/fonts.css").status_code == 200
+            assert client.get("/themes/default-light/Inter-Variable.woff2").status_code == 200
+
+    def test_error_page_uses_fallback_theme_css(self):
+        error_msg = "config.yml: 'theme' must be a non-empty string."
+        with patch("src.main.load_config", side_effect=ConfigError(error_msg)):
+            with TestClient(app) as client:
+                response = client.get("/")
+                assert "--error-bg:" in response.text
+                assert "--bg: #f3f4f6;" in response.text
+                assert "--bg: #111827;" in response.text
+
+    def test_single_theme_config_applies_palette_to_both_modes(self):
+        def load_single_theme():
+            config = load_config()
+            config["theme"] = "default-light"
+            return config
+
+        with patch("src.main.load_config", side_effect=load_single_theme):
+            with TestClient(app) as client:
+                response = client.get("/")
+                assert '"single": true' in response.text
+                assert response.text.count("--bg: #f3f4f6;") == 2
 
     def test_scheduler_misfire_grace_time_unlimited(self):
         s = BackgroundScheduler(job_defaults={"misfire_grace_time": None})

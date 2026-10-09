@@ -4,6 +4,10 @@ page_header: "<h1>${i18n.hi} ${user_info.short_name} {{time_emoji}}</h1><span>{{
 language: en
 admin_password: ${secrets.admin_password}
 
+theme:
+  light: default-light
+  dark: default-dark
+
 user_info:
   short_name: Chris
   long_name: Chris P. Bacon
