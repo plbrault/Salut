@@ -1,6 +1,4 @@
 from abc import ABC, abstractmethod
-import hashlib
-import json
 from pathlib import Path
 
 from apscheduler.triggers.cron import CronTrigger
@@ -24,15 +22,14 @@ class Plugin(ABC):
         return {}
 
     @abstractmethod
-    def setup(self, options, database, scheduler, logger, *, card_id=None):
-        """Initialize the plugin for a card. Called once at startup.
+    def setup(self, cards, database, scheduler, logger):
+        """Initialize the plugin for all cards using this plugin.
 
         Args:
-            options: Plugin-specific options from config.
+            cards: List of dicts, each with 'card_id' and 'options'.
             database: Database instance.
             scheduler: APScheduler instance.
             logger: Logger instance.
-            card_id: Optional custom card_id from YAML config.
         """
 
     @abstractmethod
@@ -80,9 +77,3 @@ class Plugin(ABC):
     def set_translations(self, translations):
         """Set translations directly (for testing)."""
         self._translations = translations
-
-    @staticmethod
-    def compute_card_id(options):
-        """Compute a card ID from options by hashing them."""
-        raw = json.dumps(options, sort_keys=True, default=str)
-        return hashlib.sha256(raw.encode()).hexdigest()[:16]

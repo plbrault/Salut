@@ -24,7 +24,6 @@ class ImagePlugin(Plugin):
         super().__init__()
         self._database = None
         self._logger = None
-        self._card_id = None
         self._template = self.load_template(
             Path(__file__).resolve().parent, "template.html"
         )
@@ -80,22 +79,25 @@ class ImagePlugin(Plugin):
             """
         )
 
-    def setup(self, options, database, scheduler, logger, *, card_id=None):
+    def setup(self, cards, database, scheduler, logger):
         self._database = database
         self._logger = logger
-        self._card_id = card_id if card_id else ImageCache.compute_card_id(options)
 
-        schedule = options.get("schedule")
+        for card in cards:
+            card_id = card["card_id"]
+            options = card.get("options", {})
 
-        self._fetch_image(options)
-        if schedule:
-            scheduler.add_job(
-                self._fetch_image,
-                trigger=self.parse_schedule(schedule),
-                args=[options],
-                id=f"image_{self._card_id}",
-                replace_existing=True,
-            )
+            schedule = options.get("schedule")
+
+            self._fetch_image_for_card(card_id, options)
+            if schedule:
+                scheduler.add_job(
+                    self._fetch_image_for_card,
+                    trigger=self.parse_schedule(schedule),
+                    args=[card_id, options],
+                    id=f"image_{card_id}",
+                    replace_existing=True,
+                )
 
     def render(self, cards):
         results = []
@@ -104,7 +106,7 @@ class ImagePlugin(Plugin):
             card_id = card["card_id"]
 
             if not options.get("schedule"):
-                row = self._fetch_image(options)
+                row = self._fetch_image_for_card(card_id, options)
                 if not row:
                     results.append("")
                     continue
@@ -137,10 +139,10 @@ class ImagePlugin(Plugin):
             ))
         return results
 
-    def _fetch_image(self, options):
+    def _fetch_image_for_card(self, card_id, options):
         try:
             provider_type = options.get("provider_type")
-            self._logger.info("Fetching image for card %s (provider: %s)", self._card_id, provider_type)
+            self._logger.info("Fetching image for card %s (provider: %s)", card_id, provider_type)
 
             if provider_type == "rss":
                 img_url, source_link = self._fetch_from_rss(options)
@@ -152,29 +154,29 @@ class ImagePlugin(Plugin):
                 return None
 
             if not img_url:
-                self._logger.warning("No image found for card %s", self._card_id)
+                self._logger.warning("No image found for card %s", card_id)
                 return None
 
             schedule = options.get("schedule")
             if schedule:
-                cache = ImageCache("image", self._card_id, self._logger)
+                cache = ImageCache("image", card_id, self._logger)
                 local_url = cache.download(img_url, filename="comic.jpg")
                 if not local_url:
-                    self._logger.warning("Failed to download image for card %s, keeping previous", self._card_id)
+                    self._logger.warning("Failed to download image for card %s, keeping previous", card_id)
                     return None
 
                 data = (cache.directory / "comic.jpg").read_bytes()
                 img_width, img_height = self._get_image_dimensions(data)
 
-                self._delete_previous_image()
+                self._delete_previous_image(card_id)
                 self._store_image(
-                    card_id=self._card_id,
+                    card_id=card_id,
                     source_url=source_link,
                     img_url=local_url,
                     img_width=img_width,
                     img_height=img_height,
                 )
-                self._logger.info("Image fetched for card %s", self._card_id)
+                self._logger.info("Image fetched for card %s", card_id)
                 return None
 
             return {
@@ -322,10 +324,10 @@ class ImagePlugin(Plugin):
             return "", ""
         return str(source_path), "#"
 
-    def _delete_previous_image(self):
+    def _delete_previous_image(self, card_id):
         self._database.execute(
             "DELETE FROM image_items WHERE card_id = ?",
-            (self._card_id,),
+            (card_id,),
         )
 
     def _store_image(self, **kwargs):

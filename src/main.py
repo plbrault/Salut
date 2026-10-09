@@ -22,7 +22,7 @@ from src.database import Database
 from src.i18n import load_global_i18n
 from src.template import resolve_all_config_vars
 from src.themes import ThemeError, built_in_theme_styles, generate_theme_css
-from src.plugins import setup_card, render_cards_batch, init_plugins_schemas, load_plugin_class
+from src.plugins import setup_plugin, render_cards, init_plugins_schemas
 from src.admin import (
     COOKIE_NAME, COOKIE_MAX_AGE,
     is_admin_enabled, check_admin_auth,
@@ -86,12 +86,27 @@ def reload_app_state():
     app.state.config = resolved_config
 
     plugin_instances = {}
+    card_ids = {}
+    for card in app.state.config.get("cards", []):
+        card_id = _compute_card_id(card)
+        card["card_id"] = card_id
+        card_ids[card_id] = card
+
+    plugin_groups = {}
     for card in app.state.config.get("cards", []):
         plugin_name = card.get("plugin")
         if plugin_name:
-            instance = setup_card(card, db, scheduler, language)
-            if instance is not None and plugin_name not in plugin_instances:
-                plugin_instances[plugin_name] = instance
+            if plugin_name not in plugin_groups:
+                plugin_groups[plugin_name] = []
+            plugin_groups[plugin_name].append(card)
+
+    for plugin_name, group in plugin_groups.items():
+        batch_cards = [{"card_id": c["card_id"], "options": c.get("options", {})}
+                       for c in group]
+        instance = setup_plugin(plugin_name, batch_cards, db, scheduler,
+                                language, card_ids=card_ids)
+        if instance is not None:
+            plugin_instances[plugin_name] = instance
     app.state.plugin_instances = plugin_instances
 
 
@@ -139,13 +154,11 @@ def _theme_context(styles):
     }
 
 
-def _compute_card_id(plugin_name, options, card_idx, card):
+def _compute_card_id(card):
     if "card_id" in card:
         return card["card_id"]
-    plugin_class = load_plugin_class(plugin_name)
-    if plugin_class and hasattr(plugin_class, "compute_card_id"):
-        return plugin_class.compute_card_id(options)
-    return f"{plugin_name}_{card_idx}"
+    raw = json.dumps(card.get("options", {}), sort_keys=True, default=str)
+    return hashlib.sha256(raw.encode()).hexdigest()[:16]
 
 
 def _render_cards(cards):
@@ -164,11 +177,10 @@ def _render_cards(cards):
         indices = [card_pos for card_pos, _ in group]
         batch_cards = []
         for card_pos, card in group:
-            options = card.get("options", {})
-            card_id = _compute_card_id(plugin_name, options, card_pos, card)
-            batch_cards.append({"options": options, "card_id": card_id})
+            batch_cards.append({"options": card.get("options", {}),
+                                "card_id": card.get("card_id")})
 
-        html_list = render_cards_batch(plugin_name, batch_cards, instances)
+        html_list = render_cards(plugin_name, batch_cards, instances)
 
         for i, card_pos in enumerate(indices):
             rendered[card_pos] = {

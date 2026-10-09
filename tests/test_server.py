@@ -68,12 +68,11 @@ class TestServer:
             assert "{{" not in response.text or "time_emoji" in response.text
 
     def test_card_divs_have_plugin_css_class(self):
-        with patch("src.main.setup_card") as real_setup:
-            def fake_setup(card, _db, _scheduler, _language):
-                name = card.get("plugin")
-                if name == "html":
+        with patch("src.main.setup_plugin") as real_setup:
+            def fake_setup(plugin_name, _cards, _db, _scheduler, _language="en", **_kwargs):
+                if plugin_name == "html":
                     return HtmlPlugin()
-                if name == "search":
+                if plugin_name == "search":
                     return SearchPlugin()
                 return None
             real_setup.side_effect = fake_setup
@@ -82,12 +81,11 @@ class TestServer:
                 assert "card html-card" in response.text
 
     def test_plugin_style_rules_rendered(self):
-        with patch("src.main.setup_card") as real_setup:
-            def fake_setup(card, _db, _scheduler, _language):
-                name = card.get("plugin")
-                if name == "html":
+        with patch("src.main.setup_plugin") as real_setup:
+            def fake_setup(plugin_name, _cards, _db, _scheduler, _language="en", **_kwargs):
+                if plugin_name == "html":
                     return HtmlPlugin()
-                if name == "search":
+                if plugin_name == "search":
                     return SearchPlugin()
                 return None
             real_setup.side_effect = fake_setup

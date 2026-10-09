@@ -21,7 +21,6 @@ class CalendarPlugin(Plugin):
         super().__init__()
         self._database = None
         self._logger = None
-        self._card_id = None
         self._template = self.load_template(
             Path(__file__).resolve().parent, "template.html"
         )
@@ -113,23 +112,26 @@ class CalendarPlugin(Plugin):
             """
         )
 
-    def setup(self, options, database, scheduler, logger, *, card_id=None):
+    def setup(self, cards, database, scheduler, logger):
         self._database = database
         self._logger = logger
-        self._card_id = card_id if card_id else self._compute_card_id(options)
 
-        calendars = options.get("calendars", [])
-        time_window_days = options.get("time_window_days", 7)
-        schedule = options["schedule"]
+        for card in cards:
+            card_id = card["card_id"]
+            options = card.get("options", {})
 
-        self._fetch_events(calendars, time_window_days)
-        scheduler.add_job(
-            self._fetch_events,
-            trigger=self.parse_schedule(schedule),
-            args=[calendars, time_window_days],
-            id=f"calendar_{self._card_id}",
-            replace_existing=True,
-        )
+            calendars = options.get("calendars", [])
+            time_window_days = options.get("time_window_days", 7)
+            schedule = options["schedule"]
+
+            self._fetch_events_for_card(card_id, calendars, time_window_days)
+            scheduler.add_job(
+                self._fetch_events_for_card,
+                trigger=self.parse_schedule(schedule),
+                args=[card_id, calendars, time_window_days],
+                id=f"calendar_{card_id}",
+                replace_existing=True,
+            )
 
     def render(self, cards):
         results = []
@@ -158,10 +160,10 @@ class CalendarPlugin(Plugin):
             results.append(html)
         return results
 
-    def _fetch_events(self, calendars, time_window_days):
+    def _fetch_events_for_card(self, card_id, calendars, time_window_days):
         self._logger.info(
             "Fetching calendar events for card %s (%d calendars)",
-            self._card_id, len(calendars)
+            card_id, len(calendars)
         )
 
         now = datetime.now(timezone.utc)
@@ -180,9 +182,9 @@ class CalendarPlugin(Plugin):
             "Total events after merge/sort: %d", len(all_events)
         )
 
-        self._store_events(all_events)
+        self._store_events(card_id, all_events)
         self._logger.info(
-            "Finished fetching calendar events for card %s", self._card_id
+            "Finished fetching calendar events for card %s", card_id
         )
 
     def _fetch_single_calendar(self, cal_config, start, end):
@@ -312,14 +314,14 @@ class CalendarPlugin(Plugin):
         self._logger.info("Got %d events from ICS calendar", len(result))
         return result
 
-    def _store_events(self, events):
+    def _store_events(self, card_id, events):
         self._database.execute(
             "DELETE FROM calendar_events WHERE card_id = ?",
-            (self._card_id,),
+            (card_id,),
         )
         self._database.execute(
             "INSERT INTO calendar_events (card_id, events) VALUES (?, ?)",
-            (self._card_id, json.dumps(events)),
+            (card_id, json.dumps(events)),
         )
 
     @staticmethod

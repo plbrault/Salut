@@ -1,5 +1,6 @@
 import hashlib
 import json
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -14,7 +15,6 @@ class GithubPlugin(Plugin):
         super().__init__()
         self._database = None
         self._logger = None
-        self._card_id = None
         self._template = self.load_template(
             Path(__file__).resolve().parent, "template.html"
         )
@@ -61,6 +61,7 @@ class GithubPlugin(Plugin):
                 thread_id INTEGER NOT NULL,
                 repo_name TEXT NOT NULL,
                 subject_title TEXT NOT NULL,
+                subject_type TEXT NOT NULL DEFAULT '',
                 reason TEXT NOT NULL,
                 updated_at TEXT NOT NULL,
                 web_url TEXT NOT NULL,
@@ -69,25 +70,28 @@ class GithubPlugin(Plugin):
             """
         )
 
-    def setup(self, options, database, scheduler, logger, *, card_id=None):
+    def setup(self, cards, database, scheduler, logger):
         self._database = database
         self._logger = logger
-        self._card_id = card_id if card_id else self._compute_card_id(options)
 
-        token = options.get("token")
-        if not token:
-            return
+        for card in cards:
+            card_id = card["card_id"]
+            options = card.get("options", {})
 
-        schedule = options.get("schedule", "*/5 * * * *")
+            token = options.get("token")
+            if not token:
+                return
 
-        self._fetch_notifications(options)
-        scheduler.add_job(
-            self._fetch_notifications,
-            trigger=self.parse_schedule(schedule),
-            args=[options],
-            id=f"github_notifications_{self._card_id}",
-            replace_existing=True,
-        )
+            schedule = options.get("schedule", "*/5 * * * *")
+
+            self._fetch_notifications_for_card(card_id, options)
+            scheduler.add_job(
+                self._fetch_notifications_for_card,
+                trigger=self.parse_schedule(schedule),
+                args=[card_id, options],
+                id=f"github_notifications_{card_id}",
+                replace_existing=True,
+            )
 
     def render(self, cards):
         results = []
@@ -116,6 +120,7 @@ class GithubPlugin(Plugin):
                 notifications.append({
                     "repo_name": row["repo_name"],
                     "subject_title": row["subject_title"],
+                    "subject_type": row["subject_type"],
                     "reason": row["reason"],
                     "time_ago": self._time_ago(row["updated_at"]),
                     "web_url": row["web_url"],
@@ -127,10 +132,10 @@ class GithubPlugin(Plugin):
             ))
         return results
 
-    def _fetch_notifications(self, options):
+    def _fetch_notifications_for_card(self, card_id, options):
         try:
             token = options["token"]
-            self._logger.info("Fetching GitHub notifications for card %s", self._card_id)
+            self._logger.info("Fetching GitHub notifications for card %s", card_id)
 
             response = requests.get(
                 "https://api.github.com/notifications",
@@ -142,42 +147,51 @@ class GithubPlugin(Plugin):
             )
             response.raise_for_status()
 
-            self._delete_previous_notifications()
+            self._delete_previous_notifications(card_id)
 
             for thread in response.json():
-                thread_id = thread["id"]
-                repo_name = thread["repository"]["full_name"]
-                subject_title = thread["subject"]["title"]
-                reason = self._format_reason(thread["reason"])
-                updated_at = thread["updated_at"]
-                web_url = self._build_web_url(thread["subject"]["url"])
+                thread_id = thread.get("id")
+                repo_name = (thread.get("repository") or {}).get("full_name", "")
+                subject_title = (thread.get("subject") or {}).get("title", "")
+                subject_type = (thread.get("subject") or {}).get("type", "")
+                reason = thread.get("reason", "")
+                updated_at = thread.get("updated_at", "")
+                api_url = (thread.get("subject") or {}).get("url", "")
+
+                if not thread_id:
+                    continue
+
+                reason = self._format_reason(reason)
+                subject_type = self._format_subject_type(subject_type)
+                web_url = self._build_web_url(api_url) if api_url else ""
 
                 self._store_notification(
-                    card_id=self._card_id,
+                    card_id=card_id,
                     thread_id=thread_id,
                     repo_name=repo_name,
                     subject_title=subject_title,
+                    subject_type=subject_type,
                     reason=reason,
                     updated_at=updated_at,
                     web_url=web_url,
                 )
 
-            self._logger.info("GitHub notifications fetched for card %s", self._card_id)
+            self._logger.info("GitHub notifications fetched for card %s", card_id)
         except Exception as e:  # pylint: disable=broad-except
             self._logger.warning("Failed to fetch GitHub notifications: %s", e)
 
-    def _delete_previous_notifications(self):
+    def _delete_previous_notifications(self, card_id):
         self._database.execute(
             "DELETE FROM github_notifications WHERE card_id = ?",
-            (self._card_id,),
+            (card_id,),
         )
 
     def _store_notification(self, **kwargs):
         self._database.execute(
             """
             INSERT INTO github_notifications
-            (card_id, thread_id, repo_name, subject_title, reason, updated_at, web_url)
-            VALUES (:card_id, :thread_id, :repo_name, :subject_title, :reason, :updated_at, :web_url)
+            (card_id, thread_id, repo_name, subject_title, subject_type, reason, updated_at, web_url)
+            VALUES (:card_id, :thread_id, :repo_name, :subject_title, :subject_type, :reason, :updated_at, :web_url)
             """,
             kwargs,
         )
@@ -196,6 +210,13 @@ class GithubPlugin(Plugin):
     @staticmethod
     def _format_reason(reason):
         return reason.replace("_", " ").lower()
+
+    @staticmethod
+    def _format_subject_type(subject_type):
+        if not subject_type:
+            return ""
+        result = re.sub(r"([A-Z])", r" \1", subject_type).strip().lower()
+        return result
 
     @staticmethod
     def _time_ago(iso_timestamp):

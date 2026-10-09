@@ -12,3 +12,4 @@ good-names=i,j,k,e,f,db,id
 
 [DESIGN]
 max-args=10
+max-positional-arguments=6

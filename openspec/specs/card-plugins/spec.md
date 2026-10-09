@@ -23,6 +23,16 @@ The system SHALL load plugins from `src/plugins/` and use them to render card co
 - **WHEN** the server starts
 - **THEN** the system calls `plugin_class.init_schema(database)` for each plugin before calling `setup`
 
+#### Scenario: Plugin setup is called once per plugin type
+- **WHEN** multiple cards use the same plugin (e.g. three cards with `plugin: rss`)
+- **THEN** the system calls `setup_plugin` once for that plugin type, passing all cards as a list
+- **THEN** the plugin iterates over the card list internally, fetching data and scheduling jobs per card
+
+#### Scenario: Plugin receives card list in setup
+- **WHEN** `setup` is called on a plugin
+- **THEN** it receives a list of card dicts, each containing `card_id` and `options`
+- **AND** the plugin processes each card independently (fetching, scheduling, storing data)
+
 #### Scenario: Plugin provides card style rules
 - **WHEN** a plugin is queried for `card_style_rules`
 - **THEN** its class returns a dict mapping sub-selectors to CSS declarations
