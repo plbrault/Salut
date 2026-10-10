@@ -193,3 +193,61 @@ class TestValidateColumns:
             validate_config(_make_config(columns=3, cards=[
                 {"title": "A", "plugin": "html", "column": 2, "colspan": 3}
             ]))
+
+
+class TestValidateTheme:
+    def test_missing_theme_uses_default(self):
+        validate_config(_make_config())  # should not raise
+
+    def test_valid_theme_string(self):
+        validate_config(_make_config(theme="default-light"))  # should not raise
+
+    def test_valid_theme_pair(self):
+        validate_config(_make_config(
+            theme={"light": "default-light", "dark": "default-dark"}
+        ))  # should not raise
+
+    def test_invalid_theme_type(self):
+        with pytest.raises(ConfigError, match="'theme' must be a string"):
+            validate_config(_make_config(theme=["default-light"]))
+
+    def test_empty_theme_string(self):
+        with pytest.raises(ConfigError, match="'theme' must be a non-empty string"):
+            validate_config(_make_config(theme=""))
+
+    def test_empty_theme_mapping(self):
+        with pytest.raises(ConfigError, match="theme.light"):
+            validate_config(_make_config(theme={}))
+
+    def test_missing_dark_theme(self):
+        with pytest.raises(ConfigError, match="theme.dark"):
+            validate_config(_make_config(theme={"light": "default-light"}))
+
+    def test_empty_dark_theme(self):
+        with pytest.raises(ConfigError, match="theme.dark"):
+            validate_config(_make_config(theme={"light": "default-light", "dark": ""}))
+
+    def test_unknown_theme_key(self):
+        with pytest.raises(ConfigError, match="unknown key"):
+            validate_config(_make_config(theme={
+                "light": "default-light", "dark": "default-dark", "mode": "auto",
+            }))
+
+    def test_unknown_theme_directory(self):
+        with pytest.raises(ConfigError, match="not found"):
+            validate_config(_make_config(theme="does-not-exist"))
+
+    def test_theme_missing_theme_yml(self, tmp_path, monkeypatch):
+        (tmp_path / "yml-less").mkdir()
+        monkeypatch.setattr("src.themes.THEMES_DIR", tmp_path)
+        with pytest.raises(ConfigError, match="theme.yml"):
+            validate_config(_make_config(theme="yml-less"))
+
+    def test_circular_theme_inheritance(self, tmp_path, monkeypatch):
+        for name, parent in (("cycle-a", "cycle-b"), ("cycle-b", "cycle-a")):
+            theme_dir = tmp_path / name
+            theme_dir.mkdir()
+            (theme_dir / "theme.yml").write_text(yaml.dump({"extends": parent}))
+        monkeypatch.setattr("src.themes.THEMES_DIR", tmp_path)
+        with pytest.raises(ConfigError, match="Circular"):
+            validate_config(_make_config(theme="cycle-a"))

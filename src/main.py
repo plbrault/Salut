@@ -21,6 +21,7 @@ from src.config import ConfigError, load_config, load_secrets, validate_config
 from src.database import Database
 from src.i18n import load_global_i18n
 from src.template import resolve_all_config_vars
+from src.themes import ThemeError, built_in_theme_styles, generate_theme_css, discover_themes, theme_static_dir
 from src.plugins import setup_plugin, render_cards, init_plugins_schemas
 from src.admin import (
     COOKIE_NAME, COOKIE_MAX_AGE,
@@ -55,16 +56,21 @@ def reload_app_state():
     db = app.state.database
     try:
         app.state.config = load_config()
-    except ConfigError as e:
+        styles = generate_theme_css(app.state.config.get("theme"))
+    except (ConfigError, ThemeError) as e:
         app.state.config_error = e.message
         app.state.config = {}
         app.state.secrets = {}
         app.state.i18n = {}
         app.state.plugin_instances = {}
+        app.state.theme_styles = built_in_theme_styles()
         return
 
     app.state.config_error = None
+    app.state.theme_styles = styles
     app.state.secrets = load_secrets()
+
+    _mount_theme_static_dirs(app)
 
     language = app.state.config.get("language", "en")
     if isinstance(language, str) and "-" in language:
@@ -121,6 +127,7 @@ async def lifespan(application):
     db = Database()
     application.state.database = db
     application.state.config_error = None
+    application.state._mounted_theme_names = set()  # pylint: disable=protected-access
 
     if os.environ.get("DEVELOPMENT"):
         logging.getLogger("uvicorn.access").addFilter(_dev_reload_filter)
@@ -139,6 +146,26 @@ CACHE_DIR.mkdir(parents=True, exist_ok=True)
 app.mount("/cache", StaticFiles(directory=CACHE_DIR), name="cache")
 
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
+
+
+def _mount_theme_static_dirs(fastapi_app):
+    """Mount each theme's static/ directory at /themes/<name>."""
+    mounted = fastapi_app.state._mounted_theme_names  # pylint: disable=protected-access
+    for name in discover_themes():
+        if name in mounted:
+            continue
+        static_dir = theme_static_dir(name)
+        if static_dir.is_dir():
+            fastapi_app.mount(f"/themes/{name}", StaticFiles(directory=static_dir), name=f"themes-{name}")
+            mounted.add(name)
+
+
+def _theme_context(styles):
+    return {
+        "theme_css": styles.css,
+        "theme_font_links": styles.font_links,
+        "theme_config": json.dumps({"single": styles.single, "dark": styles.dark}),
+    }
 
 
 def _compute_card_id(card):
@@ -187,7 +214,7 @@ def index(request: Request):
         return templates.TemplateResponse(
             request,
             "error.html",
-            {"error": app.state.config_error},
+            {"error": app.state.config_error, **_theme_context(built_in_theme_styles())},
         )
 
     app_config = app.state.config
@@ -217,6 +244,7 @@ def index(request: Request):
             "cards": cards_data,
             "max_cols": resolved_config.get("columns", 3),
             "plugin_style_rules": plugin_style_rules,
+            **_theme_context(app.state.theme_styles),
         },
     )
 
@@ -252,7 +280,10 @@ def admin_login_page(request: Request):
         )
     if check_admin_auth(request):
         return RedirectResponse("/admin", status_code=302)
-    return templates.TemplateResponse(request, "admin.html", {"show_login": True, "error": None})
+    return templates.TemplateResponse(
+        request, "admin.html",
+        {"show_login": True, "error": None, **_theme_context(app.state.theme_styles)},
+    )
 
 
 @app.post("/admin/login")
@@ -274,7 +305,10 @@ async def admin_login(request: Request):
         cookie_value = create_session_cookie(password)
         response.set_cookie(COOKIE_NAME, cookie_value, max_age=COOKIE_MAX_AGE, httponly=True)
         return response
-    return templates.TemplateResponse(request, "admin.html", {"show_login": True, "error": "Invalid password"})
+    return templates.TemplateResponse(
+        request, "admin.html",
+        {"show_login": True, "error": "Invalid password", **_theme_context(app.state.theme_styles)},
+    )
 
 
 @app.post("/admin/logout")
@@ -308,6 +342,7 @@ def admin_page(request: Request, reloaded: bool = False):
         "config_exists": config_exists,
         "last_commit": _get_last_commit(),
         "reloaded": reloaded,
+        **_theme_context(app.state.theme_styles),
     })
 
 

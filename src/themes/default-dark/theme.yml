@@ -1,0 +1,13 @@
+name: "Default Dark"
+extends: default-light
+
+colors:
+  bg: "#111827"
+  card_bg: "#1f2937"
+  text: "#f9fafb"
+  text_muted: "#9ca3af"
+  text_faint: "#6b7280"
+  border: "#374151"
+  link: "#60a5fa"
+  link_hover: "#93bbfd"
+  code_bg: "#283548"

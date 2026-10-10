@@ -53,6 +53,10 @@ The admin page SHALL display a config editor with CodeMirror YAML syntax highlig
 - **WHEN** `config.yml` exists
 - **THEN** the admin page shows a CodeMirror editor pre-filled with the config content, along with Validate and Save & Reload buttons
 
+#### Scenario: Editor matches the active palette
+- **WHEN** dark mode is active, or a single dark theme is configured
+- **THEN** the CodeMirror editor uses its dark theme so it does not render a light editor over a dark page
+
 #### Scenario: config.yml does not exist
 - **WHEN** `config.yml` does not exist
 - **THEN** the admin page shows a message suggesting the user create one based on `starter.yml`, and hides the editor-dependent buttons

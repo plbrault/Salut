@@ -9,6 +9,7 @@
 * Single web page with no login (meant to be locally hosted)
 * YAML-based configuration
 * Internationalization (English and French currently supported)
+* Theme system
 * Layout consisting of cards based on plugins:
 
     * [Calendar](docs/plugins/calendar.md)

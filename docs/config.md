@@ -29,6 +29,23 @@ Salut is configured via a YAML file (`config.yml` or `starter.yml`). The `config
 - **Format:** BCP 47 tag (e.g., `en-US`, `fr-CA`) or simple language code (`en`, `fr`)
 - **Defaults for simple codes:** `en` → `en-US`, `fr` → `fr-FR`
 
+### theme
+
+- **Type:** string or object (optional)
+- **Description:** Theme(s) used to render the page. Either the name of a single theme, or a mapping naming one theme per mode. With a single theme, the theme toggle button is disabled since both modes use the same palette. If omitted, the default light/dark pair is used. See [Themes](themes.md) for how to author your own themes.
+- **Default:** `{ light: default-light, dark: default-dark }`
+- **Examples:**
+
+  ```yaml
+  theme: default-light
+  ```
+
+  ```yaml
+  theme:
+    light: default-light
+    dark: default-dark
+  ```
+
 ### user_info
 
 - **Type:** object (required)
@@ -148,7 +165,7 @@ Resolved client-side by JavaScript in the rendered HTML:
 |----------|-------------|
 | `{{time_emoji}}` | Time-based emoji (☀️ morning, 🌤️ afternoon, 🌙 evening, 🌑 night) |
 | `{{date}}` | Localized long-form date (e.g., "Friday, June 05, 2026") |
-| `{{theme_toggle}}` | Light/dark theme toggle button (sun/moon SVG icons) |
+| `{{theme_toggle}}` | Light/dark theme toggle button (sun/moon SVG icons). Disabled when a single theme is configured. |
 
 ## Example
 

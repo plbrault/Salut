@@ -24,7 +24,7 @@ The system SHALL load a YAML config file from the project root when the server s
 - **THEN** the server starts with a clear error message naming the parse error
 
 ### Requirement: Config schema is validated
-The system SHALL validate the parsed config has the required structure.
+The system SHALL validate the parsed config has the required structure, including the optional `theme` field.
 
 #### Scenario: Valid config structure
 - **WHEN** the config has a `page_title` string, a `page_header` string, a `language` string, a `user_info` object with `short_name` and `long_name` strings, a `columns` integer, and a `cards` list with at least one card, each card having `title`, `plugin`, and `options`
@@ -33,6 +33,22 @@ The system SHALL validate the parsed config has the required structure.
 #### Scenario: Optional admin_password
 - **WHEN** the config has an `admin_password` field with a non-empty string value
 - **THEN** the config is accepted and the admin panel is enabled
+
+#### Scenario: Theme pair is valid
+- **WHEN** the config has a `theme` field with `light` and `dark` keys naming existing themes
+- **THEN** the config is accepted
+
+#### Scenario: Single theme string is valid
+- **WHEN** the config has a `theme` field with a single theme name string
+- **THEN** the config is accepted
+
+#### Scenario: Invalid theme type
+- **WHEN** the config has a `theme` field that is neither a string nor a mapping with `light` and `dark` keys
+- **THEN** a validation error is raised indicating the theme must be a string or a light/dark mapping
+
+#### Scenario: Unknown theme
+- **WHEN** the config `theme` field references a theme directory that does not exist
+- **THEN** a validation error is raised indicating the theme was not found
 
 #### Scenario: Missing columns
 - **WHEN** the config has no `columns` field
