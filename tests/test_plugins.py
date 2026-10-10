@@ -1338,6 +1338,12 @@ class TestPluginDarkMode:
         assert "#d1d5db" not in content
         assert "var(--border)" in content
 
+    def test_search_style_rules_use_css_variables(self):
+        rules = SearchPlugin.card_style_rules()
+        assert "var(--accent)" in rules["button"]
+        assert "var(--accent-contrast)" in rules["button"]
+        assert "var(--accent-hover)" in rules["button:hover"]
+
     def test_calendar_template_no_hardcoded_colors(self):
         template_path = Path(__file__).resolve().parent.parent / "src" / "plugins" / "calendar" / "template.html"
         content = template_path.read_text()
