@@ -15,7 +15,7 @@
     <script>
         window.themeConfig = {{ theme_config | safe }};
         var theme = window.themeConfig.single
-            ? 'light'
+            ? (window.themeConfig.dark ? 'dark' : 'light')
             : (localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
         document.documentElement.dataset.theme = theme;
     </script>

@@ -237,6 +237,19 @@ class TestServer:
                 assert '"single": true' in response.text
                 assert response.text.count("--bg: #f3f4f6;") == 2
 
+    def test_single_dark_theme_marks_admin_editor_dark(self):
+        def load_single_dark_theme():
+            config = load_config()
+            config["theme"] = "default-dark"
+            config["admin_password"] = "secret"
+            return config
+
+        with patch("src.main.load_config", side_effect=load_single_dark_theme):
+            with TestClient(app) as client:
+                response = client.get("/admin/login")
+                assert '"single": true' in response.text
+                assert '"dark": true' in response.text
+
     def test_scheduler_misfire_grace_time_unlimited(self):
         s = BackgroundScheduler(job_defaults={"misfire_grace_time": None})
         s.start()

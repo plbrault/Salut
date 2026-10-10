@@ -11,6 +11,7 @@ from src.themes import (
     load_resolved_theme,
     load_theme,
     normalize_theme_config,
+    palette_is_dark,
     resolve_theme,
     theme_chain,
     validate_theme,
@@ -205,6 +206,21 @@ class TestGenerateThemeCss:
         assert ':root,\n[data-theme="light"]' in styles.css
         assert '[data-theme="dark"]' in styles.css
 
+    def test_single_light_theme_is_not_dark(self):
+        styles = generate_theme_css("default-light")
+        assert styles.single is True
+        assert styles.dark is False
+
+    def test_single_dark_theme_is_dark(self):
+        styles = generate_theme_css("default-dark")
+        assert styles.single is True
+        assert styles.dark is True
+
+    def test_pair_theme_is_not_dark(self):
+        styles = generate_theme_css({"light": "default-light", "dark": "default-dark"})
+        assert styles.single is False
+        assert styles.dark is False
+
     def test_pair_theme_uses_distinct_palettes(self):
         styles = generate_theme_css({"light": "default-light", "dark": "default-dark"})
         assert styles.single is False
@@ -250,3 +266,27 @@ class TestGenerateThemeCss:
         assert "--bg: #f3f4f6;" in styles.css
         assert "--bg: #111827;" in styles.css
         assert styles.font_links == ["/themes/default-light/fonts.css"]
+
+
+class TestPaletteIsDark:
+    @pytest.mark.parametrize("bg, expected", [
+        ("#ffffff", False),
+        ("#000000", True),
+        ("#fff", False),
+        ("#111827", True),
+        ("#f3f4f6", False),
+        ("white", False),
+        ("black", True),
+        ("rgb(17, 24, 39)", True),
+        ("rgb(243, 244, 246)", False),
+        ("rgba(17, 24, 39, 0.9)", True),
+    ])
+    def test_common_color_formats(self, bg, expected):
+        assert palette_is_dark({"colors": {"bg": bg}}) is expected
+
+    def test_missing_background_defaults_to_light(self):
+        assert palette_is_dark({"colors": {}}) is False
+        assert palette_is_dark({}) is False
+
+    def test_unparseable_background_defaults_to_light(self):
+        assert palette_is_dark({"colors": {"bg": "url(paper.png)"}}) is False

@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 from typing import NamedTuple
 
@@ -29,6 +30,7 @@ class ThemeStyles(NamedTuple):
     css: str
     font_links: list
     single: bool
+    dark: bool
 
 
 def _themes_root(themes_dir=None):
@@ -137,6 +139,36 @@ def normalize_theme_config(value):
     raise ThemeError("'theme' must be a string or a mapping with 'light' and 'dark'.")
 
 
+_HEX_COLOR = re.compile(r"^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$")
+_RGB_COLOR = re.compile(r"^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)")
+_NAMED_COLORS = {"white": (255, 255, 255), "black": (0, 0, 0)}
+
+
+def _parse_color(value):
+    if not isinstance(value, str):
+        return None
+    value = value.strip().lower()
+    hex_match = _HEX_COLOR.match(value)
+    if hex_match:
+        digits = hex_match.group(1)
+        if len(digits) == 3:
+            digits = "".join(ch * 2 for ch in digits)
+        return tuple(int(digits[i:i + 2], 16) for i in (0, 2, 4))
+    rgb_match = _RGB_COLOR.match(value)
+    if rgb_match:
+        return tuple(int(rgb_match.group(i)) for i in (1, 2, 3))
+    return _NAMED_COLORS.get(value)
+
+
+def palette_is_dark(resolved):
+    """Return True when a resolved theme's background color is dark."""
+    color = _parse_color(resolved.get("colors", {}).get("bg"))
+    if color is None:
+        return False
+    red, green, blue = color
+    return (0.299 * red + 0.587 * green + 0.114 * blue) < 128
+
+
 def _css_variable_name(section, key):
     slug = key.replace("_", "-")
     if section == "fonts":
@@ -181,7 +213,12 @@ def generate_theme_css(theme_config, themes_dir=None):
         _render_block(['[data-theme="dark"]'], dark),
     ])
     font_links = font_css_links([selection["light"], selection["dark"]], themes_dir)
-    return ThemeStyles(css=css, font_links=font_links, single=selection["single"])
+    return ThemeStyles(
+        css=css,
+        font_links=font_links,
+        single=selection["single"],
+        dark=palette_is_dark(light),
+    )
 
 
 def built_in_theme_styles(themes_dir=None):
@@ -191,4 +228,4 @@ def built_in_theme_styles(themes_dir=None):
             {"light": DEFAULT_LIGHT_THEME, "dark": DEFAULT_DARK_THEME}, themes_dir
         )
     except ThemeError:
-        return ThemeStyles(css="", font_links=[], single=False)
+        return ThemeStyles(css="", font_links=[], single=False, dark=False)

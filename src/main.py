@@ -164,7 +164,7 @@ def _theme_context(styles):
     return {
         "theme_css": styles.css,
         "theme_font_links": styles.font_links,
-        "theme_config": json.dumps({"single": styles.single}),
+        "theme_config": json.dumps({"single": styles.single, "dark": styles.dark}),
     }
 
 
