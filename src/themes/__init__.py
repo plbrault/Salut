@@ -14,6 +14,8 @@ REQUIRED_KEYS = {
     "colors": (
         "bg", "card_bg", "text", "text_muted", "text_faint",
         "border", "link", "link_hover", "code_bg",
+        "accent", "accent_hover", "accent_contrast",
+        "danger", "danger_hover", "danger_contrast",
     ),
     "fonts": ("family",),
     "radius": ("card",),

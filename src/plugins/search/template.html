@@ -1,4 +1,18 @@
 <form action="{{ action_url }}" method="GET"{% if results_in_new_tab %} target="_blank"{% endif %} style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+    <style>
+        .search-btn {
+            background-color: var(--accent);
+            color: var(--accent-contrast);
+            border: none;
+            border-radius: 0.375rem;
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+            cursor: pointer;
+        }
+        .search-btn:hover {
+            background-color: var(--accent-hover);
+        }
+    </style>
     <input
         type="text"
         name="{{ query_param }}"
@@ -8,7 +22,7 @@
     />
     <button
         type="submit"
-        style="padding: 0.5rem 1rem; background-color: #3b82f6; color: white; border: none; border-radius: 0.375rem; font-size: 0.875rem; cursor: pointer;"
+        class="search-btn"
     >
         {{ button_text }}
     </button>

@@ -28,6 +28,12 @@ FULL_THEME = {
         "link": "#0000ee",
         "link_hover": "#0000cc",
         "code_bg": "#eeeeee",
+        "accent": "#0000ee",
+        "accent_hover": "#0000cc",
+        "accent_contrast": "#ffffff",
+        "danger": "#cc0000",
+        "danger_hover": "#aa0000",
+        "danger_contrast": "#ffffff",
     },
     "fonts": {"family": "Arial, sans-serif"},
     "radius": {"card": "0.25rem"},
@@ -232,6 +238,8 @@ class TestGenerateThemeCss:
         for var_name in (
             "--bg:", "--card-bg:", "--text:", "--text-muted:", "--text-faint:",
             "--border:", "--link:", "--link-hover:", "--code-bg:",
+            "--accent:", "--accent-hover:", "--accent-contrast:",
+            "--danger:", "--danger-hover:", "--danger-contrast:",
             "--font-family:", "--card-radius:",
         ):
             assert var_name in styles.css

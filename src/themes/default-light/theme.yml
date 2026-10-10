@@ -10,6 +10,12 @@ colors:
   link: "#2563eb"
   link_hover: "#1d4ed8"
   code_bg: "#f3f4f6"
+  accent: "#2563eb"
+  accent_hover: "#1d4ed8"
+  accent_contrast: "#ffffff"
+  danger: "#dc2626"
+  danger_hover: "#b91c1c"
+  danger_contrast: "#ffffff"
 
 fonts:
   family: "'Inter', sans-serif"
