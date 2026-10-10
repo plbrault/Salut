@@ -202,3 +202,27 @@ The admin panel SHALL display human-readable feedback when reloading config, and
 #### Scenario: Reload fails
 - **WHEN** the user clicks Reload Config and an error occurs
 - **THEN** a red error message with the error details is displayed
+
+### Requirement: Admin buttons use theme accent and danger colors
+
+The admin panel's primary and danger buttons SHALL use the theme's accent and danger color variables for their background, text, border, and hover states instead of hardcoded colors.
+
+#### Scenario: Primary buttons use accent color in light mode
+
+- **WHEN** the admin page renders in light mode
+- **THEN** `.btn-primary` background uses `var(--accent)`, text uses `var(--accent-contrast)`, border uses `var(--accent)`, and hover uses `var(--accent-hover)`
+
+#### Scenario: Primary buttons use accent color in dark mode
+
+- **WHEN** the admin page renders in dark mode
+- **THEN** `.btn-primary` background uses `var(--accent)`, text uses `var(--accent-contrast)`, border uses `var(--accent)`, and hover uses `var(--accent-hover)` from the dark theme palette
+
+#### Scenario: Danger buttons use danger color in light mode
+
+- **WHEN** the admin page renders in light mode
+- **THEN** `.btn-danger` background uses `var(--danger)`, text uses `var(--danger-contrast)`, border uses `var(--danger)`, and hover uses `var(--danger-hover)`
+
+#### Scenario: Danger buttons use danger color in dark mode
+
+- **WHEN** the admin page renders in dark mode
+- **THEN** `.btn-danger` background uses `var(--danger)`, text uses `var(--danger-contrast)`, border uses `var(--danger)`, and hover uses `var(--danger-hover)` from the dark theme palette
