@@ -10,6 +10,19 @@ class SearchPlugin(Plugin):
         self._template = self.load_template(Path(__file__).resolve().parent, "template.html")
 
     @staticmethod
+    def card_style_rules() -> dict[str, str]:
+        return {
+            "button": (
+                "background-color: var(--accent);"
+                " color: var(--accent-contrast);"
+                " border: none; border-radius: 0.375rem;"
+                " padding: 0.5rem 1rem; font-size: 0.875rem;"
+                " cursor: pointer;"
+            ),
+            "button:hover": "background-color: var(--accent-hover);",
+        }
+
+    @staticmethod
     def validate_options(options, card_idx, filename):
         if not options:
             raise ConfigError(

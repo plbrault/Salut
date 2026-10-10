@@ -74,3 +74,17 @@ The system SHALL provide a functional search form with configurable target.
 #### Scenario: Default results target
 - **WHEN** a search card has no `results_in_new_tab` option
 - **THEN** the search results open in the same tab
+
+### Requirement: Search button uses theme accent colors
+
+The search button SHALL use the theme's accent color variables for its background, text, and hover states instead of hardcoded colors.
+
+#### Scenario: Button uses accent color in light mode
+
+- **WHEN** the search card renders in light mode
+- **THEN** the button background uses `var(--accent)`, text uses `var(--accent-contrast)`, and hover uses `var(--accent-hover)`
+
+#### Scenario: Button uses accent color in dark mode
+
+- **WHEN** the search card renders in dark mode
+- **THEN** the button background uses `var(--accent)`, text uses `var(--accent-contrast)`, and hover uses `var(--accent-hover)` from the dark theme palette

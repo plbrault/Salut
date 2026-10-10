@@ -54,6 +54,12 @@ colors:
   link: "#2563eb"
   link_hover: "#1d4ed8"
   code_bg: "#f3f4f6"
+  accent: "#2563eb"
+  accent_hover: "#1d4ed8"
+  accent_contrast: "#ffffff"
+  danger: "#dc2626"
+  danger_hover: "#b91c1c"
+  danger_contrast: "#ffffff"
 
 fonts:
   family: "'Inter', sans-serif"
@@ -77,6 +83,12 @@ Every resolved theme must provide all of these values, either directly or throug
 | `colors` | `link` | `--link` |
 | `colors` | `link_hover` | `--link-hover` |
 | `colors` | `code_bg` | `--code-bg` |
+| `colors` | `accent` | `--accent` |
+| `colors` | `accent_hover` | `--accent-hover` |
+| `colors` | `accent_contrast` | `--accent-contrast` |
+| `colors` | `danger` | `--danger` |
+| `colors` | `danger_hover` | `--danger-hover` |
+| `colors` | `danger_contrast` | `--danger-contrast` |
 | `fonts` | `family` | `--font-family` |
 | `radius` | `card` | `--card-radius` |
 

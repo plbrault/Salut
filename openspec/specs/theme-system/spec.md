@@ -13,7 +13,7 @@ Each theme SHALL be a directory under `src/themes/` containing a `theme.yml` fil
 #### Scenario: Built-in default light theme
 
 - **WHEN** the `default-light` theme is loaded
-- **THEN** it provides values for `--bg`, `--card-bg`, `--text`, `--text-muted`, `--text-faint`, `--border`, `--link`, `--link-hover`, `--code-bg`, `--font-family`, and `--card-radius`
+- **THEN** it provides values for `--bg`, `--card-bg`, `--text`, `--text-muted`, `--text-faint`, `--border`, `--link`, `--link-hover`, `--code-bg`, `--accent`, `--accent-hover`, `--accent-contrast`, `--danger`, `--danger-hover`, `--danger-contrast`, `--font-family`, and `--card-radius`
 
 #### Scenario: Built-in default dark theme inherits from default-light
 
