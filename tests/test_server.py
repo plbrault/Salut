@@ -5,8 +5,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from src.config import ConfigError, load_config
-from src.themes import discover_themes, load_theme
-from src.main import app, _mount_theme_static_dirs, templates
+from src.main import app, _mount_theme_static_dirs
 from src.plugins.html import HtmlPlugin
 from src.plugins.search import SearchPlugin
 
@@ -306,37 +305,3 @@ class TestThemeIncludes:
                 assert response.status_code == 200
                 assert "pumpkin_count" in response.text
                 assert "bat_speed" in response.text
-
-    def test_admin_page_has_theme_selector(self):
-        """Test that admin page has theme selector when logged in."""
-        # This test verifies the template renders the theme selector
-        # when show_login is False (after login)
-
-        theme_descriptions = {}
-        for name in discover_themes():
-            raw = load_theme(name)
-            includes = raw.get("includes", {})
-            theme_descriptions[name] = {
-                "light": includes.get("description"),
-                "dark": includes.get("description"),
-            }
-
-        # Render the admin template with show_login=False
-        template = templates.get_template("admin.html")
-        rendered = template.render(
-            show_login=False,
-            theme_descriptions=theme_descriptions,
-            available_themes=discover_themes(),
-            config_content="",
-            config_exists=False,
-            last_commit="test",
-            reloaded=False,
-            theme_css="",
-            theme_font_links=[],
-            theme_config='{"single": false, "dark": false}',
-            theme_light_name=discover_themes()[0] if discover_themes() else "default-light",
-            theme_dark_name=discover_themes()[0] if discover_themes() else "default-dark",
-        )
-        # Should have theme selector with descriptions
-        assert "theme-light" in rendered
-        assert "theme-dark" in rendered

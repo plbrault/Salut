@@ -341,18 +341,6 @@ async def admin_login(request: Request):
         cookie_value = create_session_cookie(password)
         response.set_cookie(COOKIE_NAME, cookie_value, max_age=COOKIE_MAX_AGE, httponly=True)
         return response
-    theme_descriptions = {}
-    available_themes = discover_themes()
-    for name in available_themes:
-        try:
-            raw = load_theme(name)
-            includes = raw.get("includes", {})
-            theme_descriptions[name] = {
-                "light": includes.get("description"),
-                "dark": includes.get("description"),
-            }
-        except ThemeError:
-            theme_descriptions[name] = {"light": None, "dark": None}
 
     return templates.TemplateResponse(
         request,
@@ -360,8 +348,6 @@ async def admin_login(request: Request):
         {
             "show_login": True,
             "error": "Invalid password",
-            "theme_descriptions": theme_descriptions,
-            "available_themes": available_themes,
             **_theme_context(app.state.theme_styles),
         },
     )
@@ -393,28 +379,12 @@ def admin_page(request: Request, reloaded: bool = False):
     if config_exists:
         config_content = config_path.read_text(encoding="utf-8")
 
-    # Build theme descriptions for the theme selector
-    theme_descriptions = {}
-    available_themes = discover_themes()
-    for name in available_themes:
-        try:
-            raw = load_theme(name)
-            includes = raw.get("includes", {})
-            theme_descriptions[name] = {
-                "light": includes.get("description"),
-                "dark": includes.get("description"),
-            }
-        except ThemeError:
-            theme_descriptions[name] = {"light": None, "dark": None}
-
     return templates.TemplateResponse(request, "admin.html", {
         "show_login": False,
         "config_content": config_content,
         "config_exists": config_exists,
         "last_commit": _get_last_commit(),
         "reloaded": reloaded,
-        "theme_descriptions": theme_descriptions,
-        "available_themes": available_themes,
         **_theme_context(app.state.theme_styles),
     })
 
