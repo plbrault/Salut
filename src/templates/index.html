@@ -76,7 +76,7 @@
             align-items: baseline;
         }
         header h1 {
-            font-family: var(--font-family);
+            font-family: var(--font-page-heading);
             font-size: 2.5rem;
             font-weight: bold;
             color: var(--text);
@@ -100,7 +100,7 @@
             color: var(--text);
         }
         .card h3 {
-            font-family: var(--font-family);
+            font-family: var(--font-card-heading);
             color: var(--text);
         }
         .theme-toggle {
@@ -129,7 +129,7 @@
     </style>
     {% endif %}
 </head>
-<body class="p-8" style="background: var(--bg); font-family: var(--font-family);">
+<body class="p-8" style="background: var(--bg); font-family: var(--font-card-content);">
     <header>
         {{ page_header | safe }}
     </header>

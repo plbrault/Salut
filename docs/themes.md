@@ -1,6 +1,6 @@
 # Themes
 
-Themes control the visual tokens of your start page: colors, font family, and card border radius. Each theme is a directory under `src/themes/` containing a `theme.yml` file, plus an optional `static/` subdirectory for servable font assets and custom CSS/JavaScript files.
+Themes control the visual tokens of your start page: colors, fonts, and card border radius. Each theme is a directory under `src/themes/` containing a `theme.yml` file, plus an optional `static/` subdirectory for servable font assets and custom CSS/JavaScript files.
 
 ## Selecting a theme
 
@@ -62,7 +62,9 @@ colors:
   danger_contrast: "#ffffff"
 
 fonts:
-  family: "'Inter', sans-serif"
+  page_heading: "'Inter', sans-serif"   # page header and admin/error headings
+  card_heading: "'Inter', sans-serif"   # card titles
+  card_content: "'Inter', sans-serif"   # body and card content text
 
 radius:
   card: "0.5rem"
@@ -110,7 +112,9 @@ Every resolved theme must provide all of these values, either directly or throug
 | `colors` | `danger` | `--danger` |
 | `colors` | `danger_hover` | `--danger-hover` |
 | `colors` | `danger_contrast` | `--danger-contrast` |
-| `fonts` | `family` | `--font-family` |
+| `fonts` | `page_heading` | `--font-page-heading` |
+| `fonts` | `card_heading` | `--font-card-heading` |
+| `fonts` | `card_content` | `--font-card-content` |
 | `radius` | `card` | `--card-radius` |
 
 A theme that is missing a required value is rejected when the config is validated.
@@ -135,7 +139,9 @@ colors:
 
 ## Fonts
 
-A theme can bundle its own font files and declare them in a `fonts.css` file placed in the theme's `static/` subdirectory:
+Each theme defines three font roles: `page_heading` (page header and admin/error headings), `card_heading` (card titles), and `card_content` (body and card content text). Set them to the same value for a uniform look, or to different families for distinct typographic voices. Like colors, each role can be overridden independently by a child theme.
+
+A theme can bundle its own font files and declare them in a `fonts.css` file placed in the theme's `static/` subdirectory. A single `fonts.css` may contain multiple `@font-face` rules so each role can reference a different bundled family:
 
 ```css
 @font-face {

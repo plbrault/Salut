@@ -18,7 +18,9 @@ colors:
   danger_contrast: "#ffffff"
 
 fonts:
-  family: "'Inter', sans-serif"
+  page_heading: "'Inter', sans-serif"
+  card_heading: "'Inter', sans-serif"
+  card_content: "'Inter', sans-serif"
 
 radius:
   card: "0.5rem"

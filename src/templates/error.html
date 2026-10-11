@@ -31,9 +31,9 @@
         }
     </style>
 </head>
-<body class="p-8 flex items-center justify-center min-h-screen" style="background: var(--bg); font-family: var(--font-family);">
+<body class="p-8 flex items-center justify-center min-h-screen" style="background: var(--bg); font-family: var(--font-card-content);">
     <div class="max-w-lg w-full rounded-lg border p-6" style="background: var(--error-bg); border-color: var(--error-border);">
-        <h1 class="text-xl font-semibold mb-2" style="color: var(--error-text);">Configuration Error</h1>
+        <h1 class="text-xl font-semibold mb-2" style="color: var(--error-text); font-family: var(--font-page-heading);">Configuration Error</h1>
         <p class="text-sm mb-4" style="color: var(--error-text);">Your config file could not be loaded.</p>
         <pre class="text-sm p-4 rounded overflow-x-auto" style="background: var(--card-bg); color: var(--text); border: 1px solid var(--border);">{{ error }}</pre>
         <p class="text-sm mt-4" style="color: var(--text-muted);">Fix the issue in <code>config.yml</code> and reload the page.</p>
