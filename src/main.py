@@ -21,7 +21,13 @@ from src.config import ConfigError, load_config, load_secrets, validate_config
 from src.database import Database
 from src.i18n import load_global_i18n
 from src.template import resolve_all_config_vars
-from src.themes import ThemeError, built_in_theme_styles, generate_theme_css, discover_themes, theme_static_dir
+from src.themes import (
+    ThemeError,
+    built_in_theme_styles,
+    generate_theme_css,
+    discover_themes,
+    theme_static_dir,
+)
 from src.plugins import setup_plugin, render_cards, init_plugins_schemas
 from src.admin import (
     COOKIE_NAME, COOKIE_MAX_AGE,
@@ -165,6 +171,11 @@ def _theme_context(styles):
         "theme_css": styles.css,
         "theme_font_links": styles.font_links,
         "theme_config": json.dumps({"single": styles.single, "dark": styles.dark}),
+        "theme_single": styles.single,
+        "theme_light_css_urls": styles.light_css_urls,
+        "theme_dark_css_urls": styles.dark_css_urls,
+        "theme_light_js_urls": styles.light_js_urls,
+        "theme_dark_js_urls": styles.dark_js_urls,
     }
 
 
@@ -280,9 +291,15 @@ def admin_login_page(request: Request):
         )
     if check_admin_auth(request):
         return RedirectResponse("/admin", status_code=302)
+
     return templates.TemplateResponse(
-        request, "admin.html",
-        {"show_login": True, "error": None, **_theme_context(app.state.theme_styles)},
+        request,
+        "admin.html",
+        {
+            "show_login": True,
+            "error": None,
+            **_theme_context(app.state.theme_styles),
+        },
     )
 
 
@@ -305,9 +322,15 @@ async def admin_login(request: Request):
         cookie_value = create_session_cookie(password)
         response.set_cookie(COOKIE_NAME, cookie_value, max_age=COOKIE_MAX_AGE, httponly=True)
         return response
+
     return templates.TemplateResponse(
-        request, "admin.html",
-        {"show_login": True, "error": "Invalid password", **_theme_context(app.state.theme_styles)},
+        request,
+        "admin.html",
+        {
+            "show_login": True,
+            "error": "Invalid password",
+            **_theme_context(app.state.theme_styles),
+        },
     )
 
 
@@ -336,6 +359,7 @@ def admin_page(request: Request, reloaded: bool = False):
     config_exists = config_path.exists()
     if config_exists:
         config_content = config_path.read_text(encoding="utf-8")
+
     return templates.TemplateResponse(request, "admin.html", {
         "show_login": False,
         "config_content": config_content,

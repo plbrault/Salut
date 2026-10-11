@@ -1,6 +1,6 @@
 # Themes
 
-Themes control the visual tokens of your start page: colors, font family, and card border radius. Each theme is a directory under `src/themes/` containing a `theme.yml` file, plus an optional `static/` subdirectory for servable font assets.
+Themes control the visual tokens of your start page: colors, font family, and card border radius. Each theme is a directory under `src/themes/` containing a `theme.yml` file, plus an optional `static/` subdirectory for servable font assets and custom CSS/JavaScript files.
 
 ## Selecting a theme
 
@@ -68,6 +68,27 @@ radius:
   card: "0.5rem"
 ```
 
+### includes (optional)
+
+A theme can declare custom CSS and JavaScript files to load. These files are placed in the theme's `static/` subdirectory and served under `/themes/<theme-name>/`.
+
+```yaml
+includes:
+  css:                    # list of CSS files, loaded as <link rel="stylesheet">
+    - "theme.css"
+  js:                     # list of JS files, loaded as <script type="module">
+    - "theme.js"
+```
+
+**Validation:**
+- `includes` is optional
+- `css` and `js` must be arrays of strings (paths relative to `static/`)
+- All listed files must exist in the theme's `static/` directory
+
+**Inheritance behavior:** Child themes do NOT inherit parent's `includes`. Each theme must declare its own `includes` if it wants custom CSS/JS files loaded.
+
+**Mode behavior:** With a `{ light, dark }` theme pair, both themes' CSS files are emitted in the page and the browser enables only the set that matches the active mode. The active mode's JS modules are loaded at page load; since ES module effects cannot be torn down, switching modes on a theme that declares JS includes reloads the page so the correct mode's scripts run.
+
 ### Required values
 
 Every resolved theme must provide all of these values, either directly or through inheritance:
@@ -130,13 +151,21 @@ Font files are referenced relative to the `fonts.css` file itself. The `static/`
 
 At render time, the page includes a `<link>` tag for every `fonts.css` found in the inheritance chains of the active light and dark themes, so a child theme automatically picks up its parent's fonts.
 
-## Built-in themes
+## Custom CSS and JavaScript
 
-- `default-light` — the original light palette, bundles the Inter font in `static/`.
-- `default-dark` — extends `default-light` and overrides only the colors.
+A theme can include custom CSS and JavaScript files to add visual effects, background images, animations, or interactive elements. Files are declared in the `includes` section of `theme.yml` and placed in the theme's `static/` subdirectory.
 
-The configuration error page always uses the built-in themes, since the configured theme may be the very thing that failed to load.
+### theme.js
 
-## What is not themable
+A theme's JavaScript file (declared in `includes.js`) is loaded as an ES module (`<script type="module">`) at the end of `<body>`. It executes immediately on load as a standard ES module. No special contract is required — themes can use standard browser APIs.
 
-Only colors, font family, and card border radius come from themes. The masonry layout algorithm, card structure, responsive breakpoints, padding, gaps, and font sizes stay hardcoded. Extra keys in `theme.yml` are ignored by the layout.
+### Asset References
+
+CSS files in `static/` can reference sibling assets (images, fonts) using relative URLs:
+
+```css
+/* theme.css */
+.halloween-bg {
+    background-image: url("pumpkin.svg");  /* resolves to /themes/halloween/pumpkin.svg */
+}
+```

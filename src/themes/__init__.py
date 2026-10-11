@@ -33,6 +33,10 @@ class ThemeStyles(NamedTuple):
     font_links: list
     single: bool
     dark: bool
+    light_css_urls: list
+    light_js_urls: list
+    dark_css_urls: list
+    dark_js_urls: list
 
 
 def _themes_root(themes_dir=None):
@@ -52,6 +56,27 @@ def discover_themes(themes_dir=None):
     return sorted(path.parent.name for path in root.glob("*/theme.yml"))
 
 
+def _validate_includes(includes, name, themes_dir):
+    """Validate the includes section of a theme."""
+    if not isinstance(includes, dict):
+        raise ThemeError(f"Theme '{name}': 'includes' must be a mapping.")
+    for key in ("css", "js"):
+        val = includes.get(key)
+        if val is not None and not isinstance(val, list):
+            raise ThemeError(f"Theme '{name}': 'includes.{key}' must be a list.")
+        if val:
+            for item in val:
+                if not isinstance(item, str):
+                    raise ThemeError(f"Theme '{name}': 'includes.{key}' items must be strings.")
+    static_dir = theme_static_dir(name, themes_dir)
+    for css_file in includes.get("css", []):
+        if not (static_dir / css_file).is_file():
+            raise ThemeError(f"Theme '{name}': CSS file not found: {css_file}")
+    for js_file in includes.get("js", []):
+        if not (static_dir / js_file).is_file():
+            raise ThemeError(f"Theme '{name}': JS file not found: {js_file}")
+
+
 def load_theme(name, themes_dir=None):
     """Load the raw theme.yml data for a theme."""
     root = _themes_root(themes_dir)
@@ -68,6 +93,11 @@ def load_theme(name, themes_dir=None):
             raise ThemeError(f"Invalid YAML in theme '{name}': {e}") from e
     if not isinstance(data, dict):
         raise ThemeError(f"Theme '{name}' must be a mapping of theme values.")
+
+    includes = data.get("includes")
+    if includes is not None:
+        _validate_includes(includes, name, themes_dir)
+        data["includes"] = includes
     return data
 
 
@@ -85,6 +115,8 @@ def resolve_theme(name, themes_dir=None, _chain=None):
         if not isinstance(parent, str) or not parent:
             raise ThemeError(f"Theme '{name}': 'extends' must be a non-empty string.")
         resolved = resolve_theme(parent, themes_dir, chain + [name])
+        # Child themes do NOT inherit parent's includes
+        resolved.pop("includes", None)
     else:
         resolved = {}
 
@@ -95,6 +127,10 @@ def resolve_theme(name, themes_dir=None, _chain=None):
         if not isinstance(values, dict):
             raise ThemeError(f"Theme '{name}': '{section}' must be a mapping.")
         resolved.setdefault(section, {}).update(values)
+
+    # Only include 'includes' if explicitly defined in this theme
+    if "includes" in raw:
+        resolved["includes"] = raw["includes"]
 
     return resolved
 
@@ -210,16 +246,35 @@ def generate_theme_css(theme_config, themes_dir=None):
     light = load_resolved_theme(selection["light"], themes_dir)
     dark = load_resolved_theme(selection["dark"], themes_dir)
 
+    # Get includes from resolved themes (only the final theme in chain)
+    light_includes = light.get("includes", {})
+    dark_includes = dark.get("includes", {})
+
     css = "\n\n".join([
         _render_block([':root', '[data-theme="light"]'], light),
         _render_block(['[data-theme="dark"]'], dark),
     ])
     font_links = font_css_links([selection["light"], selection["dark"]], themes_dir)
+
+    # Build absolute URLs for includes
+    def build_urls(includes, theme_name):
+        css_urls = [f"/themes/{theme_name}/{f}" for f in includes.get("css", [])]
+        js_urls = [f"/themes/{theme_name}/{f}" for f in includes.get("js", [])]
+        return css_urls, js_urls
+
+    light_css_urls, light_js_urls = build_urls(light_includes, selection["light"])
+    dark_css_urls, dark_js_urls = build_urls(dark_includes, selection["dark"])
+
     return ThemeStyles(
         css=css,
         font_links=font_links,
         single=selection["single"],
         dark=palette_is_dark(light),
+        # New fields
+        light_css_urls=light_css_urls,
+        light_js_urls=light_js_urls,
+        dark_css_urls=dark_css_urls,
+        dark_js_urls=dark_js_urls,
     )
 
 
@@ -230,4 +285,7 @@ def built_in_theme_styles(themes_dir=None):
             {"light": DEFAULT_LIGHT_THEME, "dark": DEFAULT_DARK_THEME}, themes_dir
         )
     except ThemeError:
-        return ThemeStyles(css="", font_links=[], single=False, dark=False)
+        return ThemeStyles(
+            css="", font_links=[], single=False, dark=False,
+            light_css_urls=[], light_js_urls=[], dark_css_urls=[], dark_js_urls=[],
+        )
