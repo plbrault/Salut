@@ -114,6 +114,7 @@ export function runSky(palette) {
             if (inside >= 0) {
                 flyer.entered = true;
             }
+            ctx.font = `${flyer.size}px serif`;
             const glyphWidth = ctx.measureText(flyer.glyph).width;
             const exited = flyer.x < -glyphWidth || flyer.x > width
                 || flyer.y < 0 || flyer.y > height + flyer.size;

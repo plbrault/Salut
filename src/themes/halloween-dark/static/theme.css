@@ -7,7 +7,7 @@ body::after {
     background: radial-gradient(ellipse at center, transparent 50%, rgba(0, 0, 0, 0.35) 100%);
 }
 
-.card {
+body .card {
     border-color: rgba(249, 115, 22, 0.35);
     box-shadow: 0 0 24px -6px rgba(249, 115, 22, 0.35), 0 0 4px rgba(249, 115, 22, 0.2);
 }

@@ -550,6 +550,12 @@ class TestHalloweenThemes:
         assert "witch" not in source
         assert "entered" in source
         assert "measureText" in source
+        assert source.index("ctx.font = ") < source.index("measureText")
+
+    def test_halloween_dark_card_border_beats_base_rule(self):
+        css = (theme_static_dir("halloween-dark") / "theme.css").read_text(encoding="utf-8")
+        assert "body .card" in css
+        assert "border-color: rgba(249, 115, 22, 0.35);" in css
 
     def test_halloween_dark_imports_shared_engine(self):
         light_entry = (theme_static_dir("halloween-light") / "theme.js").read_text(encoding="utf-8")
