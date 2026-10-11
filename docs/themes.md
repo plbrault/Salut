@@ -85,7 +85,7 @@ includes:
 - `css` and `js` must be arrays of strings (paths relative to `static/`)
 - All listed files must exist in the theme's `static/` directory
 
-**Inheritance behavior:** Child themes inherit parent's `includes` by default. If a child theme defines its own `includes` (even an empty object `includes: {}`), it replaces the parent's entirely — no merging occurs.
+**Inheritance behavior:** Child themes do NOT inherit parent's `includes`. Each theme must declare its own `includes` if it wants custom CSS/JS files loaded.
 
 ### Required values
 
@@ -126,7 +126,7 @@ colors:
   link: "#d97706"
 ```
 
-- The child inherits all sections (`colors`, `fonts`, `radius`, `includes`) from its parent.
+- The child inherits all sections (`colors`, `fonts`, `radius`) from its parent.
 - Within a section, child keys override (or add to) the parent's keys.
 - `name` and `extends` are not inherited.
 - Multi-level inheritance is supported. Circular inheritance is rejected with an error.
