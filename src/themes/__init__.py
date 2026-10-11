@@ -17,7 +17,7 @@ REQUIRED_KEYS = {
         "accent", "accent_hover", "accent_contrast",
         "danger", "danger_hover", "danger_contrast",
     ),
-    "fonts": ("family",),
+    "fonts": ("page_heading", "card_heading", "card_content"),
     "radius": ("card",),
 }
 

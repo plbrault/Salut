@@ -209,7 +209,9 @@ class TestServer:
     def test_index_contains_generated_theme_css(self):
         with TestClient(app) as client:
             response = client.get("/")
-            assert "--font-family:" in response.text
+            assert "--font-page-heading:" in response.text
+            assert "--font-card-heading:" in response.text
+            assert "--font-card-content:" in response.text
             assert "--card-radius:" in response.text
             assert ':root,' in response.text
             assert '[data-theme="light"]' in response.text

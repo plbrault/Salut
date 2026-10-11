@@ -35,7 +35,11 @@ FULL_THEME = {
         "danger_hover": "#aa0000",
         "danger_contrast": "#ffffff",
     },
-    "fonts": {"family": "Arial, sans-serif"},
+    "fonts": {
+        "page_heading": "Georgia, serif",
+        "card_heading": "Arial, sans-serif",
+        "card_content": "Verdana, sans-serif",
+    },
     "radius": {"card": "0.25rem"},
 }
 
@@ -70,7 +74,9 @@ class TestLoadTheme:
     def test_loads_builtin_theme(self):
         data = load_theme("default-light")
         assert data["colors"]["bg"] == "#f3f4f6"
-        assert data["fonts"]["family"] == "'Inter', sans-serif"
+        assert data["fonts"]["page_heading"] == "'Inter', sans-serif"
+        assert data["fonts"]["card_heading"] == "'Inter', sans-serif"
+        assert data["fonts"]["card_content"] == "'Inter', sans-serif"
         assert data["radius"]["card"] == "0.5rem"
 
     def test_missing_theme_raises(self, tmp_path):
@@ -102,7 +108,9 @@ class TestInheritance:
 
         assert resolved["colors"]["bg"] == "#fff7f5"
         assert resolved["colors"]["text"] == "#111111"
-        assert resolved["fonts"]["family"] == "Arial, sans-serif"
+        assert resolved["fonts"]["page_heading"] == "Georgia, serif"
+        assert resolved["fonts"]["card_heading"] == "Arial, sans-serif"
+        assert resolved["fonts"]["card_content"] == "Verdana, sans-serif"
         assert resolved["radius"]["card"] == "0.25rem"
 
     def test_multilevel_inheritance(self, tmp_path):
@@ -164,9 +172,15 @@ class TestValidateTheme:
             load_resolved_theme("no-link", tmp_path)
 
     def test_empty_value_raises(self, tmp_path):
-        _write_theme(tmp_path, "empty-font", {**FULL_THEME, "fonts": {"family": ""}})
-        with pytest.raises(ThemeError, match="fonts.family"):
+        _write_theme(tmp_path, "empty-font", {**FULL_THEME, "fonts": {**FULL_THEME["fonts"], "card_heading": ""}})
+        with pytest.raises(ThemeError, match="fonts.card_heading"):
             load_resolved_theme("empty-font", tmp_path)
+
+    def test_missing_font_role_raises(self, tmp_path):
+        fonts = {k: v for k, v in FULL_THEME["fonts"].items() if k != "card_heading"}
+        _write_theme(tmp_path, "no-card-heading", {**FULL_THEME, "fonts": fonts})
+        with pytest.raises(ThemeError, match="fonts.card_heading"):
+            load_resolved_theme("no-card-heading", tmp_path)
 
     def test_child_missing_inherited_keys_fails(self, tmp_path):
         _write_theme(tmp_path, "orphan", {"colors": {"bg": "#000000"}})
@@ -240,7 +254,7 @@ class TestGenerateThemeCss:
             "--border:", "--link:", "--link-hover:", "--code-bg:",
             "--accent:", "--accent-hover:", "--accent-contrast:",
             "--danger:", "--danger-hover:", "--danger-contrast:",
-            "--font-family:", "--card-radius:",
+            "--font-page-heading:", "--font-card-heading:", "--font-card-content:", "--card-radius:",
         ):
             assert var_name in styles.css
 
