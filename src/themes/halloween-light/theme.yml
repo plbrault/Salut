@@ -1,0 +1,27 @@
+name: "Halloween Light"
+extends: default-light
+
+colors:
+  bg: "#fff7ed"
+  card_bg: "#ffffff"
+  text: "#431407"
+  text_muted: "#9a3412"
+  text_faint: "#c2703d"
+  border: "#fed7aa"
+  link: "#c2410c"
+  link_hover: "#9a3412"
+  code_bg: "#ffedd5"
+  accent: "#ea580c"
+  accent_hover: "#c2410c"
+  accent_contrast: "#ffffff"
+
+fonts:
+  page_heading: "'Creepster', 'Inter', sans-serif"
+  card_heading: "'Creepster', 'Inter', sans-serif"
+  card_content: "'Lato', 'Inter', sans-serif"
+
+includes:
+  css:
+    - "theme.css"
+  js:
+    - "theme.js"

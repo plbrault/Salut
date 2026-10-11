@@ -14,6 +14,7 @@ from src.themes import (
     palette_is_dark,
     resolve_theme,
     theme_chain,
+    theme_static_dir,
     validate_theme,
 )
 
@@ -456,3 +457,110 @@ class TestGenerateThemeCssIncludes:
         assert styles.light_js_urls == []
         assert styles.dark_css_urls == []
         assert styles.dark_js_urls == []
+
+
+class TestHalloweenThemes:
+    def test_halloween_themes_discovered(self):
+        names = discover_themes()
+        assert "halloween-light" in names
+        assert "halloween-dark" in names
+
+    def test_halloween_themes_declare_own_includes(self):
+        for name in ("halloween-light", "halloween-dark"):
+            resolved = load_resolved_theme(name)
+            assert resolved["includes"] == {"css": ["theme.css"], "js": ["theme.js"]}
+
+    def test_halloween_dark_extends_halloween_light(self):
+        assert theme_chain("halloween-dark") == ["default-light", "halloween-light", "halloween-dark"]
+
+    def test_halloween_light_sets_font_roles(self):
+        resolved = load_resolved_theme("halloween-light")
+        assert resolved["fonts"]["page_heading"] == "'Creepster', 'Inter', sans-serif"
+        assert resolved["fonts"]["card_heading"] == "'Creepster', 'Inter', sans-serif"
+        assert resolved["fonts"]["card_content"] == "'Lato', 'Inter', sans-serif"
+
+    def test_halloween_dark_inherits_fonts(self):
+        resolved = load_resolved_theme("halloween-dark")
+        assert resolved["fonts"]["page_heading"] == "'Creepster', 'Inter', sans-serif"
+        assert resolved["fonts"]["card_heading"] == "'Creepster', 'Inter', sans-serif"
+        assert resolved["fonts"]["card_content"] == "'Lato', 'Inter', sans-serif"
+
+    def test_halloween_dark_pins_danger_colors(self):
+        resolved = load_resolved_theme("halloween-dark")
+        assert resolved["colors"]["danger"] == "#ef4444"
+        assert resolved["colors"]["danger_hover"] == "#f87171"
+        assert resolved["colors"]["danger_contrast"] == "#111827"
+
+    def test_halloween_themes_inherit_radius(self):
+        light = load_resolved_theme("halloween-light")
+        assert light["radius"]["card"] == "0.5rem"
+
+    def test_halloween_font_links_include_creepster(self):
+        styles = generate_theme_css({"light": "halloween-light", "dark": "halloween-dark"})
+        assert "/themes/halloween-light/fonts.css" in styles.font_links
+        assert "/themes/halloween-dark/fonts.css" not in styles.font_links
+        assert "--font-page-heading: 'Creepster', 'Inter', sans-serif;" in styles.css
+        assert "--font-card-heading: 'Creepster', 'Inter', sans-serif;" in styles.css
+        assert "--font-card-content: 'Lato', 'Inter', sans-serif;" in styles.css
+        assert "--danger: #ef4444;" in styles.css
+
+    def test_halloween_static_files_exist(self):
+        static_dir = theme_static_dir("halloween-light")
+        assert (static_dir / "theme.css").is_file()
+        assert (static_dir / "theme.js").is_file()
+        assert (static_dir / "fonts.css").is_file()
+        assert (static_dir / "Creepster-Regular.woff2").is_file()
+        assert (static_dir / "Lato-Regular.woff2").is_file()
+        assert (static_dir / "Lato-Bold.woff2").is_file()
+        fonts_css = (static_dir / "fonts.css").read_text(encoding="utf-8")
+        assert "Creepster-Regular.woff2" in fonts_css
+        assert "Lato-Regular.woff2" in fonts_css
+        assert "Lato-Bold.woff2" in fonts_css
+
+    def test_halloween_dark_has_no_duplicated_font_files(self):
+        static_dir = theme_static_dir("halloween-dark")
+        assert (static_dir / "theme.css").is_file()
+        assert (static_dir / "theme.js").is_file()
+        assert not (static_dir / "fonts.css").exists()
+        assert not (static_dir / "Creepster-Regular.woff2").exists()
+        assert not (static_dir / "Lato-Regular.woff2").exists()
+        assert not (static_dir / "Lato-Bold.woff2").exists()
+
+    def test_halloween_pair_emits_include_urls(self):
+        styles = generate_theme_css({"light": "halloween-light", "dark": "halloween-dark"})
+        assert styles.light_css_urls == ["/themes/halloween-light/theme.css"]
+        assert styles.light_js_urls == ["/themes/halloween-light/theme.js"]
+        assert styles.dark_css_urls == ["/themes/halloween-dark/theme.css"]
+        assert styles.dark_js_urls == ["/themes/halloween-dark/theme.js"]
+
+    def test_halloween_js_has_no_forbidden_global(self):
+        for name in ("halloween-light", "halloween-dark"):
+            source = (theme_static_dir(name) / "theme.js").read_text(encoding="utf-8")
+            assert "themeInitConfig" not in source
+            assert "runSky" in source
+
+    def test_halloween_engine_holds_flight_behavior(self):
+        source = (theme_static_dir("halloween-light") / "engine.js").read_text(encoding="utf-8")
+        assert "themeInitConfig" not in source
+        assert "prefers-reduced-motion" in source
+        assert "pointerEvents" in source
+        assert "requestAnimationFrame" in source
+        assert "startFlyby();" in source
+        assert "ghost" in source
+        assert "witch" not in source
+        assert "entered" in source
+        assert "measureText" in source
+        assert source.index("ctx.font = ") < source.index("measureText")
+
+    def test_halloween_dark_card_border_beats_base_rule(self):
+        css = (theme_static_dir("halloween-dark") / "theme.css").read_text(encoding="utf-8")
+        assert "body .card" in css
+        assert "border-color: rgba(249, 115, 22, 0.35);" in css
+
+    def test_halloween_dark_imports_shared_engine(self):
+        light_entry = (theme_static_dir("halloween-light") / "theme.js").read_text(encoding="utf-8")
+        assert 'import { runSky } from "./engine.js";' in light_entry
+        assert "runSky({ ghost: [0.16, 0.16], bat: [0.22, 0.2] });" in light_entry
+        dark_entry = (theme_static_dir("halloween-dark") / "theme.js").read_text(encoding="utf-8")
+        assert 'import { runSky } from "/themes/halloween-light/engine.js";' in dark_entry
+        assert "runSky({ ghost: [0.22, 0.2], bat: [0.3, 0.25] });" in dark_entry

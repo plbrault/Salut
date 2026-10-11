@@ -1,0 +1,21 @@
+body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 50;
+    background: radial-gradient(ellipse at center, transparent 55%, rgba(194, 65, 12, 0.07) 100%);
+}
+
+.card {
+    box-shadow: 0 0 0 1px rgba(234, 88, 12, 0.12), 0 8px 24px -12px rgba(234, 88, 12, 0.25);
+}
+
+::selection {
+    background: #fed7aa;
+    color: #431407;
+}
+
+header h1 {
+    text-shadow: 0 1px 0 rgba(234, 88, 12, 0.15);
+}

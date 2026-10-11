@@ -1,0 +1,25 @@
+name: "Halloween Dark"
+extends: halloween-light
+
+colors:
+  bg: "#1c0a2e"
+  card_bg: "#2e1545"
+  text: "#fef3c7"
+  text_muted: "#d6a35c"
+  text_faint: "#8b5a2b"
+  border: "#4a2c5a"
+  link: "#fb923c"
+  link_hover: "#fdba74"
+  code_bg: "#3b1f4d"
+  accent: "#f97316"
+  accent_hover: "#fb923c"
+  accent_contrast: "#1c0a2e"
+  danger: "#ef4444"
+  danger_hover: "#f87171"
+  danger_contrast: "#111827"
+
+includes:
+  css:
+    - "theme.css"
+  js:
+    - "theme.js"
