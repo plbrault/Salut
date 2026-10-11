@@ -298,3 +298,153 @@ class TestPaletteIsDark:
 
     def test_unparseable_background_defaults_to_light(self):
         assert palette_is_dark({"colors": {"bg": "url(paper.png)"}}) is False
+
+
+class TestThemeIncludes:
+    def test_includes_parsing_valid(self, tmp_path):
+        theme_data = {
+            **FULL_THEME,
+            "includes": {
+                "css": ["theme.css", "animations/float.css"],
+                "js": ["theme.js"],
+                "description": "Test theme with effects",
+            },
+        }
+        theme_dir = _write_theme(tmp_path, "test-theme", theme_data)
+        static_dir = theme_dir / "static"
+        static_dir.mkdir()
+        (static_dir / "theme.css").write_text("/* test */", encoding="utf-8")
+        (static_dir / "theme.js").write_text("export function init() {}", encoding="utf-8")
+        (static_dir / "animations").mkdir()
+        (static_dir / "animations" / "float.css").write_text("/* float */", encoding="utf-8")
+
+        data = load_theme("test-theme", tmp_path)
+        assert "includes" in data
+        assert data["includes"]["css"] == ["theme.css", "animations/float.css"]
+        assert data["includes"]["js"] == ["theme.js"]
+        assert data["includes"]["description"] == "Test theme with effects"
+
+    def test_includes_rejects_non_list_css(self, tmp_path):
+        theme_data = {**FULL_THEME, "includes": {"css": "theme.css"}}
+        _write_theme(tmp_path, "bad-theme", theme_data)
+        with pytest.raises(ThemeError, match=r"must be a list"):
+            load_theme("bad-theme", tmp_path)
+
+    def test_includes_rejects_non_list_js(self, tmp_path):
+        theme_data = {**FULL_THEME, "includes": {"js": "theme.js"}}
+        _write_theme(tmp_path, "bad-theme", theme_data)
+        with pytest.raises(ThemeError, match=r"must be a list"):
+            load_theme("bad-theme", tmp_path)
+
+    def test_includes_rejects_non_string_items(self, tmp_path):
+        theme_data = {**FULL_THEME, "includes": {"css": ["theme.css", 42]}}
+        _write_theme(tmp_path, "bad-theme", theme_data)
+        with pytest.raises(ThemeError, match=r"items must be strings"):
+            load_theme("bad-theme", tmp_path)
+
+    def test_includes_rejects_missing_css_file(self, tmp_path):
+        theme_data = {**FULL_THEME, "includes": {"css": ["missing.css"]}}
+        _write_theme(tmp_path, "bad-theme", theme_data)
+        with pytest.raises(ThemeError, match="CSS file not found: missing.css"):
+            load_theme("bad-theme", tmp_path)
+
+    def test_includes_rejects_missing_js_file(self, tmp_path):
+        theme_data = {**FULL_THEME, "includes": {"js": ["missing.js"]}}
+        _write_theme(tmp_path, "bad-theme", theme_data)
+        with pytest.raises(ThemeError, match="JS file not found: missing.js"):
+            load_theme("bad-theme", tmp_path)
+
+    def test_includes_invalid_structure(self, tmp_path):
+        theme_data = {**FULL_THEME, "includes": "not-a-dict"}
+        _write_theme(tmp_path, "bad-theme", theme_data)
+        with pytest.raises(ThemeError, match=r"must be a mapping"):
+            load_theme("bad-theme", tmp_path)
+
+
+class TestGenerateThemeCssIncludes:
+    def test_generate_theme_css_returns_include_urls(self, tmp_path):
+        theme_data = {
+            **FULL_THEME,
+            "includes": {"css": ["theme.css"], "js": ["theme.js"], "description": "Test"},
+        }
+        theme_dir = _write_theme(tmp_path, "test-theme", theme_data)
+        static_dir = theme_dir / "static"
+        static_dir.mkdir()
+        (static_dir / "theme.css").write_text("/* test */", encoding="utf-8")
+        (static_dir / "theme.js").write_text("export function init() {}", encoding="utf-8")
+
+        styles = generate_theme_css("test-theme", tmp_path)
+        assert styles.light_css_urls == ["/themes/test-theme/theme.css"]
+        assert styles.light_js_urls == ["/themes/test-theme/theme.js"]
+        assert styles.light_description == "Test"
+        assert styles.dark_css_urls == ["/themes/test-theme/theme.css"]
+        assert styles.dark_js_urls == ["/themes/test-theme/theme.js"]
+        assert styles.dark_description == "Test"
+
+    def test_generate_theme_css_light_dark_different_includes(self, tmp_path):
+        light_data = {**FULL_THEME, "includes": {"css": ["light.css"], "js": ["light.js"]}}
+        dark_data = {**FULL_THEME, "includes": {"css": ["dark.css"], "js": ["dark.js"]}}
+        light_dir = _write_theme(tmp_path, "light-theme", light_data)
+        dark_dir = _write_theme(tmp_path, "dark-theme", dark_data)
+        for d in [light_dir, dark_dir]:
+            static = d / "static"
+            static.mkdir()
+            (static / "light.css").write_text("/* */", encoding="utf-8")
+            (static / "light.js").write_text("export function init() {}", encoding="utf-8")
+            (static / "dark.css").write_text("/* */", encoding="utf-8")
+            (static / "dark.js").write_text("export function init() {}", encoding="utf-8")
+
+        styles = generate_theme_css({"light": "light-theme", "dark": "dark-theme"}, tmp_path)
+        assert styles.light_css_urls == ["/themes/light-theme/light.css"]
+        assert styles.light_js_urls == ["/themes/light-theme/light.js"]
+        assert styles.dark_css_urls == ["/themes/dark-theme/dark.css"]
+        assert styles.dark_js_urls == ["/themes/dark-theme/dark.js"]
+
+    def test_generate_theme_css_single_theme(self, tmp_path):
+        theme_data = {**FULL_THEME, "includes": {"css": ["theme.css"], "js": ["theme.js"]}}
+        theme_dir = _write_theme(tmp_path, "single-theme", theme_data)
+        static_dir = theme_dir / "static"
+        static_dir.mkdir()
+        (static_dir / "theme.css").write_text("/* */", encoding="utf-8")
+        (static_dir / "theme.js").write_text("export function init() {}", encoding="utf-8")
+
+        styles = generate_theme_css("single-theme", tmp_path)
+        assert styles.single is True
+        assert styles.light_css_urls == ["/themes/single-theme/theme.css"]
+        assert styles.light_js_urls == ["/themes/single-theme/theme.js"]
+
+    def test_includes_not_inherited(self, tmp_path):
+        parent_data = {**FULL_THEME, "includes": {"css": ["parent.css"], "js": ["parent.js"]}}
+        child_data = {"extends": "parent", "includes": {"css": ["child.css"], "js": ["child.js"]}}
+        parent_dir = _write_theme(tmp_path, "parent", parent_data)
+        child_dir = _write_theme(tmp_path, "child", child_data)
+        for d in [parent_dir, child_dir]:
+            static = d / "static"
+            static.mkdir()
+            (static / "parent.css").write_text("/* */", encoding="utf-8")
+            (static / "parent.js").write_text("export function init() {}", encoding="utf-8")
+            (static / "child.css").write_text("/* */", encoding="utf-8")
+            (static / "child.js").write_text("export function init() {}", encoding="utf-8")
+
+        styles = generate_theme_css("child", tmp_path)
+        # Child's includes should replace parent's
+        assert styles.light_css_urls == ["/themes/child/child.css"]
+        assert styles.light_js_urls == ["/themes/child/child.js"]
+
+    def test_no_includes_returns_empty(self):
+        styles = generate_theme_css(None)
+        assert styles.light_css_urls == []
+        assert styles.light_js_urls == []
+        assert styles.dark_css_urls == []
+        assert styles.dark_js_urls == []
+        assert styles.light_description is None
+        assert styles.dark_description is None
+
+    def test_builtin_fallback_styles_has_new_fields(self):
+        styles = built_in_theme_styles()
+        assert styles.light_css_urls == []
+        assert styles.light_js_urls == []
+        assert styles.dark_css_urls == []
+        assert styles.dark_js_urls == []
+        assert styles.light_description is None
+        assert styles.dark_description is None

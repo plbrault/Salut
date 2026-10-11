@@ -21,7 +21,14 @@ from src.config import ConfigError, load_config, load_secrets, validate_config
 from src.database import Database
 from src.i18n import load_global_i18n
 from src.template import resolve_all_config_vars
-from src.themes import ThemeError, built_in_theme_styles, generate_theme_css, discover_themes, theme_static_dir
+from src.themes import (
+    ThemeError,
+    built_in_theme_styles,
+    generate_theme_css,
+    discover_themes,
+    load_theme,
+    theme_static_dir,
+)
 from src.plugins import setup_plugin, render_cards, init_plugins_schemas
 from src.admin import (
     COOKIE_NAME, COOKIE_MAX_AGE,
@@ -165,6 +172,12 @@ def _theme_context(styles):
         "theme_css": styles.css,
         "theme_font_links": styles.font_links,
         "theme_config": json.dumps({"single": styles.single, "dark": styles.dark}),
+        "theme_light_css_urls": styles.light_css_urls,
+        "theme_dark_css_urls": styles.dark_css_urls,
+        "theme_light_js_urls": styles.light_js_urls,
+        "theme_dark_js_urls": styles.dark_js_urls,
+        "theme_light_name": styles.light_css_urls and "light" or "default-light",
+        "theme_dark_name": styles.dark_css_urls and "dark" or "default-dark",
     }
 
 
@@ -222,6 +235,7 @@ def index(request: Request):
     resolved_config = resolve_all_config_vars(app_config, secrets)
     page_title = resolved_config.get("page_title", "")
     page_header = resolved_config.get("page_header", "")
+    theme_options = resolved_config.get("theme_options", {})
 
     cards_data = _render_cards(resolved_config.get("cards", []))
 
@@ -244,6 +258,7 @@ def index(request: Request):
             "cards": cards_data,
             "max_cols": resolved_config.get("columns", 3),
             "plugin_style_rules": plugin_style_rules,
+            "theme_options": theme_options,
             **_theme_context(app.state.theme_styles),
         },
     )
@@ -280,9 +295,30 @@ def admin_login_page(request: Request):
         )
     if check_admin_auth(request):
         return RedirectResponse("/admin", status_code=302)
+
+    theme_descriptions = {}
+    available_themes = discover_themes()
+    for name in available_themes:
+        try:
+            raw = load_theme(name)
+            includes = raw.get("includes", {})
+            theme_descriptions[name] = {
+                "light": includes.get("description"),
+                "dark": includes.get("description"),
+            }
+        except ThemeError:
+            theme_descriptions[name] = {"light": None, "dark": None}
+
     return templates.TemplateResponse(
-        request, "admin.html",
-        {"show_login": True, "error": None, **_theme_context(app.state.theme_styles)},
+        request,
+        "admin.html",
+        {
+            "show_login": True,
+            "error": None,
+            "theme_descriptions": theme_descriptions,
+            "available_themes": available_themes,
+            **_theme_context(app.state.theme_styles),
+        },
     )
 
 
@@ -305,9 +341,29 @@ async def admin_login(request: Request):
         cookie_value = create_session_cookie(password)
         response.set_cookie(COOKIE_NAME, cookie_value, max_age=COOKIE_MAX_AGE, httponly=True)
         return response
+    theme_descriptions = {}
+    available_themes = discover_themes()
+    for name in available_themes:
+        try:
+            raw = load_theme(name)
+            includes = raw.get("includes", {})
+            theme_descriptions[name] = {
+                "light": includes.get("description"),
+                "dark": includes.get("description"),
+            }
+        except ThemeError:
+            theme_descriptions[name] = {"light": None, "dark": None}
+
     return templates.TemplateResponse(
-        request, "admin.html",
-        {"show_login": True, "error": "Invalid password", **_theme_context(app.state.theme_styles)},
+        request,
+        "admin.html",
+        {
+            "show_login": True,
+            "error": "Invalid password",
+            "theme_descriptions": theme_descriptions,
+            "available_themes": available_themes,
+            **_theme_context(app.state.theme_styles),
+        },
     )
 
 
@@ -336,12 +392,29 @@ def admin_page(request: Request, reloaded: bool = False):
     config_exists = config_path.exists()
     if config_exists:
         config_content = config_path.read_text(encoding="utf-8")
+
+    # Build theme descriptions for the theme selector
+    theme_descriptions = {}
+    available_themes = discover_themes()
+    for name in available_themes:
+        try:
+            raw = load_theme(name)
+            includes = raw.get("includes", {})
+            theme_descriptions[name] = {
+                "light": includes.get("description"),
+                "dark": includes.get("description"),
+            }
+        except ThemeError:
+            theme_descriptions[name] = {"light": None, "dark": None}
+
     return templates.TemplateResponse(request, "admin.html", {
         "show_login": False,
         "config_content": config_content,
         "config_exists": config_exists,
         "last_commit": _get_last_commit(),
         "reloaded": reloaded,
+        "theme_descriptions": theme_descriptions,
+        "available_themes": available_themes,
         **_theme_context(app.state.theme_styles),
     })
 

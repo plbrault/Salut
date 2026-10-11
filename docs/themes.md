@@ -1,6 +1,6 @@
 # Themes
 
-Themes control the visual tokens of your start page: colors, font family, and card border radius. Each theme is a directory under `src/themes/` containing a `theme.yml` file, plus an optional `static/` subdirectory for servable font assets.
+Themes control the visual tokens of your start page: colors, font family, and card border radius. Each theme is a directory under `src/themes/` containing a `theme.yml` file, plus an optional `static/` subdirectory for servable font assets and custom CSS/JavaScript files.
 
 ## Selecting a theme
 
@@ -68,6 +68,28 @@ radius:
   card: "0.5rem"
 ```
 
+### includes (optional)
+
+A theme can declare custom CSS and JavaScript files to load. These files are placed in the theme's `static/` subdirectory and served under `/themes/<theme-name>/`.
+
+```yaml
+includes:
+  css:                    # list of CSS files, loaded as <link rel="stylesheet">
+    - "theme.css"
+    - "animations/float.css"
+  js:                     # list of JS files, loaded as <script type="module">
+    - "theme.js"
+  description: "Floating pumpkins and animated bats"  # optional, shown in admin theme picker
+```
+
+**Validation:**
+- `includes` is optional
+- `css` and `js` must be arrays of strings (paths relative to `static/`)
+- All listed files must exist in the theme's `static/` directory
+- `description` is a free-form string
+
+**Inheritance behavior:** Child themes do NOT inherit parent's `includes`. Each theme declares its own `includes`; they are not merged up the chain.
+
 ### Required values
 
 Every resolved theme must provide all of these values, either directly or through inheritance:
@@ -129,6 +151,73 @@ A theme can bundle its own font files and declare them in a `fonts.css` file pla
 Font files are referenced relative to the `fonts.css` file itself. The `static/` subdirectory is served under `/themes/<theme-name>/`, so the example above resolves to `/themes/<theme-name>/Inter-Variable.woff2`.
 
 At render time, the page includes a `<link>` tag for every `fonts.css` found in the inheritance chains of the active light and dark themes, so a child theme automatically picks up its parent's fonts.
+
+## Custom CSS and JavaScript
+
+A theme can include custom CSS and JavaScript files to add visual effects, background images, animations, or interactive elements. Files are declared in the `includes` section of `theme.yml` and placed in the theme's `static/` subdirectory.
+
+### theme.js Contract
+
+A theme's JavaScript file (declared in `includes.js`) is loaded as an ES module (`<script type="module">`) at the end of `<body>`. It should export:
+
+```javascript
+// theme.js
+export function init(config = {}) {
+    // config = {
+    //   themeName: "halloween",      // active theme name
+    //   reducedMotion: boolean,      // from prefers-reduced-motion
+    //   ...theme_options from config.yml
+    // }
+    // Return optional cleanup function for theme switching
+    return () => { /* cleanup */ };
+}
+
+export const meta = {
+    prefersReducedMotion: "pause",  // "pause" | "disable" | "ignore"
+};
+```
+
+- `init(config)` is called automatically after the module loads, reading configuration from `window.themeInitConfig`.
+- The returned cleanup function (optional) will be called if live theme switching is implemented in the future.
+- `meta.prefersReducedMotion` tells the system how to handle the user's "reduce motion" preference:
+  - `"pause"` — pause animations when `reducedMotion` is true
+  - `"disable"` — don't start animations when `reducedMotion` is true
+  - `"ignore"` — run animations regardless of user preference
+
+### theme_options in config.yml
+
+You can pass arbitrary options from `config.yml` to your theme's `init()` function:
+
+```yaml
+theme: halloween
+theme_options:
+  pumpkin_count: 15
+  bat_speed: 1.2
+```
+
+These options are merged with `themeName` and `reducedMotion` and passed to `init()`.
+
+### Reduced Motion
+
+The browser's `prefers-reduced-motion` media query is evaluated client-side and passed to `init()` as `reducedMotion`. Theme authors should respect this setting per their `meta.prefersReducedMotion` declaration.
+
+### Asset References
+
+CSS files in `static/` can reference sibling assets (images, fonts) using relative URLs:
+
+```css
+/* theme.css */
+.halloween-bg {
+    background-image: url("pumpkin.svg");  /* resolves to /themes/halloween/pumpkin.svg */
+}
+```
+
+### Load Order
+
+1. Theme CSS variables (inline `<style>`)
+2. Theme CSS includes (`<link rel="stylesheet">`)
+3. Plugin style rules
+4. Theme JS includes (`<script type="module">`)
 
 ## Built-in themes
 

@@ -46,6 +46,38 @@
         <h1 class="text-2xl font-bold mb-1">Salut Admin</h1>
         {% if not show_login %}
         <p class="text-sm mb-6" style="color: var(--text-muted);">Last Commit: <code>{{ last_commit }}</code></p>
+        <div class="card mb-6">
+            <h2 class="text-lg font-semibold mb-4">Theme</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label for="theme-light" class="block text-sm font-medium mb-1">Light Theme</label>
+                    <select name="theme_light" id="theme-light" class="w-full px-3 py-2 border rounded-md" style="border-color: var(--border); background: var(--card-bg); color: var(--text);">
+                        {% for name in available_themes %}
+                        <option value="{{ name }}" data-description="{{ theme_descriptions[name].light or '' }}">
+                            {{ name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    {% if theme_descriptions[theme_light_name].light %}
+                    <p class="text-sm mt-1" style="color: var(--text-muted);" id="theme-light-desc">{{ theme_descriptions[theme_light_name].light }}</p>
+                    {% endif %}
+                </div>
+                <div>
+                    <label for="theme-dark" class="block text-sm font-medium mb-1">Dark Theme</label>
+                    <select name="theme_dark" id="theme-dark" class="w-full px-3 py-2 border rounded-md" style="border-color: var(--border); background: var(--card-bg); color: var(--text);">
+                        {% for name in available_themes %}
+                        <option value="{{ name }}" data-description="{{ theme_descriptions[name].dark or '' }}">
+                            {{ name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    {% if theme_descriptions[theme_dark_name].dark %}
+                    <p class="text-sm mt-1" style="color: var(--text-muted);" id="theme-dark-desc">{{ theme_descriptions[theme_dark_name].dark }}</p>
+                    {% endif %}
+                </div>
+            </div>
+            <p class="text-sm mt-4" style="color: var(--text-muted);">Theme changes require a config reload to take effect.</p>
+        </div>
         {% endif %}
         <div id="content">
             {% if show_login %}
@@ -151,6 +183,40 @@
                     theme: theme === 'dark' ? 'material-darker' : 'default'
                 });
                 source.style.display = 'none';
+            }
+
+            // Theme selector description updates
+            var lightSelect = document.getElementById('theme-light');
+            var darkSelect = document.getElementById('theme-dark');
+            var lightDesc = document.getElementById('theme-light-desc');
+            var darkDesc = document.getElementById('theme-dark-desc');
+            var themeDescriptions = {{ theme_descriptions | tojson | safe }};
+
+            function updateDescription(select, descEl, themeType) {
+                var selected = select.value;
+                var desc = themeDescriptions[selected] ? themeDescriptions[selected][themeType] : null;
+                if (desc) {
+                    descEl.textContent = desc;
+                    descEl.style.display = 'block';
+                } else {
+                    descEl.style.display = 'none';
+                }
+            }
+
+            if (lightSelect && lightDesc) {
+                lightSelect.addEventListener('change', function() {
+                    updateDescription(lightSelect, lightDesc, 'light');
+                });
+                // Initial update
+                updateDescription(lightSelect, lightDesc, 'light');
+            }
+
+            if (darkSelect && darkDesc) {
+                darkSelect.addEventListener('change', function() {
+                    updateDescription(darkSelect, darkDesc, 'dark');
+                });
+                // Initial update
+                updateDescription(darkSelect, darkDesc, 'dark');
             }
 
             document.body.addEventListener('htmx:beforeRequest', function(e) {
