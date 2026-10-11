@@ -296,27 +296,12 @@ def admin_login_page(request: Request):
     if check_admin_auth(request):
         return RedirectResponse("/admin", status_code=302)
 
-    theme_descriptions = {}
-    available_themes = discover_themes()
-    for name in available_themes:
-        try:
-            raw = load_theme(name)
-            includes = raw.get("includes", {})
-            theme_descriptions[name] = {
-                "light": includes.get("description"),
-                "dark": includes.get("description"),
-            }
-        except ThemeError:
-            theme_descriptions[name] = {"light": None, "dark": None}
-
     return templates.TemplateResponse(
         request,
         "admin.html",
         {
             "show_login": True,
             "error": None,
-            "theme_descriptions": theme_descriptions,
-            "available_themes": available_themes,
             **_theme_context(app.state.theme_styles),
         },
     )

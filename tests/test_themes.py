@@ -365,7 +365,7 @@ class TestGenerateThemeCssIncludes:
     def test_generate_theme_css_returns_include_urls(self, tmp_path):
         theme_data = {
             **FULL_THEME,
-            "includes": {"css": ["theme.css"], "js": ["theme.js"], "description": "Test"},
+            "includes": {"css": ["theme.css"], "js": ["theme.js"]},
         }
         theme_dir = _write_theme(tmp_path, "test-theme", theme_data)
         static_dir = theme_dir / "static"
@@ -376,10 +376,8 @@ class TestGenerateThemeCssIncludes:
         styles = generate_theme_css("test-theme", tmp_path)
         assert styles.light_css_urls == ["/themes/test-theme/theme.css"]
         assert styles.light_js_urls == ["/themes/test-theme/theme.js"]
-        assert styles.light_description == "Test"
         assert styles.dark_css_urls == ["/themes/test-theme/theme.css"]
         assert styles.dark_js_urls == ["/themes/test-theme/theme.js"]
-        assert styles.dark_description == "Test"
 
     def test_generate_theme_css_light_dark_different_includes(self, tmp_path):
         light_data = {**FULL_THEME, "includes": {"css": ["light.css"], "js": ["light.js"]}}
@@ -437,8 +435,6 @@ class TestGenerateThemeCssIncludes:
         assert styles.light_js_urls == []
         assert styles.dark_css_urls == []
         assert styles.dark_js_urls == []
-        assert styles.light_description is None
-        assert styles.dark_description is None
 
     def test_builtin_fallback_styles_has_new_fields(self):
         styles = built_in_theme_styles()
@@ -446,5 +442,3 @@ class TestGenerateThemeCssIncludes:
         assert styles.light_js_urls == []
         assert styles.dark_css_urls == []
         assert styles.dark_js_urls == []
-        assert styles.light_description is None
-        assert styles.dark_description is None

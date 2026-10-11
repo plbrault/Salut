@@ -79,14 +79,12 @@ includes:
     - "animations/float.css"
   js:                     # list of JS files, loaded as <script type="module">
     - "theme.js"
-  description: "Floating pumpkins and animated bats"  # optional, shown in admin theme picker
 ```
 
 **Validation:**
 - `includes` is optional
 - `css` and `js` must be arrays of strings (paths relative to `static/`)
 - All listed files must exist in the theme's `static/` directory
-- `description` is a free-form string
 
 **Inheritance behavior:** Child themes do NOT inherit parent's `includes`. Each theme declares its own `includes`; they are not merged up the chain.
 

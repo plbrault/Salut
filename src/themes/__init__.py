@@ -37,8 +37,6 @@ class ThemeStyles(NamedTuple):
     light_js_urls: list
     dark_css_urls: list
     dark_js_urls: list
-    light_description: str | None
-    dark_description: str | None
 
 
 def _themes_root(themes_dir=None):
@@ -275,8 +273,6 @@ def generate_theme_css(theme_config, themes_dir=None):
         light_js_urls=light_js_urls,
         dark_css_urls=dark_css_urls,
         dark_js_urls=dark_js_urls,
-        light_description=light_includes.get("description"),
-        dark_description=dark_includes.get("description"),
     )
 
 
@@ -290,5 +286,4 @@ def built_in_theme_styles(themes_dir=None):
         return ThemeStyles(
             css="", font_links=[], single=False, dark=False,
             light_css_urls=[], light_js_urls=[], dark_css_urls=[], dark_js_urls=[],
-            light_description=None, dark_description=None
         )
