@@ -21,16 +21,18 @@ if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
     resize();
     window.addEventListener("resize", resize);
 
-    function makeBat() {
+    const KINDS = ["bat", "ghost"];
+
+    function makeFlyer() {
+        const kind = KINDS[Math.floor(Math.random() * KINDS.length)];
         const width = window.innerWidth;
         const height = window.innerHeight;
         const fromLeft = Math.random() < 0.5;
-        return {
+        const flyer = {
+            kind,
             x: fromLeft ? -40 : width + 40,
             y: height * 0.1 + Math.random() * height * 0.6,
             heading: fromLeft ? 0 : Math.PI,
-            speed: 25 + Math.random() * 20,
-            turn: 0.5 + Math.random() * 0.5,
             wobble: Math.random() * Math.PI * 2,
             waypoints: [
                 {
@@ -42,19 +44,36 @@ if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
                     y: Math.random() * height,
                 },
             ],
-            size: 13 + Math.random() * 12,
-            alpha: 0.3 + Math.random() * 0.25,
         };
+        if (kind === "ghost") {
+            flyer.glyph = "👻";
+            flyer.speed = 15 + Math.random() * 15;
+            flyer.turn = 0.3 + Math.random() * 0.3;
+            flyer.size = 18 + Math.random() * 12;
+            flyer.alpha = 0.22 + Math.random() * 0.2;
+        } else {
+            flyer.glyph = "🦇";
+            flyer.speed = 25 + Math.random() * 20;
+            flyer.turn = 0.5 + Math.random() * 0.5;
+            flyer.size = 13 + Math.random() * 12;
+            flyer.alpha = 0.3 + Math.random() * 0.25;
+        }
+        return flyer;
     }
 
-    let bats = [];
+    function drawFlyer(flyer) {
+        ctx.font = `${flyer.size}px serif`;
+        ctx.fillText(flyer.glyph, flyer.x, flyer.y);
+    }
+
+    let flyers = [];
     let running = false;
     let last = 0;
 
     function startFlyby() {
-        bats.push(makeBat());
+        flyers.push(makeFlyer());
         if (Math.random() < 0.15) {
-            bats.push(makeBat());
+            flyers.push(makeFlyer());
         }
         if (!running) {
             running = true;
@@ -63,50 +82,46 @@ if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
         }
     }
 
-    function scheduleNext(delay) {
-        setTimeout(startFlyby, delay);
-    }
-
     function frame(now) {
         const elapsed = Math.min((now - last) / 1000, 0.1);
         last = now;
         const width = window.innerWidth;
         const height = window.innerHeight;
         ctx.clearRect(0, 0, width, height);
-        bats = bats.filter((bat) => {
-            const target = bat.waypoints[0];
-            const dx = target.x - bat.x;
-            const dy = target.y - bat.y;
+        flyers = flyers.filter((flyer) => {
+            const target = flyer.waypoints[0];
+            const dx = target.x - flyer.x;
+            const dy = target.y - flyer.y;
             if (Math.hypot(dx, dy) < 40) {
-                bat.waypoints.shift();
+                flyer.waypoints.shift();
             } else {
                 const desired = Math.atan2(dy, dx);
-                const diff = ((desired - bat.heading + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
-                const step = Math.max(-bat.turn * elapsed, Math.min(bat.turn * elapsed, diff));
-                bat.heading += step;
+                const diff = ((desired - flyer.heading + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+                const step = Math.max(-flyer.turn * elapsed, Math.min(flyer.turn * elapsed, diff));
+                flyer.heading += step;
             }
-            bat.wobble += elapsed * 0.7;
-            bat.heading += Math.sin(bat.wobble) * 0.15 * elapsed;
-            bat.x += Math.cos(bat.heading) * bat.speed * elapsed;
-            bat.y += Math.sin(bat.heading) * bat.speed * elapsed;
-            const inside = Math.min(bat.x, width - bat.x, bat.y, height - bat.y);
+            flyer.wobble += elapsed * 0.7;
+            flyer.heading += Math.sin(flyer.wobble) * 0.15 * elapsed;
+            flyer.x += Math.cos(flyer.heading) * flyer.speed * elapsed;
+            flyer.y += Math.sin(flyer.heading) * flyer.speed * elapsed;
+            const inside = Math.min(flyer.x, width - flyer.x, flyer.y, height - flyer.y);
             if (inside < -100) {
                 return false;
             }
             const fade = Math.max(0, Math.min(1, inside / 90));
-            ctx.globalAlpha = bat.alpha * fade;
-            ctx.font = `${bat.size}px serif`;
-            ctx.fillText("🦇", bat.x, bat.y);
+            ctx.globalAlpha = flyer.alpha * fade;
+            drawFlyer(flyer);
             return true;
         });
         ctx.globalAlpha = 1;
-        if (bats.length > 0) {
-            requestAnimationFrame(frame);
-        } else {
-            running = false;
-            scheduleNext(10000 + Math.random() * 10000);
+        if (flyers.length === 0) {
+            flyers.push(makeFlyer());
+            if (Math.random() < 0.15) {
+                flyers.push(makeFlyer());
+            }
         }
+        requestAnimationFrame(frame);
     }
 
-    scheduleNext(3000 + Math.random() * 5000);
+    startFlyby();
 }

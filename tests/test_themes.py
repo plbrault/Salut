@@ -517,4 +517,6 @@ class TestHalloweenThemes:
             assert "prefers-reduced-motion" in source
             assert "pointerEvents" in source
             assert "requestAnimationFrame" in source
-            assert "setTimeout" in source
+            assert "startFlyby();" in source
+            assert "ghost" in source
+            assert "witch" not in source
