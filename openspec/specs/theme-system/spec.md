@@ -8,18 +8,46 @@ Provides a configurable, extensible theme system for Salut. Visual tokens such a
 
 ### Requirement: Themes are defined in YAML files
 
-Each theme SHALL be a directory under `src/themes/` containing a `theme.yml` file. The file SHALL define `colors`, `fonts`, and `radius` sections using snake_case keys. Optional `name` and `extends` fields MAY be present.
+Each theme SHALL be a directory under `src/themes/` containing a `theme.yml` file. The file SHALL define `colors`, `fonts`, and `radius` sections using snake_case keys. The `fonts` section SHALL define `page_heading`, `card_heading`, and `card_content` keys. Optional `name` and `extends` fields MAY be present.
 
 #### Scenario: Built-in default light theme
 
 - **WHEN** the `default-light` theme is loaded
-- **THEN** it provides values for `--bg`, `--card-bg`, `--text`, `--text-muted`, `--text-faint`, `--border`, `--link`, `--link-hover`, `--code-bg`, `--accent`, `--accent-hover`, `--accent-contrast`, `--danger`, `--danger-hover`, `--danger-contrast`, `--font-family`, and `--card-radius`
+- **THEN** it provides values for `--bg`, `--card-bg`, `--text`, `--text-muted`, `--text-faint`, `--border`, `--link`, `--link-hover`, `--code-bg`, `--accent`, `--accent-hover`, `--accent-contrast`, `--danger`, `--danger-hover`, `--danger-contrast`, `--font-page-heading`, `--font-card-heading`, `--font-card-content`, and `--card-radius`
 
 #### Scenario: Built-in default dark theme inherits from default-light
 
 - **GIVEN** the `default-dark` theme declares `extends: default-light`
 - **WHEN** the `default-dark` theme is resolved
-- **THEN** it inherits `fonts.family` and `radius.card` from `default-light` and overrides only the color values
+- **THEN** it inherits `fonts.page_heading`, `fonts.card_heading`, `fonts.card_content`, and `radius.card` from `default-light` and overrides only the color values
+
+### Requirement: Themes define role-based fonts
+
+Each resolved theme SHALL define `fonts.page_heading`, `fonts.card_heading`, and `fonts.card_content` using snake_case keys. The generated CSS SHALL expose them as `--font-page-heading`, `--font-card-heading`, and `--font-card-content` for both light and dark modes.
+
+#### Scenario: Page header uses the page-heading font
+
+- **GIVEN** the default themes are configured
+- **WHEN** the main page renders
+- **THEN** the page header title uses `var(--font-page-heading)`
+
+#### Scenario: Card titles use the card-heading font
+
+- **GIVEN** the default themes are configured
+- **WHEN** a card renders on the main page
+- **THEN** the card title uses `var(--font-card-heading)` and the card body text uses `var(--font-card-content)`
+
+#### Scenario: Admin headings use the page-heading font
+
+- **GIVEN** the default themes are configured
+- **WHEN** the admin page renders
+- **THEN** the admin `h1` and `h2` headings use `var(--font-page-heading)` and the admin body text uses `var(--font-card-content)`
+
+#### Scenario: Missing font role is rejected
+
+- **GIVEN** a theme that does not define `fonts.card_heading` (directly or through inheritance)
+- **WHEN** the theme is validated
+- **THEN** validation raises an error naming the missing value `fonts.card_heading`
 
 ### Requirement: Themes can inherit from parent themes
 
@@ -90,7 +118,7 @@ A theme directory MAY contain font files (e.g., `.woff2`) and a `fonts.css` file
 
 ### Requirement: Layout is not themable
 
-The masonry layout algorithm, card structure, responsive breakpoints, padding, gaps, and font sizes SHALL remain hardcoded. Only colors, font family, and card border radius are controlled by themes.
+The masonry layout algorithm, card structure, responsive breakpoints, padding, gaps, and font sizes SHALL remain hardcoded. Only colors, fonts, and card border radius are controlled by themes.
 
 #### Scenario: Card radius is themable
 
@@ -112,7 +140,7 @@ The admin page SHALL receive the same generated theme CSS as the main page, sinc
 
 - **GIVEN** the user configures a custom light/dark theme pair
 - **WHEN** the admin page renders
-- **THEN** it uses the same colors and font as the main page
+- **THEN** it uses the same colors and fonts as the main page, with headings in the page-heading font
 
 ### Requirement: Error page uses a built-in theme fallback
 
