@@ -283,17 +283,17 @@ class TestServer:
 
 
 class TestThemeIncludes:
-    def test_index_includes_themeinitconfig(self):
-        """Test that window.themeInitConfig is present in rendered HTML."""
+    def test_index_does_not_include_themeinitconfig(self):
+        """Test that window.themeInitConfig is NOT present in rendered HTML."""
         with TestClient(app) as client:
             response = client.get("/")
-            assert "window.themeInitConfig" in response.text
-            assert "options" in response.text
-            assert "reducedMotion" in response.text
-            assert "themeName" in response.text
+            assert response.status_code == 200
+            assert "window.themeInitConfig" not in response.text
+            assert "reducedMotion" not in response.text
+            assert "themeName" not in response.text
 
-    def test_theme_options_passed_to_template(self):
-        """Test that theme_options from config is passed to template."""
+    def test_theme_options_not_passed_to_template(self):
+        """Test that theme_options from config is NOT passed to template."""
         def load_config_with_theme_options():
             config = load_config()
             config["theme_options"] = {"pumpkin_count": 15, "bat_speed": 1.2}
@@ -303,5 +303,5 @@ class TestThemeIncludes:
             with TestClient(app) as client:
                 response = client.get("/")
                 assert response.status_code == 200
-                assert "pumpkin_count" in response.text
-                assert "bat_speed" in response.text
+                assert "pumpkin_count" not in response.text
+                assert "bat_speed" not in response.text

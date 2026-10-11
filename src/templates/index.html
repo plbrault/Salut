@@ -261,15 +261,6 @@
         })();
     </script>
 
-    <!-- Theme JS initialization config -->
-    <script>
-        window.themeInitConfig = {
-            options: {{ theme_options | tojson | safe }},
-            reducedMotion: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
-            themeName: "{{ theme_light_name if theme == 'light' else theme_dark_name }}"
-        };
-    </script>
-
     <!-- Theme JS includes (end of body) -->
     {% if theme_config.single %}
     {% set js_urls = theme_light_js_urls %}

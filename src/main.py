@@ -26,7 +26,6 @@ from src.themes import (
     built_in_theme_styles,
     generate_theme_css,
     discover_themes,
-    load_theme,
     theme_static_dir,
 )
 from src.plugins import setup_plugin, render_cards, init_plugins_schemas
@@ -176,8 +175,6 @@ def _theme_context(styles):
         "theme_dark_css_urls": styles.dark_css_urls,
         "theme_light_js_urls": styles.light_js_urls,
         "theme_dark_js_urls": styles.dark_js_urls,
-        "theme_light_name": styles.light_css_urls and "light" or "default-light",
-        "theme_dark_name": styles.dark_css_urls and "dark" or "default-dark",
     }
 
 
@@ -235,7 +232,6 @@ def index(request: Request):
     resolved_config = resolve_all_config_vars(app_config, secrets)
     page_title = resolved_config.get("page_title", "")
     page_header = resolved_config.get("page_header", "")
-    theme_options = resolved_config.get("theme_options", {})
 
     cards_data = _render_cards(resolved_config.get("cards", []))
 
@@ -258,7 +254,6 @@ def index(request: Request):
             "cards": cards_data,
             "max_cols": resolved_config.get("columns", 3),
             "plugin_style_rules": plugin_style_rules,
-            "theme_options": theme_options,
             **_theme_context(app.state.theme_styles),
         },
     )
