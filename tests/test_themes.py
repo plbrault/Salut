@@ -475,7 +475,7 @@ class TestHalloweenThemes:
             resolved = load_resolved_theme(name)
             assert resolved["fonts"]["page_heading"] == "'Creepster', 'Inter', sans-serif"
             assert resolved["fonts"]["card_heading"] == "'Creepster', 'Inter', sans-serif"
-            assert resolved["fonts"]["card_content"] == "'Inter', sans-serif"
+            assert resolved["fonts"]["card_content"] == "'Lato', 'Inter', sans-serif"
 
     def test_halloween_themes_inherit_radius(self):
         light = load_resolved_theme("halloween-light")
@@ -487,6 +487,7 @@ class TestHalloweenThemes:
         assert "/themes/halloween-dark/fonts.css" in styles.font_links
         assert "--font-page-heading: 'Creepster', 'Inter', sans-serif;" in styles.css
         assert "--font-card-heading: 'Creepster', 'Inter', sans-serif;" in styles.css
+        assert "--font-card-content: 'Lato', 'Inter', sans-serif;" in styles.css
 
     def test_halloween_static_files_exist(self):
         for name in ("halloween-light", "halloween-dark"):
@@ -495,7 +496,12 @@ class TestHalloweenThemes:
             assert (static_dir / "theme.js").is_file()
             assert (static_dir / "fonts.css").is_file()
             assert (static_dir / "Creepster-Regular.woff2").is_file()
-            assert "Creepster-Regular.woff2" in (static_dir / "fonts.css").read_text(encoding="utf-8")
+            assert (static_dir / "Lato-Regular.woff2").is_file()
+            assert (static_dir / "Lato-Bold.woff2").is_file()
+            fonts_css = (static_dir / "fonts.css").read_text(encoding="utf-8")
+            assert "Creepster-Regular.woff2" in fonts_css
+            assert "Lato-Regular.woff2" in fonts_css
+            assert "Lato-Bold.woff2" in fonts_css
 
     def test_halloween_pair_emits_include_urls(self):
         styles = generate_theme_css({"light": "halloween-light", "dark": "halloween-dark"})

@@ -18,6 +18,7 @@ colors:
 fonts:
   page_heading: "'Creepster', 'Inter', sans-serif"
   card_heading: "'Creepster', 'Inter', sans-serif"
+  card_content: "'Lato', 'Inter', sans-serif"
 
 includes:
   css:
