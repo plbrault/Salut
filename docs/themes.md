@@ -18,6 +18,8 @@ theme:
 
 If the field is omitted, the default pair `{ light: default-light, dark: default-dark }` is used.
 
+The page still switches modes with `data-theme="light"` and `data-theme="dark"`; your config only decides which theme supplies the variables for each mode.
+
 ## Theme directory structure
 
 ```
@@ -74,6 +76,7 @@ A theme can declare custom CSS and JavaScript files to load. These files are pla
 includes:
   css:                    # list of CSS files, loaded as <link rel="stylesheet">
     - "theme.css"
+    - "animations/float.css"
   js:                     # list of JS files, loaded as <script type="module">
     - "theme.js"
 ```
@@ -83,7 +86,7 @@ includes:
 - `css` and `js` must be arrays of strings (paths relative to `static/`)
 - All listed files must exist in the theme's `static/` directory
 
-**Inheritance behavior:** Child themes do NOT inherit parent's `includes`. Each theme declares its own `includes`; they are not merged up the chain.
+**Inheritance behavior:** Child themes inherit parent's `includes` by default. If a child theme defines its own `includes` (even an empty object `includes: {}`), it replaces the parent's entirely — no merging occurs.
 
 ### Required values
 
@@ -151,50 +154,9 @@ At render time, the page includes a `<link>` tag for every `fonts.css` found in 
 
 A theme can include custom CSS and JavaScript files to add visual effects, background images, animations, or interactive elements. Files are declared in the `includes` section of `theme.yml` and placed in the theme's `static/` subdirectory.
 
-### theme.js Contract
+### theme.js
 
-A theme's JavaScript file (declared in `includes.js`) is loaded as an ES module (`<script type="module">`) at the end of `<body>`. It should export:
-
-```javascript
-// theme.js
-export function init(config = {}) {
-    // config = {
-    //   themeName: "halloween",      // active theme name
-    //   reducedMotion: boolean,      // from prefers-reduced-motion
-    //   ...theme_options from config.yml
-    // }
-    // Return optional cleanup function for theme switching
-    return () => { /* cleanup */ };
-}
-
-export const meta = {
-    prefersReducedMotion: "pause",  // "pause" | "disable" | "ignore"
-};
-```
-
-- `init(config)` is called automatically after the module loads, reading configuration from `window.themeInitConfig`.
-- The returned cleanup function (optional) will be called if live theme switching is implemented in the future.
-- `meta.prefersReducedMotion` tells the system how to handle the user's "reduce motion" preference:
-  - `"pause"` — pause animations when `reducedMotion` is true
-  - `"disable"` — don't start animations when `reducedMotion` is true
-  - `"ignore"` — run animations regardless of user preference
-
-### theme_options in config.yml
-
-You can pass arbitrary options from `config.yml` to your theme's `init()` function:
-
-```yaml
-theme: halloween
-theme_options:
-  pumpkin_count: 15
-  bat_speed: 1.2
-```
-
-These options are merged with `themeName` and `reducedMotion` and passed to `init()`.
-
-### Reduced Motion
-
-The browser's `prefers-reduced-motion` media query is evaluated client-side and passed to `init()` as `reducedMotion`. Theme authors should respect this setting per their `meta.prefersReducedMotion` declaration.
+A theme's JavaScript file (declared in `includes.js`) is loaded as an ES module (`<script type="module">`) at the end of `<body>`. It executes immediately on load as a standard ES module. No special contract is required — themes can use standard browser APIs.
 
 ### Asset References
 
