@@ -12,17 +12,23 @@
     {% endfor %}
 
     <!-- Theme CSS includes (after variables, before plugin styles) -->
-    {% if theme_single %}
-    {% set css_urls = theme_light_css_urls %}
-    {% else %}
-    {% set css_urls = theme_dark_css_urls if theme_dark else theme_light_css_urls %}
-    {% endif %}
-    {% for url in css_urls %}
-    <link rel="stylesheet" href="{{ url }}">
+    {% for url in theme_light_css_urls %}
+    <link rel="stylesheet" href="{{ url }}" data-theme-include="light">
     {% endfor %}
+    {% if not theme_single %}
+    {% for url in theme_dark_css_urls %}
+    <link rel="stylesheet" href="{{ url }}" data-theme-include="dark">
+    {% endfor %}
+    {% endif %}
 
     <script>
         window.themeConfig = {{ theme_config | safe }};
+        window.themeIncludes = {
+            js: {
+                light: {{ theme_light_js_urls | tojson }},
+                dark: {{ theme_dark_js_urls | tojson }}
+            }
+        };
         (function() {
             var theme = 'light';
             if (!window.themeConfig.single) {
@@ -30,12 +36,26 @@
             }
             document.documentElement.dataset.theme = theme;
 
+            window.applyThemeIncludes = function() {
+                var current = document.documentElement.dataset.theme;
+                Array.from(document.querySelectorAll('link[data-theme-include]')).forEach(function(link) {
+                    link.disabled = link.getAttribute('data-theme-include') !== current;
+                });
+            };
+
+            var themeHasScripts = window.themeIncludes.js.light.length + window.themeIncludes.js.dark.length > 0;
+
             window.toggleTheme = function() {
                 if (window.themeConfig.single) return;
                 var current = document.documentElement.dataset.theme;
                 var next = current === 'dark' ? 'light' : 'dark';
-                document.documentElement.dataset.theme = next;
                 localStorage.setItem('theme', next);
+                if (themeHasScripts) {
+                    location.reload();
+                    return;
+                }
+                document.documentElement.dataset.theme = next;
+                window.applyThemeIncludes();
                 var btn = document.querySelector('.theme-toggle');
                 if (btn) btn.innerHTML = next === 'dark' ? window.themeIcons.moon : window.themeIcons.sun;
             };
@@ -44,6 +64,8 @@
                 sun: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>',
                 moon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>'
             };
+
+            window.applyThemeIncludes();
         })();
     </script>
     <style>
@@ -261,15 +283,19 @@
         })();
     </script>
 
-    <!-- Theme JS includes (end of body) -->
-    {% if theme_single %}
-    {% set js_urls = theme_light_js_urls %}
-    {% else %}
-    {% set js_urls = theme_dark_js_urls if theme_dark else theme_light_js_urls %}
-    {% endif %}
-    {% for url in js_urls %}
-    <script type="module" src="{{ url }}"></script>
-    {% endfor %}
+    <!-- Theme JS includes (end of body, active theme only) -->
+    <script>
+        (function() {
+            var urls = window.themeIncludes.js[document.documentElement.dataset.theme || 'light'] || [];
+            urls.forEach(function(url) {
+                var script = document.createElement('script');
+                script.type = 'module';
+                script.async = false;
+                script.src = url;
+                document.body.appendChild(script);
+            });
+        })();
+    </script>
 
 </body>
 </html>

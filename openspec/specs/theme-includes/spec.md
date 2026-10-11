@@ -4,7 +4,7 @@
 
 Allows themes to declare CSS and JavaScript files that are automatically loaded into the start page, enabling visual effects like background images, CSS animations, and canvas-based animations without requiring custom plugins.
 
-## ADDED Requirements
+## Requirements
 
 ### Requirement: Theme declares CSS and JS includes in theme.yml
 A theme SHALL be able to declare an `includes` section in its `theme.yml` containing `css` (array of file paths) and `js` (array of file paths).
