@@ -18,8 +18,6 @@ theme:
 
 If the field is omitted, the default pair `{ light: default-light, dark: default-dark }` is used.
 
-The page still switches modes with `data-theme="light"` and `data-theme="dark"`; your config only decides which theme supplies the variables for each mode.
-
 ## Theme directory structure
 
 ```
@@ -76,7 +74,6 @@ A theme can declare custom CSS and JavaScript files to load. These files are pla
 includes:
   css:                    # list of CSS files, loaded as <link rel="stylesheet">
     - "theme.css"
-    - "animations/float.css"
   js:                     # list of JS files, loaded as <script type="module">
     - "theme.js"
 ```
