@@ -167,21 +167,3 @@ CSS files in `static/` can reference sibling assets (images, fonts) using relati
     background-image: url("pumpkin.svg");  /* resolves to /themes/halloween/pumpkin.svg */
 }
 ```
-
-### Load Order
-
-1. Theme CSS variables (inline `<style>`)
-2. Theme CSS includes (`<link rel="stylesheet">`)
-3. Plugin style rules
-4. Theme JS includes (`<script type="module">`)
-
-## Built-in themes
-
-- `default-light` — the original light palette, bundles the Inter font in `static/`.
-- `default-dark` — extends `default-light` and overrides only the colors.
-
-The configuration error page always uses the built-in themes, since the configured theme may be the very thing that failed to load.
-
-## What is not themable
-
-Only colors, font family, and card border radius come from themes. The masonry layout algorithm, card structure, responsive breakpoints, padding, gaps, and font sizes stay hardcoded. Extra keys in `theme.yml` are ignored by the layout.
