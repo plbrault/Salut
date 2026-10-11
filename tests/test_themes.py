@@ -537,11 +537,22 @@ class TestHalloweenThemes:
         for name in ("halloween-light", "halloween-dark"):
             source = (theme_static_dir(name) / "theme.js").read_text(encoding="utf-8")
             assert "themeInitConfig" not in source
-            assert "prefers-reduced-motion" in source
-            assert "pointerEvents" in source
-            assert "requestAnimationFrame" in source
-            assert "startFlyby();" in source
-            assert "ghost" in source
-            assert "witch" not in source
-            assert "entered" in source
-            assert "measureText" in source
+            assert "runSky" in source
+
+    def test_halloween_engine_holds_flight_behavior(self):
+        source = (theme_static_dir("halloween-light") / "engine.js").read_text(encoding="utf-8")
+        assert "themeInitConfig" not in source
+        assert "prefers-reduced-motion" in source
+        assert "pointerEvents" in source
+        assert "requestAnimationFrame" in source
+        assert "startFlyby();" in source
+        assert "ghost" in source
+        assert "witch" not in source
+        assert "entered" in source
+        assert "measureText" in source
+
+    def test_halloween_dark_imports_shared_engine(self):
+        light_entry = (theme_static_dir("halloween-light") / "theme.js").read_text(encoding="utf-8")
+        assert light_entry == 'import { runSky } from "./engine.js";\n\nrunSky({ ghost: [0.16, 0.16], bat: [0.22, 0.2] });\n'
+        dark_entry = (theme_static_dir("halloween-dark") / "theme.js").read_text(encoding="utf-8")
+        assert dark_entry == 'import { runSky } from "/themes/halloween-light/engine.js";\n\nrunSky({ ghost: [0.22, 0.2], bat: [0.3, 0.25] });\n'
