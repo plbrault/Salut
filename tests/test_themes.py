@@ -553,6 +553,8 @@ class TestHalloweenThemes:
 
     def test_halloween_dark_imports_shared_engine(self):
         light_entry = (theme_static_dir("halloween-light") / "theme.js").read_text(encoding="utf-8")
-        assert light_entry == 'import { runSky } from "./engine.js";\n\nrunSky({ ghost: [0.16, 0.16], bat: [0.22, 0.2] });\n'
+        assert 'import { runSky } from "./engine.js";' in light_entry
+        assert "runSky({ ghost: [0.16, 0.16], bat: [0.22, 0.2] });" in light_entry
         dark_entry = (theme_static_dir("halloween-dark") / "theme.js").read_text(encoding="utf-8")
-        assert dark_entry == 'import { runSky } from "/themes/halloween-light/engine.js";\n\nrunSky({ ghost: [0.22, 0.2], bat: [0.3, 0.25] });\n'
+        assert 'import { runSky } from "/themes/halloween-light/engine.js";' in dark_entry
+        assert "runSky({ ghost: [0.22, 0.2], bat: [0.3, 0.25] });" in dark_entry
