@@ -14,6 +14,7 @@ from src.themes import (
     palette_is_dark,
     resolve_theme,
     theme_chain,
+    theme_static_dir,
     validate_theme,
 )
 
@@ -456,3 +457,58 @@ class TestGenerateThemeCssIncludes:
         assert styles.light_js_urls == []
         assert styles.dark_css_urls == []
         assert styles.dark_js_urls == []
+
+
+class TestHalloweenThemes:
+    def test_halloween_themes_discovered(self):
+        names = discover_themes()
+        assert "halloween-light" in names
+        assert "halloween-dark" in names
+
+    def test_halloween_themes_declare_own_includes(self):
+        for name in ("halloween-light", "halloween-dark"):
+            resolved = load_resolved_theme(name)
+            assert resolved["includes"] == {"css": ["theme.css"], "js": ["theme.js"]}
+
+    def test_halloween_themes_use_creepster_headings(self):
+        for name in ("halloween-light", "halloween-dark"):
+            resolved = load_resolved_theme(name)
+            assert resolved["fonts"]["page_heading"] == "'Creepster', 'Inter', sans-serif"
+            assert resolved["fonts"]["card_heading"] == "'Creepster', 'Inter', sans-serif"
+            assert resolved["fonts"]["card_content"] == "'Inter', sans-serif"
+
+    def test_halloween_themes_inherit_radius(self):
+        light = load_resolved_theme("halloween-light")
+        assert light["radius"]["card"] == "0.5rem"
+
+    def test_halloween_font_links_include_creepster(self):
+        styles = generate_theme_css({"light": "halloween-light", "dark": "halloween-dark"})
+        assert "/themes/halloween-light/fonts.css" in styles.font_links
+        assert "/themes/halloween-dark/fonts.css" in styles.font_links
+        assert "--font-page-heading: 'Creepster', 'Inter', sans-serif;" in styles.css
+        assert "--font-card-heading: 'Creepster', 'Inter', sans-serif;" in styles.css
+
+    def test_halloween_static_files_exist(self):
+        for name in ("halloween-light", "halloween-dark"):
+            static_dir = theme_static_dir(name)
+            assert (static_dir / "theme.css").is_file()
+            assert (static_dir / "theme.js").is_file()
+            assert (static_dir / "fonts.css").is_file()
+            assert (static_dir / "Creepster-Regular.woff2").is_file()
+            assert "Creepster-Regular.woff2" in (static_dir / "fonts.css").read_text(encoding="utf-8")
+
+    def test_halloween_pair_emits_include_urls(self):
+        styles = generate_theme_css({"light": "halloween-light", "dark": "halloween-dark"})
+        assert styles.light_css_urls == ["/themes/halloween-light/theme.css"]
+        assert styles.light_js_urls == ["/themes/halloween-light/theme.js"]
+        assert styles.dark_css_urls == ["/themes/halloween-dark/theme.css"]
+        assert styles.dark_js_urls == ["/themes/halloween-dark/theme.js"]
+
+    def test_halloween_js_has_no_forbidden_global(self):
+        for name in ("halloween-light", "halloween-dark"):
+            source = (theme_static_dir(name) / "theme.js").read_text(encoding="utf-8")
+            assert "themeInitConfig" not in source
+            assert "prefers-reduced-motion" in source
+            assert "pointerEvents" in source
+            assert "requestAnimationFrame" in source
+            assert "setTimeout" in source
