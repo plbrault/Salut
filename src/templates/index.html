@@ -12,10 +12,10 @@
     {% endfor %}
 
     <!-- Theme CSS includes (after variables, before plugin styles) -->
-    {% if theme_config.single %}
+    {% if theme_single %}
     {% set css_urls = theme_light_css_urls %}
     {% else %}
-    {% set css_urls = theme_dark_css_urls if theme == 'dark' else theme_light_css_urls %}
+    {% set css_urls = theme_dark_css_urls if theme_dark else theme_light_css_urls %}
     {% endif %}
     {% for url in css_urls %}
     <link rel="stylesheet" href="{{ url }}">
@@ -262,10 +262,10 @@
     </script>
 
     <!-- Theme JS includes (end of body) -->
-    {% if theme_config.single %}
+    {% if theme_single %}
     {% set js_urls = theme_light_js_urls %}
     {% else %}
-    {% set js_urls = theme_dark_js_urls if theme == 'dark' else theme_light_js_urls %}
+    {% set js_urls = theme_dark_js_urls if theme_dark else theme_light_js_urls %}
     {% endif %}
     {% for url in js_urls %}
     <script type="module" src="{{ url }}"></script>

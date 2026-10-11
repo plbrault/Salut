@@ -115,6 +115,8 @@ def resolve_theme(name, themes_dir=None, _chain=None):
         if not isinstance(parent, str) or not parent:
             raise ThemeError(f"Theme '{name}': 'extends' must be a non-empty string.")
         resolved = resolve_theme(parent, themes_dir, chain + [name])
+        # Child themes do NOT inherit parent's includes
+        resolved.pop("includes", None)
     else:
         resolved = {}
 
@@ -126,7 +128,7 @@ def resolve_theme(name, themes_dir=None, _chain=None):
             raise ThemeError(f"Theme '{name}': '{section}' must be a mapping.")
         resolved.setdefault(section, {}).update(values)
 
-    # Include 'includes' from the final theme in the chain (child replaces parent)
+    # Only include 'includes' if explicitly defined in this theme
     if "includes" in raw:
         resolved["includes"] = raw["includes"]
 

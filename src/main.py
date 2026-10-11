@@ -171,6 +171,8 @@ def _theme_context(styles):
         "theme_css": styles.css,
         "theme_font_links": styles.font_links,
         "theme_config": json.dumps({"single": styles.single, "dark": styles.dark}),
+        "theme_single": styles.single,
+        "theme_dark": styles.dark,
         "theme_light_css_urls": styles.light_css_urls,
         "theme_dark_css_urls": styles.dark_css_urls,
         "theme_light_js_urls": styles.light_js_urls,
