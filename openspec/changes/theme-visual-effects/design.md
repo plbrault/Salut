@@ -113,52 +113,41 @@ class ThemeStyles(NamedTuple):
 
 ## Template Changes (`src/templates/index.html`)
 
+The server cannot know the visitor's light/dark mode — it is chosen in-page from `localStorage`/`prefers-color-scheme` — so include selection happens client-side.
+
 ```html
 <head>
+    <!-- Both themes' CSS includes; only the active mode's stay enabled -->
+    {% for url in theme_light_css_urls %}
+    <link rel="stylesheet" href="{{ url }}" data-theme-include="light">
+    {% endfor %}
+    {% if not theme_single %}
+    {% for url in theme_dark_css_urls %}
+    <link rel="stylesheet" href="{{ url }}" data-theme-include="dark">
+    {% endfor %}
+    {% endif %}
+
+    <script>
+        window.themeIncludes = { js: { light: [...], dark: [...] } };
+        // sets data-theme, then disables every <link> whose mode is not active
+    </script>
+    <style>{{ theme_css }}</style>
     ...
-    {% for href in theme_font_links %}
-    <link rel="stylesheet" href="{{ href }}">
-    {% endfor %}
-    
-    <!-- Theme CSS includes (after variables, before plugin styles) -->
-    {% if not theme_config.single %}
-    {% set css_urls = theme_dark_css_urls if theme == 'dark' else theme_light_css_urls %}
-    {% else %}
-    {% set css_urls = theme_light_css_urls %}
-    {% endif %}
-    {% for url in css_urls %}
-    <link rel="stylesheet" href="{{ url }}">
-    {% endfor %}
-    
-    <style>
-        {{ theme_css | safe }}
-        ...
-    </style>
-    {% if plugin_style_rules %}
-    <style>
-        {{ plugin_style_rules }}
-    </style>
-    {% endif %}
 </head>
-<body ...>
+<body>
     ...
-    <!-- Theme JS includes (end of body) -->
-    {% if not theme_config.single %}
-    {% set js_urls = theme_dark_js_urls if theme == 'dark' else theme_light_js_urls %}
-    {% else %}
-    {% set js_urls = theme_light_js_urls %}
-    {% endif %}
-    {% for url in js_urls %}
-    <script type="module" src="{{ url }}"></script>
-    {% endfor %}
+    <!-- Loads only the active mode's ES modules -->
+    <script type="module">loadThemeScripts(document.documentElement.dataset.theme)</script>
 </body>
 ```
 
 **Load Order:**
 1. Theme CSS variables (inline `<style>`)
-2. Theme CSS includes (`<link>`)
+2. Theme CSS includes (`<link>`, both modes, active one enabled)
 3. Plugin style rules
-4. Theme JS includes (`<script type="module">`)
+4. Theme JS includes of the active mode (`<script type="module">`)
+
+In single-theme mode only the light set is emitted (light and dark resolve to the same theme). When a theme declares JS includes, toggling modes reloads the page so the newly active mode's modules run cleanly.
 
 No `window.themeInitConfig`, no `themeInitConfig` global. Theme JS modules are standard ES modules that execute on load.
 

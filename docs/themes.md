@@ -87,6 +87,8 @@ includes:
 
 **Inheritance behavior:** Child themes do NOT inherit parent's `includes`. Each theme must declare its own `includes` if it wants custom CSS/JS files loaded.
 
+**Mode behavior:** With a `{ light, dark }` theme pair, both themes' CSS files are emitted in the page and the browser enables only the set that matches the active mode. The active mode's JS modules are loaded at page load; since ES module effects cannot be torn down, switching modes on a theme that declares JS includes reloads the page so the correct mode's scripts run.
+
 ### Required values
 
 Every resolved theme must provide all of these values, either directly or through inheritance:

@@ -8,6 +8,20 @@ from src.config import ConfigError, load_config
 from src.main import app, _mount_theme_static_dirs
 from src.plugins.html import HtmlPlugin
 from src.plugins.search import SearchPlugin
+from src.themes import ThemeStyles
+
+
+def _include_styles(single, light_css, dark_css, light_js, dark_js):
+    return ThemeStyles(
+        css=":root {}",
+        font_links=[],
+        single=single,
+        dark=False,
+        light_css_urls=light_css,
+        light_js_urls=light_js,
+        dark_css_urls=dark_css,
+        dark_js_urls=dark_js,
+    )
 
 
 class TestServer:
@@ -305,3 +319,37 @@ class TestThemeIncludes:
                 assert response.status_code == 200
                 assert "pumpkin_count" not in response.text
                 assert "bat_speed" not in response.text
+
+    def test_index_emits_both_theme_css_includes_with_mode_markers(self):
+        styles = _include_styles(
+            False,
+            ["/themes/light-theme/light.css"],
+            ["/themes/dark-theme/dark.css"],
+            ["/themes/light-theme/light.js"],
+            ["/themes/dark-theme/dark.js"],
+        )
+        with patch("src.main.generate_theme_css", return_value=styles):
+            with TestClient(app) as client:
+                response = client.get("/")
+                assert response.status_code == 200
+                assert 'href="/themes/light-theme/light.css" data-theme-include="light"' in response.text
+                assert 'href="/themes/dark-theme/dark.css" data-theme-include="dark"' in response.text
+                assert "themeIncludes" in response.text
+                assert '"/themes/light-theme/light.js"' in response.text
+                assert '"/themes/dark-theme/dark.js"' in response.text
+
+    def test_index_single_theme_emits_only_light_css_includes(self):
+        styles = _include_styles(
+            True,
+            ["/themes/single-theme/theme.css"],
+            ["/themes/single-theme/theme.css"],
+            ["/themes/single-theme/theme.js"],
+            ["/themes/single-theme/theme.js"],
+        )
+        with patch("src.main.generate_theme_css", return_value=styles):
+            with TestClient(app) as client:
+                response = client.get("/")
+                assert response.status_code == 200
+                assert 'href="/themes/single-theme/theme.css" data-theme-include="light"' in response.text
+                assert 'data-theme-include="dark"' not in response.text
+                assert '"single": true' in response.text
