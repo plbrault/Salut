@@ -1,5 +1,5 @@
 name: "Halloween Dark"
-extends: default-dark
+extends: halloween-light
 
 colors:
   bg: "#1c0a2e"
@@ -14,11 +14,9 @@ colors:
   accent: "#f97316"
   accent_hover: "#fb923c"
   accent_contrast: "#1c0a2e"
-
-fonts:
-  page_heading: "'Creepster', 'Inter', sans-serif"
-  card_heading: "'Creepster', 'Inter', sans-serif"
-  card_content: "'Lato', 'Inter', sans-serif"
+  danger: "#ef4444"
+  danger_hover: "#f87171"
+  danger_contrast: "#111827"
 
 includes:
   css:

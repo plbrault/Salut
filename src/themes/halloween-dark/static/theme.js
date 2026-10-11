@@ -34,6 +34,8 @@ if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
             y: height * 0.1 + Math.random() * height * 0.6,
             heading: fromLeft ? 0 : Math.PI,
             wobble: Math.random() * Math.PI * 2,
+            age: 0,
+            entered: false,
             waypoints: [
                 {
                     x: width * 0.2 + Math.random() * width * 0.6,
@@ -104,12 +106,18 @@ if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
             flyer.heading += Math.sin(flyer.wobble) * 0.15 * elapsed;
             flyer.x += Math.cos(flyer.heading) * flyer.speed * elapsed;
             flyer.y += Math.sin(flyer.heading) * flyer.speed * elapsed;
+            flyer.age += elapsed;
             const inside = Math.min(flyer.x, width - flyer.x, flyer.y, height - flyer.y);
-            if (inside < -100) {
+            if (inside >= 0) {
+                flyer.entered = true;
+            }
+            const glyphWidth = ctx.measureText(flyer.glyph).width;
+            const exited = flyer.x < -glyphWidth || flyer.x > width
+                || flyer.y < 0 || flyer.y > height + flyer.size;
+            if (flyer.entered && exited) {
                 return false;
             }
-            const fade = Math.max(0, Math.min(1, inside / 90));
-            ctx.globalAlpha = flyer.alpha * fade;
+            ctx.globalAlpha = flyer.alpha * Math.min(1, flyer.age / 1.5);
             drawFlyer(flyer);
             return true;
         });
