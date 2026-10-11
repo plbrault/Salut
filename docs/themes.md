@@ -76,7 +76,6 @@ A theme can declare custom CSS and JavaScript files to load. These files are pla
 includes:
   css:                    # list of CSS files, loaded as <link rel="stylesheet">
     - "theme.css"
-    - "animations/float.css"
   js:                     # list of JS files, loaded as <script type="module">
     - "theme.js"
 ```
@@ -127,7 +126,7 @@ colors:
   link: "#d97706"
 ```
 
-- The child inherits all sections (`colors`, `fonts`, `radius`) from its parent.
+- The child inherits all sections (`colors`, `fonts`, `radius`, `includes`) from its parent.
 - Within a section, child keys override (or add to) the parent's keys.
 - `name` and `extends` are not inherited.
 - Multi-level inheritance is supported. Circular inheritance is rejected with an error.
