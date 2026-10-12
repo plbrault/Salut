@@ -14,12 +14,12 @@ from src.themes import ThemeStyles
 def _include_styles(single, light_css, dark_css, light_js, dark_js):
     return ThemeStyles(
         css=":root {}",
-        font_links=[],
+        font_css="",
         single=single,
         dark=False,
-        light_css_urls=light_css,
+        light_css_texts=light_css,
         light_js_urls=light_js,
-        dark_css_urls=dark_css,
+        dark_css_texts=dark_css,
         dark_js_urls=dark_js,
     )
 
@@ -216,10 +216,30 @@ class TestServer:
             assert ':root,' in response.text
             assert '[data-theme="light"]' in response.text
 
-    def test_index_links_theme_fonts_css(self):
+    def test_index_inlines_theme_fonts_css(self):
         with TestClient(app) as client:
             response = client.get("/")
-            assert 'href="/themes/default-light/fonts.css"' in response.text
+            assert "url('/themes/default-light/Inter-Variable.woff2')" in response.text
+            assert "fonts.css" not in response.text
+
+    def test_index_constrains_card_images_inline(self):
+        with TestClient(app) as client:
+            response = client.get("/")
+            assert ".card img" in response.text
+            assert "max-width: 100%;" in response.text
+
+    def test_index_hides_container_until_layout(self):
+        with TestClient(app) as client:
+            response = client.get("/")
+            assert "document.documentElement.classList.add('js')" in response.text
+            assert "html.js #container" in response.text
+            assert "container.style.visibility = 'visible'" in response.text
+
+    def test_index_replaces_placeholders_in_header_only(self):
+        with TestClient(app) as client:
+            response = client.get("/")
+            assert "document.body.innerHTML" not in response.text
+            assert "querySelector('header')" in response.text
 
     def test_index_defines_theme_config(self):
         with TestClient(app) as client:
@@ -322,11 +342,11 @@ class TestThemeIncludes:
                 assert "pumpkin_count" not in response.text
                 assert "bat_speed" not in response.text
 
-    def test_index_emits_both_theme_css_includes_with_mode_markers(self):
+    def test_index_inlines_both_theme_css_with_mode_markers(self):
         styles = _include_styles(
             False,
-            ["/themes/light-theme/light.css"],
-            ["/themes/dark-theme/dark.css"],
+            ["/* light-mode */"],
+            ["/* dark-mode */"],
             ["/themes/light-theme/light.js"],
             ["/themes/dark-theme/dark.js"],
         )
@@ -334,17 +354,21 @@ class TestThemeIncludes:
             with TestClient(app) as client:
                 response = client.get("/")
                 assert response.status_code == 200
-                assert 'href="/themes/light-theme/light.css" data-theme-include="light"' in response.text
-                assert 'href="/themes/dark-theme/dark.css" data-theme-include="dark"' in response.text
+                assert '<style data-theme-include="light">' in response.text
+                assert "/* light-mode */" in response.text
+                assert '<style data-theme-include="dark">' in response.text
+                assert "/* dark-mode */" in response.text
+                for chunk in response.text.split("<link")[1:]:
+                    assert "data-theme-include" not in chunk.split(">", 1)[0]
                 assert "themeIncludes" in response.text
                 assert '"/themes/light-theme/light.js"' in response.text
                 assert '"/themes/dark-theme/dark.js"' in response.text
 
-    def test_index_single_theme_emits_only_light_css_includes(self):
+    def test_index_single_theme_inlines_only_light_css(self):
         styles = _include_styles(
             True,
-            ["/themes/single-theme/theme.css"],
-            ["/themes/single-theme/theme.css"],
+            ["/* single-mode */"],
+            ["/* single-mode */"],
             ["/themes/single-theme/theme.js"],
             ["/themes/single-theme/theme.js"],
         )
@@ -352,6 +376,7 @@ class TestThemeIncludes:
             with TestClient(app) as client:
                 response = client.get("/")
                 assert response.status_code == 200
-                assert 'href="/themes/single-theme/theme.css" data-theme-include="light"' in response.text
+                assert '<style data-theme-include="light">' in response.text
+                assert "/* single-mode */" in response.text
                 assert 'data-theme-include="dark"' not in response.text
                 assert '"single": true' in response.text

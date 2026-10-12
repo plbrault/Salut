@@ -9,9 +9,11 @@
     <link rel="stylesheet" href="/static/codemirror.min.css">
     <script src="/static/codemirror.min.js"></script>
     <script src="/static/yaml.min.js"></script>
-    {% for href in theme_font_links %}
-    <link rel="stylesheet" href="{{ href }}">
-    {% endfor %}
+    {% if theme_font_css %}
+    <style>
+        {{ theme_font_css | safe }}
+    </style>
+    {% endif %}
     <script>
         window.themeConfig = {{ theme_config | safe }};
         var theme = window.themeConfig.single

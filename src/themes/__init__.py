@@ -1,3 +1,4 @@
+import posixpath
 import re
 from pathlib import Path
 from typing import NamedTuple
@@ -30,12 +31,12 @@ class ThemeError(Exception):
 
 class ThemeStyles(NamedTuple):
     css: str
-    font_links: list
+    font_css: str
     single: bool
     dark: bool
-    light_css_urls: list
+    light_css_texts: list
     light_js_urls: list
-    dark_css_urls: list
+    dark_css_texts: list
     dark_js_urls: list
 
 
@@ -225,19 +226,51 @@ def _render_block(selectors, resolved):
     return "\n".join(lines)
 
 
-def font_css_links(names, themes_dir=None):
-    """Return the URLs of every fonts.css in the inheritance chains of the given themes."""
+_CSS_URL_PATTERN = re.compile(r"url\(\s*(['\"]?)(.+?)\1\s*\)", re.IGNORECASE)
+
+
+def _rewrite_relative_urls(css_text, theme_name):
+    """Rewrite bare relative url() references to absolute theme static paths."""
+    prefix = f"{THEMES_URL_PREFIX}/{theme_name}/"
+
+    def replace(match):
+        quote = match.group(1)
+        url = match.group(2).strip()
+        lowered = url.lower()
+        if not url or lowered.startswith(("data:", "http://", "https://", "//", "/", "#")):
+            return match.group(0)
+        return f"url({quote}{posixpath.normpath(prefix + url)}{quote})"
+
+    return _CSS_URL_PATTERN.sub(replace, css_text)
+
+
+def font_css_text(names, themes_dir=None):
+    """Return the concatenated fonts.css contents for the given themes' chains."""
     root = _themes_root(themes_dir)
-    links = []
+    chunks = []
+    seen = set()
     for name in names:
         for theme_name in theme_chain(name, themes_dir):
-            static_dir = root / theme_name / "static"
-            if not (static_dir / "fonts.css").is_file():
+            css_path = root / theme_name / "static" / "fonts.css"
+            if not css_path.is_file() or css_path in seen:
                 continue
-            url = f"{THEMES_URL_PREFIX}/{theme_name}/fonts.css"
-            if url not in links:
-                links.append(url)
-    return links
+            seen.add(css_path)
+            chunks.append(_rewrite_relative_urls(
+                css_path.read_text(encoding="utf-8"), theme_name
+            ))
+    return "\n".join(chunks)
+
+
+def include_css_texts(includes, theme_name, themes_dir=None):
+    """Return the rewritten contents of each CSS file in a theme's includes."""
+    root = _themes_root(themes_dir)
+    texts = []
+    for filename in includes.get("css", []):
+        css_path = root / theme_name / "static" / filename
+        texts.append(_rewrite_relative_urls(
+            css_path.read_text(encoding="utf-8"), theme_name
+        ))
+    return texts
 
 
 def generate_theme_css(theme_config, themes_dir=None):
@@ -254,26 +287,25 @@ def generate_theme_css(theme_config, themes_dir=None):
         _render_block([':root', '[data-theme="light"]'], light),
         _render_block(['[data-theme="dark"]'], dark),
     ])
-    font_links = font_css_links([selection["light"], selection["dark"]], themes_dir)
+    font_css = font_css_text([selection["light"], selection["dark"]], themes_dir)
 
-    # Build absolute URLs for includes
-    def build_urls(includes, theme_name):
-        css_urls = [f"/themes/{theme_name}/{f}" for f in includes.get("css", [])]
-        js_urls = [f"/themes/{theme_name}/{f}" for f in includes.get("js", [])]
-        return css_urls, js_urls
+    # Build absolute URLs for JS includes and inline text for CSS includes
+    def build_js_urls(includes, theme_name):
+        return [f"/themes/{theme_name}/{f}" for f in includes.get("js", [])]
 
-    light_css_urls, light_js_urls = build_urls(light_includes, selection["light"])
-    dark_css_urls, dark_js_urls = build_urls(dark_includes, selection["dark"])
+    light_css_texts = include_css_texts(light_includes, selection["light"], themes_dir)
+    dark_css_texts = include_css_texts(dark_includes, selection["dark"], themes_dir)
+    light_js_urls = build_js_urls(light_includes, selection["light"])
+    dark_js_urls = build_js_urls(dark_includes, selection["dark"])
 
     return ThemeStyles(
         css=css,
-        font_links=font_links,
+        font_css=font_css,
         single=selection["single"],
         dark=palette_is_dark(light),
-        # New fields
-        light_css_urls=light_css_urls,
+        light_css_texts=light_css_texts,
         light_js_urls=light_js_urls,
-        dark_css_urls=dark_css_urls,
+        dark_css_texts=dark_css_texts,
         dark_js_urls=dark_js_urls,
     )
 
@@ -286,6 +318,6 @@ def built_in_theme_styles(themes_dir=None):
         )
     except ThemeError:
         return ThemeStyles(
-            css="", font_links=[], single=False, dark=False,
-            light_css_urls=[], light_js_urls=[], dark_css_urls=[], dark_js_urls=[],
+            css="", font_css="", single=False, dark=False,
+            light_css_texts=[], light_js_urls=[], dark_css_texts=[], dark_js_urls=[],
         )

@@ -169,11 +169,11 @@ def _mount_theme_static_dirs(fastapi_app):
 def _theme_context(styles):
     return {
         "theme_css": styles.css,
-        "theme_font_links": styles.font_links,
+        "theme_font_css": styles.font_css,
         "theme_config": json.dumps({"single": styles.single, "dark": styles.dark}),
         "theme_single": styles.single,
-        "theme_light_css_urls": styles.light_css_urls,
-        "theme_dark_css_urls": styles.dark_css_urls,
+        "theme_light_css_texts": styles.light_css_texts,
+        "theme_dark_css_texts": styles.dark_css_texts,
         "theme_light_js_urls": styles.light_js_urls,
         "theme_dark_js_urls": styles.dark_js_urls,
     }
