@@ -202,10 +202,34 @@
                 + (theme === 'dark' && !single ? window.themeIcons.moon : window.themeIcons.sun)
                 + '</button>';
 
-            document.querySelector('header').innerHTML = document.querySelector('header').innerHTML
-                .replace(/\{\{time_emoji\}\}/g, emoji)
-                .replace(/\{\{date\}\}/g, date)
-                .replace(/\{\{theme_toggle\}\}/g, toggleHtml);
+            var placeholderPattern = /\{\{(time_emoji|date|theme_toggle)\}\}/;
+            var themeTogglePattern = /\{\{theme_toggle\}\}/;
+
+            function replacePlaceholders(root) {
+                var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+                var nodes = [];
+                var node;
+                while ((node = walker.nextNode())) {
+                    if (placeholderPattern.test(node.nodeValue)) nodes.push(node);
+                }
+                nodes.forEach(function(textNode) {
+                    var value = textNode.nodeValue;
+                    if (themeTogglePattern.test(value)) {
+                        var template = document.createElement('template');
+                        template.innerHTML = value
+                            .replace(/\{\{time_emoji\}\}/g, emoji)
+                            .replace(/\{\{date\}\}/g, date)
+                            .replace(/\{\{theme_toggle\}\}/g, toggleHtml);
+                        textNode.parentNode.replaceChild(template.content, textNode);
+                    } else {
+                        textNode.nodeValue = value
+                            .replace(/\{\{time_emoji\}\}/g, emoji)
+                            .replace(/\{\{date\}\}/g, date);
+                    }
+                });
+            }
+
+            replacePlaceholders(document.body);
         })();
     </script>
     <script>

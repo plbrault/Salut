@@ -23,21 +23,22 @@ A theme SHALL be able to declare an `includes` section in its `theme.yml` contai
 - **WHEN** includes.css is not a list, or includes.js is not a list
 - **THEN** the theme loader raises a ThemeError describing the type mismatch
 
-### Requirement: CSS includes are injected as stylesheet links in document head
-CSS files declared in includes.css SHALL be injected as `<link rel="stylesheet">` elements in the `<head>`, after theme CSS variables and before plugin styles.
+### Requirement: CSS includes are inlined as style blocks in document head
+CSS files declared in includes.css SHALL be inlined as `<style data-theme-include="light|dark">` blocks in the `<head>`, after theme CSS variables and before plugin styles. The block matching the active mode SHALL be enabled and the other disabled.
 
-#### Scenario: Single theme mode uses light theme includes
+#### Scenario: Single theme mode inlines light theme includes
 - **WHEN** config has `theme: halloween` (single theme mode)
-- **THEN** the rendered page includes `<link rel="stylesheet" href="/themes/halloween/theme.css">` in head
+- **THEN** the rendered page contains an inline `<style data-theme-include="light">` block with halloween's theme.css contents in head
 
 #### Scenario: Light/dark mode uses respective theme includes
 - **WHEN** config has `theme: { light: halloween, dark: winter }`
-- **THEN** light mode page includes halloween's CSS links
-- **THEN** dark mode page includes winter's CSS links
+- **THEN** the page contains an inline `<style data-theme-include="light">` block with halloween's CSS
+- **THEN** the page contains an inline `<style data-theme-include="dark">` block with winter's CSS
+- **THEN** only the block matching the active mode is enabled
 
 #### Scenario: CSS load order is preserved
 - **WHEN** includes.css has `["theme.css", "animations/float.css"]`
-- **THEN** the link for theme.css appears before animations/float.css in the head
+- **THEN** the contents of theme.css appear before animations/float.css in the head
 
 ### Requirement: JS includes are injected as ES modules at end of body
 JavaScript files declared in includes.js SHALL be injected as `<script type="module">` elements at the end of `<body>`, after all page content.
@@ -62,11 +63,11 @@ Child themes SHALL NOT inherit parent's includes. Each theme must explicitly dec
 - **THEN** no CSS/JS includes are loaded for the child theme
 
 ### Requirement: Relative asset paths in theme CSS resolve correctly
-CSS files in theme static/ SHALL be able to reference sibling assets (images, fonts) using relative URLs.
+CSS files in theme static/ SHALL be able to reference sibling assets (images, fonts) using relative URLs. Because theme CSS is inlined into the page, the server SHALL rewrite bare relative `url(...)` references to absolute `/themes/<name>/...` paths at render time.
 
 #### Scenario: Background image in theme.css uses relative path
 - **WHEN** theme.css contains `background-image: url("pumpkin.svg")`
-- **THEN** the browser resolves it to `/themes/halloween/pumpkin.svg`
+- **THEN** the inlined CSS contains `url("/themes/halloween/pumpkin.svg")`
 - **THEN** the image loads successfully
 
 ### Requirement: No themeInitConfig global is injected

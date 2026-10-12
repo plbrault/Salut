@@ -235,11 +235,12 @@ class TestServer:
             assert "html.js #container" in response.text
             assert "container.style.visibility = 'visible'" in response.text
 
-    def test_index_replaces_placeholders_in_header_only(self):
+    def test_index_replaces_placeholders_without_reserializing_body(self):
         with TestClient(app) as client:
             response = client.get("/")
-            assert "document.body.innerHTML" not in response.text
-            assert "querySelector('header')" in response.text
+            assert "document.body.innerHTML = document.body.innerHTML" not in response.text
+            assert "createTreeWalker" in response.text
+            assert "replacePlaceholders(document.body)" in response.text
 
     def test_index_defines_theme_config(self):
         with TestClient(app) as client:
