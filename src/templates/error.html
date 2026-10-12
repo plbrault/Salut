@@ -5,9 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Configuration Error</title>
     <script src="/static/tailwindcss.js"></script>
-    {% for href in theme_font_links %}
-    <link rel="stylesheet" href="{{ href }}">
-    {% endfor %}
+    {% if theme_font_css %}
+    <style>
+        {{ theme_font_css | safe }}
+    </style>
+    {% endif %}
     <script>
         window.themeConfig = {{ theme_config | safe }};
         (function() {

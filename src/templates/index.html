@@ -7,17 +7,23 @@
     {% if favicon %}<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>{{ favicon }}</text></svg>">{% endif %}
     <script src="/static/tailwindcss.js"></script>
     <script src="/static/htmx.min.js"></script>
-    {% for href in theme_font_links %}
-    <link rel="stylesheet" href="{{ href }}">
-    {% endfor %}
+    {% if theme_font_css %}
+    <style>
+        {{ theme_font_css | safe }}
+    </style>
+    {% endif %}
 
     <!-- Theme CSS includes (after variables, before plugin styles) -->
-    {% for url in theme_light_css_urls %}
-    <link rel="stylesheet" href="{{ url }}" data-theme-include="light">
+    {% for css_text in theme_light_css_texts %}
+    <style data-theme-include="light">
+        {{ css_text | safe }}
+    </style>
     {% endfor %}
     {% if not theme_single %}
-    {% for url in theme_dark_css_urls %}
-    <link rel="stylesheet" href="{{ url }}" data-theme-include="dark">
+    {% for css_text in theme_dark_css_texts %}
+    <style data-theme-include="dark">
+        {{ css_text | safe }}
+    </style>
     {% endfor %}
     {% endif %}
 
@@ -30,6 +36,7 @@
             }
         };
         (function() {
+            document.documentElement.classList.add('js');
             var theme = 'light';
             if (!window.themeConfig.single) {
                 theme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
@@ -38,8 +45,8 @@
 
             window.applyThemeIncludes = function() {
                 var current = document.documentElement.dataset.theme;
-                Array.from(document.querySelectorAll('link[data-theme-include]')).forEach(function(link) {
-                    link.disabled = link.getAttribute('data-theme-include') !== current;
+                Array.from(document.querySelectorAll('[data-theme-include]')).forEach(function(el) {
+                    el.disabled = el.getAttribute('data-theme-include') !== current;
                 });
             };
 
@@ -70,6 +77,13 @@
     </script>
     <style>
         {{ theme_css | safe }}
+        .card img {
+            max-width: 100%;
+            height: auto;
+        }
+        html.js #container {
+            visibility: hidden;
+        }
         header {
             display: flex;
             justify-content: space-between;
@@ -188,10 +202,34 @@
                 + (theme === 'dark' && !single ? window.themeIcons.moon : window.themeIcons.sun)
                 + '</button>';
 
-            document.body.innerHTML = document.body.innerHTML
-                .replace(/\{\{time_emoji\}\}/g, emoji)
-                .replace(/\{\{date\}\}/g, date)
-                .replace(/\{\{theme_toggle\}\}/g, toggleHtml);
+            var placeholderPattern = /\{\{(time_emoji|date|theme_toggle)\}\}/;
+            var themeTogglePattern = /\{\{theme_toggle\}\}/;
+
+            function replacePlaceholders(root) {
+                var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+                var nodes = [];
+                var node;
+                while ((node = walker.nextNode())) {
+                    if (placeholderPattern.test(node.nodeValue)) nodes.push(node);
+                }
+                nodes.forEach(function(textNode) {
+                    var value = textNode.nodeValue;
+                    if (themeTogglePattern.test(value)) {
+                        var template = document.createElement('template');
+                        template.innerHTML = value
+                            .replace(/\{\{time_emoji\}\}/g, emoji)
+                            .replace(/\{\{date\}\}/g, date)
+                            .replace(/\{\{theme_toggle\}\}/g, toggleHtml);
+                        textNode.parentNode.replaceChild(template.content, textNode);
+                    } else {
+                        textNode.nodeValue = value
+                            .replace(/\{\{time_emoji\}\}/g, emoji)
+                            .replace(/\{\{date\}\}/g, date);
+                    }
+                });
+            }
+
+            replacePlaceholders(document.body);
         })();
     </script>
     <script>
@@ -271,6 +309,7 @@
             }
 
             layout();
+            container.style.visibility = 'visible';
             window.addEventListener('load', layout);
             if (document.fonts && document.fonts.ready) {
                 document.fonts.ready.then(layout);

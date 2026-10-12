@@ -76,7 +76,7 @@ A theme can declare custom CSS and JavaScript files to load. These files are pla
 
 ```yaml
 includes:
-  css:                    # list of CSS files, loaded as <link rel="stylesheet">
+  css:                    # list of CSS files, inlined as <style> blocks
     - "theme.css"
   js:                     # list of JS files, loaded as <script type="module">
     - "theme.js"
@@ -89,7 +89,7 @@ includes:
 
 **Inheritance behavior:** Child themes do NOT inherit parent's `includes`. Each theme must declare its own `includes` if it wants custom CSS/JS files loaded.
 
-**Mode behavior:** With a `{ light, dark }` theme pair, both themes' CSS files are emitted in the page and the browser enables only the set that matches the active mode. The active mode's JS modules are loaded at page load; since ES module effects cannot be torn down, switching modes on a theme that declares JS includes reloads the page so the correct mode's scripts run.
+**Mode behavior:** With a `{ light, dark }` theme pair, both themes' CSS files are inlined in the page as `<style data-theme-include="light|dark">` blocks and the browser enables only the set that matches the active mode. Inlining keeps first paint free of extra stylesheet round trips. The active mode's JS modules are loaded at page load; since ES module effects cannot be torn down, switching modes on a theme that declares JS includes reloads the page so the correct mode's scripts run.
 
 ### Required values
 
@@ -155,7 +155,7 @@ A theme can bundle its own font files and declare them in a `fonts.css` file pla
 
 Font files are referenced relative to the `fonts.css` file itself. The `static/` subdirectory is served under `/themes/<theme-name>/`, so the example above resolves to `/themes/<theme-name>/Inter-Variable.woff2`.
 
-At render time, the page includes a `<link>` tag for every `fonts.css` found in the inheritance chains of the active light and dark themes, so a child theme automatically picks up its parent's fonts.
+At render time, the contents of every `fonts.css` found in the inheritance chains of the active light and dark themes are inlined into the page head (with relative URLs rewritten to their absolute `/themes/<theme-name>/...` paths), so a child theme automatically picks up its parent's fonts without extra stylesheet requests.
 
 ## Custom CSS and JavaScript
 
@@ -167,7 +167,7 @@ A theme's JavaScript file (declared in `includes.js`) is loaded as an ES module 
 
 ### Asset References
 
-CSS files in `static/` can reference sibling assets (images, fonts) using relative URLs:
+CSS files in `static/` can reference sibling assets (images, fonts) using relative URLs. Since theme CSS is inlined into the page, the server rewrites these to absolute paths at render time:
 
 ```css
 /* theme.css */

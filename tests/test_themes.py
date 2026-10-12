@@ -4,10 +4,12 @@ import pytest
 
 from src.themes import (
     ThemeError,
+    _rewrite_relative_urls,
     built_in_theme_styles,
     discover_themes,
-    font_css_links,
+    font_css_text,
     generate_theme_css,
+    include_css_texts,
     load_resolved_theme,
     load_theme,
     normalize_theme_config,
@@ -264,31 +266,51 @@ class TestGenerateThemeCss:
         assert styles.single is False
         assert "--bg: #111827;" in styles.css
 
-    def test_font_links_cover_inheritance_chain(self):
+    def test_font_css_covers_inheritance_chain(self):
         styles = generate_theme_css(None)
-        assert styles.font_links == ["/themes/default-light/fonts.css"]
+        assert "font-family: 'Inter';" in styles.font_css
+        assert "url('/themes/default-light/Inter-Variable.woff2')" in styles.font_css
 
-    def test_font_links_deduplicate_shared_parent(self, tmp_path):
+    def test_font_css_deduplicates_shared_parent(self, tmp_path):
         _write_theme(tmp_path, "parent", FULL_THEME)
         (tmp_path / "parent" / "static").mkdir()
-        (tmp_path / "parent" / "static" / "fonts.css").write_text("@font-face {}", encoding="utf-8")
+        (tmp_path / "parent" / "static" / "fonts.css").write_text(
+            "@font-face { src: url('parent.woff2'); }", encoding="utf-8"
+        )
         _write_theme(tmp_path, "light", {"extends": "parent"})
         _write_theme(tmp_path, "dark", {"extends": "parent"})
 
-        links = font_css_links(["light", "dark"], tmp_path)
+        text = font_css_text(["light", "dark"], tmp_path)
 
-        assert links == ["/themes/parent/fonts.css"]
+        assert text.count("parent.woff2") == 1
+        assert "url('/themes/parent/parent.woff2')" in text
 
-    def test_font_links_skip_themes_without_fonts_css(self, tmp_path):
+    def test_font_css_orders_parent_before_child(self, tmp_path):
+        _write_theme(tmp_path, "parent", FULL_THEME)
+        (tmp_path / "parent" / "static").mkdir()
+        (tmp_path / "parent" / "static" / "fonts.css").write_text(
+            "/* parent-fonts */", encoding="utf-8"
+        )
+        child_dir = _write_theme(tmp_path, "child", {"extends": "parent"})
+        (child_dir / "static").mkdir()
+        (child_dir / "static" / "fonts.css").write_text(
+            "/* child-fonts */", encoding="utf-8"
+        )
+
+        text = font_css_text(["child"], tmp_path)
+
+        assert text.index("parent-fonts") < text.index("child-fonts")
+
+    def test_font_css_skips_themes_without_fonts_css(self, tmp_path):
         _write_theme(tmp_path, "bare", FULL_THEME)
-        assert not font_css_links(["bare"], tmp_path)
+        assert not font_css_text(["bare"], tmp_path)
 
     def test_builtin_fallback_styles(self):
         styles = built_in_theme_styles()
         assert styles.single is False
         assert "--bg: #f3f4f6;" in styles.css
         assert "--bg: #111827;" in styles.css
-        assert styles.font_links == ["/themes/default-light/fonts.css"]
+        assert "url('/themes/default-light/Inter-Variable.woff2')" in styles.font_css
 
 
 class TestPaletteIsDark:
@@ -376,8 +398,59 @@ class TestThemeIncludes:
             load_theme("bad-theme", tmp_path)
 
 
+class TestRewriteRelativeUrls:
+    def test_rewrites_bare_relative_url(self):
+        css = 'src: url(font.woff2);'
+        assert _rewrite_relative_urls(css, "my-theme") == \
+            "src: url(/themes/my-theme/font.woff2);"
+
+    def test_rewrites_quoted_and_spaced_urls(self):
+        assert _rewrite_relative_urls('src: url("a/b.woff2");', "t") == \
+            'src: url("/themes/t/a/b.woff2");'
+        assert _rewrite_relative_urls("src: url( 'c.woff2' );", "t") == \
+            "src: url('/themes/t/c.woff2');"
+
+    def test_leaves_non_relative_urls_untouched(self):
+        for url in (
+            "data:font/woff2;base64,AAA",
+            "https://example.com/f.woff2",
+            "http://example.com/f.woff2",
+            "//example.com/f.woff2",
+            "/themes/other/f.woff2",
+            "#fragment",
+        ):
+            css = f"src: url({url});"
+            assert _rewrite_relative_urls(css, "t") == css
+
+
 class TestGenerateThemeCssIncludes:
-    def test_generate_theme_css_returns_include_urls(self, tmp_path):
+    def test_include_css_texts_rewrite_relative_urls(self, tmp_path):
+        theme_dir = _write_theme(tmp_path, "art", FULL_THEME)
+        static_dir = theme_dir / "static"
+        static_dir.mkdir()
+        (static_dir / "theme.css").write_text(
+            '.bg { background-image: url("pumpkin.svg"); }', encoding="utf-8"
+        )
+
+        texts = include_css_texts({"css": ["theme.css"]}, "art", tmp_path)
+
+        assert texts == ['.bg { background-image: url("/themes/art/pumpkin.svg"); }']
+
+    def test_include_css_texts_preserve_file_order(self, tmp_path):
+        theme_dir = _write_theme(
+            tmp_path, "multi",
+            {**FULL_THEME, "includes": {"css": ["one.css", "two.css"]}},
+        )
+        static_dir = theme_dir / "static"
+        static_dir.mkdir()
+        (static_dir / "one.css").write_text("/* one */", encoding="utf-8")
+        (static_dir / "two.css").write_text("/* two */", encoding="utf-8")
+
+        texts = include_css_texts({"css": ["one.css", "two.css"]}, "multi", tmp_path)
+
+        assert texts == ["/* one */", "/* two */"]
+
+    def test_generate_theme_css_returns_include_texts(self, tmp_path):
         theme_data = {
             **FULL_THEME,
             "includes": {"css": ["theme.css"], "js": ["theme.js"]},
@@ -389,9 +462,9 @@ class TestGenerateThemeCssIncludes:
         (static_dir / "theme.js").write_text("export function init() {}", encoding="utf-8")
 
         styles = generate_theme_css("test-theme", tmp_path)
-        assert styles.light_css_urls == ["/themes/test-theme/theme.css"]
+        assert styles.light_css_texts == ["/* test */"]
         assert styles.light_js_urls == ["/themes/test-theme/theme.js"]
-        assert styles.dark_css_urls == ["/themes/test-theme/theme.css"]
+        assert styles.dark_css_texts == ["/* test */"]
         assert styles.dark_js_urls == ["/themes/test-theme/theme.js"]
 
     def test_generate_theme_css_light_dark_different_includes(self, tmp_path):
@@ -402,15 +475,15 @@ class TestGenerateThemeCssIncludes:
         for d in [light_dir, dark_dir]:
             static = d / "static"
             static.mkdir()
-            (static / "light.css").write_text("/* */", encoding="utf-8")
+            (static / "light.css").write_text("/* light */", encoding="utf-8")
             (static / "light.js").write_text("export function init() {}", encoding="utf-8")
-            (static / "dark.css").write_text("/* */", encoding="utf-8")
+            (static / "dark.css").write_text("/* dark */", encoding="utf-8")
             (static / "dark.js").write_text("export function init() {}", encoding="utf-8")
 
         styles = generate_theme_css({"light": "light-theme", "dark": "dark-theme"}, tmp_path)
-        assert styles.light_css_urls == ["/themes/light-theme/light.css"]
+        assert styles.light_css_texts == ["/* light */"]
         assert styles.light_js_urls == ["/themes/light-theme/light.js"]
-        assert styles.dark_css_urls == ["/themes/dark-theme/dark.css"]
+        assert styles.dark_css_texts == ["/* dark */"]
         assert styles.dark_js_urls == ["/themes/dark-theme/dark.js"]
 
     def test_generate_theme_css_single_theme(self, tmp_path):
@@ -423,7 +496,7 @@ class TestGenerateThemeCssIncludes:
 
         styles = generate_theme_css("single-theme", tmp_path)
         assert styles.single is True
-        assert styles.light_css_urls == ["/themes/single-theme/theme.css"]
+        assert styles.light_css_texts == ["/* */"]
         assert styles.light_js_urls == ["/themes/single-theme/theme.js"]
 
     def test_includes_not_inherited(self, tmp_path):
@@ -434,28 +507,28 @@ class TestGenerateThemeCssIncludes:
         for d in [parent_dir, child_dir]:
             static = d / "static"
             static.mkdir()
-            (static / "parent.css").write_text("/* */", encoding="utf-8")
+            (static / "parent.css").write_text("/* parent */", encoding="utf-8")
             (static / "parent.js").write_text("export function init() {}", encoding="utf-8")
-            (static / "child.css").write_text("/* */", encoding="utf-8")
+            (static / "child.css").write_text("/* child */", encoding="utf-8")
             (static / "child.js").write_text("export function init() {}", encoding="utf-8")
 
         styles = generate_theme_css("child", tmp_path)
         # Child's includes should replace parent's
-        assert styles.light_css_urls == ["/themes/child/child.css"]
+        assert styles.light_css_texts == ["/* child */"]
         assert styles.light_js_urls == ["/themes/child/child.js"]
 
     def test_no_includes_returns_empty(self):
         styles = generate_theme_css(None)
-        assert styles.light_css_urls == []
+        assert styles.light_css_texts == []
         assert styles.light_js_urls == []
-        assert styles.dark_css_urls == []
+        assert styles.dark_css_texts == []
         assert styles.dark_js_urls == []
 
     def test_builtin_fallback_styles_has_new_fields(self):
         styles = built_in_theme_styles()
-        assert styles.light_css_urls == []
+        assert styles.light_css_texts == []
         assert styles.light_js_urls == []
-        assert styles.dark_css_urls == []
+        assert styles.dark_css_texts == []
         assert styles.dark_js_urls == []
 
 
@@ -495,10 +568,12 @@ class TestHalloweenThemes:
         light = load_resolved_theme("halloween-light")
         assert light["radius"]["card"] == "0.5rem"
 
-    def test_halloween_font_links_include_creepster(self):
+    def test_halloween_font_css_inlines_creepster(self):
         styles = generate_theme_css({"light": "halloween-light", "dark": "halloween-dark"})
-        assert "/themes/halloween-light/fonts.css" in styles.font_links
-        assert "/themes/halloween-dark/fonts.css" not in styles.font_links
+        assert "Creepster" in styles.font_css
+        assert "url('/themes/halloween-light/Creepster-Regular.woff2')" in styles.font_css
+        assert "url('/themes/default-light/Inter-Variable.woff2')" in styles.font_css
+        assert styles.font_css.index("Inter-Variable") < styles.font_css.index("Creepster")
         assert "--font-page-heading: 'Creepster', 'Inter', sans-serif;" in styles.css
         assert "--font-card-heading: 'Creepster', 'Inter', sans-serif;" in styles.css
         assert "--font-card-content: 'Lato', 'Inter', sans-serif;" in styles.css
@@ -526,11 +601,13 @@ class TestHalloweenThemes:
         assert not (static_dir / "Lato-Regular.woff2").exists()
         assert not (static_dir / "Lato-Bold.woff2").exists()
 
-    def test_halloween_pair_emits_include_urls(self):
+    def test_halloween_pair_inlines_include_css(self):
         styles = generate_theme_css({"light": "halloween-light", "dark": "halloween-dark"})
-        assert styles.light_css_urls == ["/themes/halloween-light/theme.css"]
+        assert len(styles.light_css_texts) == 1
+        assert len(styles.dark_css_texts) == 1
+        assert "radial-gradient" in styles.light_css_texts[0]
+        assert "body .card" in styles.dark_css_texts[0]
         assert styles.light_js_urls == ["/themes/halloween-light/theme.js"]
-        assert styles.dark_css_urls == ["/themes/halloween-dark/theme.css"]
         assert styles.dark_js_urls == ["/themes/halloween-dark/theme.js"]
 
     def test_halloween_js_has_no_forbidden_global(self):
