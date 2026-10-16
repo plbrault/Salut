@@ -8,6 +8,7 @@
 
 * Single web page with no login (meant to be locally hosted)
 * YAML-based configuration
+* RSS feed aggregation
 * Internationalization (English and French currently supported)
 * Theme system
 * Layout consisting of cards based on plugins:
