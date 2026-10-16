@@ -18,7 +18,7 @@
     * [HTML](docs/plugins/html.md)
     * [Image](docs/plugins/image.md)
     * [RSS](docs/plugins/rss.md)
-    * [Search](docs/plugins/search.md) (currently supports DuckDuckGo and Wikipedia)
+    * [Search](docs/plugins/search.md) (currently supports Google, DuckDuckGo and Wikipedia)
     * [Weather](docs/plugins/weather.md) (uses [Open-Meteo](https://open-meteo.com/))
     * [XKCD](docs/plugins/xkcd.md)
 
