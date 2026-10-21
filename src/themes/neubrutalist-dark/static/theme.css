@@ -1,0 +1,23 @@
+body .card {
+    border: 2px solid var(--border);
+    box-shadow: 4px 4px 0 var(--border);
+    transition: translate 0.15s ease, box-shadow 0.15s ease;
+}
+
+body .card:hover {
+    translate: 2px 2px;
+    box-shadow: 2px 2px 0 var(--border);
+}
+
+body .card img {
+    border-radius: 0;
+}
+
+::selection {
+    background: var(--accent);
+    color: var(--accent-contrast);
+}
+
+body header h1 {
+    text-shadow: 4px 4px 0 rgba(245, 245, 244, 0.2);
+}

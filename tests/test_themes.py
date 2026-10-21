@@ -641,3 +641,94 @@ class TestHalloweenThemes:
         dark_entry = (theme_static_dir("halloween-dark") / "theme.js").read_text(encoding="utf-8")
         assert 'import { runSky } from "/themes/halloween-light/engine.js";' in dark_entry
         assert "runSky({ ghost: [0.22, 0.2], bat: [0.3, 0.25] });" in dark_entry
+
+
+class TestNeubrutalistThemes:
+    def test_neubrutalist_themes_discovered(self):
+        names = discover_themes()
+        assert "neubrutalist-light" in names
+        assert "neubrutalist-dark" in names
+
+    def test_neubrutalist_themes_declare_own_css_only_includes(self):
+        for name in ("neubrutalist-light", "neubrutalist-dark"):
+            resolved = load_resolved_theme(name)
+            assert resolved["includes"] == {"css": ["theme.css"]}
+
+    def test_neubrutalist_dark_extends_neubrutalist_light(self):
+        assert theme_chain("neubrutalist-dark") == [
+            "default-light",
+            "neubrutalist-light",
+            "neubrutalist-dark",
+        ]
+
+    def test_neubrutalist_light_sets_font_roles(self):
+        resolved = load_resolved_theme("neubrutalist-light")
+        assert resolved["fonts"]["page_heading"] == "'Archivo Black', 'Inter', sans-serif"
+        assert resolved["fonts"]["card_heading"] == "'Archivo Black', 'Inter', sans-serif"
+        assert resolved["fonts"]["card_content"] == "'Inter', sans-serif"
+
+    def test_neubrutalist_dark_inherits_fonts(self):
+        resolved = load_resolved_theme("neubrutalist-dark")
+        assert resolved["fonts"]["page_heading"] == "'Archivo Black', 'Inter', sans-serif"
+        assert resolved["fonts"]["card_heading"] == "'Archivo Black', 'Inter', sans-serif"
+        assert resolved["fonts"]["card_content"] == "'Inter', sans-serif"
+
+    def test_neubrutalist_light_owns_full_palette(self):
+        resolved = load_resolved_theme("neubrutalist-light")
+        assert resolved["colors"]["bg"] == "#fffbeb"
+        assert resolved["colors"]["border"] == "#000000"
+        assert resolved["colors"]["accent"] == "#ffe14d"
+        assert resolved["colors"]["accent_contrast"] == "#111111"
+        assert palette_is_dark(resolved) is False
+
+    def test_neubrutalist_dark_overrides_full_palette(self):
+        resolved = load_resolved_theme("neubrutalist-dark")
+        assert resolved["colors"]["bg"] == "#141414"
+        assert resolved["colors"]["border"] == "#e5e5e5"
+        assert resolved["colors"]["accent_contrast"] == "#141414"
+        assert resolved["colors"]["danger"] == "#ff6b6b"
+        assert palette_is_dark(resolved) is True
+
+    def test_neubrutalist_themes_squarish_cards(self):
+        for name in ("neubrutalist-light", "neubrutalist-dark"):
+            assert load_resolved_theme(name)["radius"]["card"] == "0"
+
+    def test_neubrutalist_font_css_inlines_archivo_black(self):
+        styles = generate_theme_css({"light": "neubrutalist-light", "dark": "neubrutalist-dark"})
+        assert "Archivo Black" in styles.font_css
+        assert "url('/themes/neubrutalist-light/ArchivoBlack-Regular.woff2')" in styles.font_css
+        assert "url('/themes/default-light/Inter-Variable.woff2')" in styles.font_css
+        assert styles.font_css.index("Inter-Variable") < styles.font_css.index("ArchivoBlack")
+        assert "--font-page-heading: 'Archivo Black', 'Inter', sans-serif;" in styles.css
+        assert "--font-card-content: 'Inter', sans-serif;" in styles.css
+        assert "--card-radius: 0;" in styles.css
+        assert "--border: #000000;" in styles.css
+
+    def test_neubrutalist_static_files_exist(self):
+        static_dir = theme_static_dir("neubrutalist-light")
+        assert (static_dir / "theme.css").is_file()
+        assert (static_dir / "fonts.css").is_file()
+        assert (static_dir / "ArchivoBlack-Regular.woff2").is_file()
+        fonts_css = (static_dir / "fonts.css").read_text(encoding="utf-8")
+        assert "ArchivoBlack-Regular.woff2" in fonts_css
+
+    def test_neubrutalist_dark_has_no_duplicated_font_files(self):
+        static_dir = theme_static_dir("neubrutalist-dark")
+        assert (static_dir / "theme.css").is_file()
+        assert not (static_dir / "fonts.css").exists()
+        assert not (static_dir / "ArchivoBlack-Regular.woff2").exists()
+
+    def test_neubrutalist_pair_inlines_include_css(self):
+        styles = generate_theme_css({"light": "neubrutalist-light", "dark": "neubrutalist-dark"})
+        assert len(styles.light_css_texts) == 1
+        assert len(styles.dark_css_texts) == 1
+        for css_text in (styles.light_css_texts[0], styles.dark_css_texts[0]):
+            assert "body .card" in css_text
+            assert "box-shadow: 4px 4px 0 var(--border);" in css_text
+            assert "translate: 2px 2px;" in css_text
+
+    def test_neubrutalist_css_beats_base_card_rule(self):
+        for name in ("neubrutalist-light", "neubrutalist-dark"):
+            css = (theme_static_dir(name) / "theme.css").read_text(encoding="utf-8")
+            assert "body .card {" in css
+            assert "text-shadow" in css

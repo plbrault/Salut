@@ -1,0 +1,31 @@
+name: "Neubrutalist Light"
+extends: default-light
+
+colors:
+  bg: "#fffbeb"
+  card_bg: "#ffffff"
+  text: "#111111"
+  text_muted: "#52525b"
+  text_faint: "#a1a1aa"
+  border: "#000000"
+  link: "#0047ff"
+  link_hover: "#0035cc"
+  code_bg: "#f4f4f5"
+  accent: "#ffe14d"
+  accent_hover: "#facc15"
+  accent_contrast: "#111111"
+  danger: "#ff3b30"
+  danger_hover: "#d9251c"
+  danger_contrast: "#ffffff"
+
+fonts:
+  page_heading: "'Archivo Black', 'Inter', sans-serif"
+  card_heading: "'Archivo Black', 'Inter', sans-serif"
+  card_content: "'Inter', sans-serif"
+
+radius:
+  card: "0"
+
+includes:
+  css:
+    - "theme.css"
