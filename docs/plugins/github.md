@@ -35,6 +35,7 @@ cards:
 - Displays unread notifications grouped by thread
 - Shows repo name, subject title, reason, and relative time
 - Clicking a notification opens it in a new tab
+- Notifications without a subject URL (e.g. outdated subjects) are skipped: they are not stored and not displayed
 - Configurable polling schedule (default: every 5 minutes)
 - Configurable max items (default: 10)
 - Graceful error message if token is not configured

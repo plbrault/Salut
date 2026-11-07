@@ -161,9 +161,18 @@ class GithubPlugin(Plugin):
                 if not thread_id:
                     continue
 
+                if not api_url:
+                    self._logger.warning(
+                        "Skipping GitHub notification %s for %s without subject URL: %s",
+                        thread_id,
+                        repo_name,
+                        subject_title,
+                    )
+                    continue
+
                 reason = self._format_reason(reason)
                 subject_type = self._format_subject_type(subject_type)
-                web_url = self._build_web_url(api_url) if api_url else ""
+                web_url = self._build_web_url(api_url)
 
                 self._store_notification(
                     card_id=card_id,
