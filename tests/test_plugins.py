@@ -2440,6 +2440,93 @@ class TestGithubPlugin:  # pylint: disable=protected-access
         assert "pull request" in results[0]
         db.close()
 
+    def test_fetch_skips_notifications_without_subject_url(self, tmp_path):
+        db = Database(tmp_path / "test.db")
+        GithubPlugin.init_schema(db)
+        mock_response = MagicMock()
+        mock_response.json.return_value = [
+            {
+                "id": 1,
+                "repository": {"full_name": "owner/repo"},
+                "subject": {
+                    "title": "Fix bug",
+                    "type": "PullRequest",
+                    "url": "https://api.github.com/repos/owner/repo/pulls/1",
+                },
+                "reason": "review_requested",
+                "updated_at": "2026-06-30T12:00:00Z",
+            },
+            {
+                "id": 2,
+                "repository": {"full_name": "owner/repo"},
+                "subject": {"title": "Outdated", "type": "PullRequest"},
+                "reason": "review_requested",
+                "updated_at": "2026-06-30T12:00:00Z",
+            },
+        ]
+        mock_response.raise_for_status = MagicMock()
+        plugin = GithubPlugin()
+        plugin._database = db
+        plugin._logger = Mock()
+        with patch("src.plugins.github.plugin.requests.get", return_value=mock_response):
+            plugin._fetch_notifications_for_card("test", {"token": "ghp_test"})
+        rows = db.fetch_all("SELECT * FROM github_notifications", ())
+        assert len(rows) == 1
+        assert rows[0]["thread_id"] == 1
+        assert rows[0]["web_url"] == "https://github.com/owner/repo/pull/1"
+        db.close()
+
+    def test_fetch_stores_nothing_when_all_notifications_lack_subject_url(self, tmp_path):
+        db = Database(tmp_path / "test.db")
+        GithubPlugin.init_schema(db)
+        mock_response = MagicMock()
+        mock_response.json.return_value = [
+            {
+                "id": 1,
+                "repository": {"full_name": "owner/repo"},
+                "subject": {"title": "Outdated", "type": "PullRequest"},
+                "reason": "review_requested",
+                "updated_at": "2026-06-30T12:00:00Z",
+            },
+            {
+                "id": 2,
+                "repository": {"full_name": "other/repo"},
+                "subject": {"title": "Gone", "type": "Issue"},
+                "reason": "mentioned",
+                "updated_at": "2026-06-30T12:00:00Z",
+            },
+        ]
+        mock_response.raise_for_status = MagicMock()
+        plugin = GithubPlugin()
+        plugin._database = db
+        plugin._logger = Mock()
+        with patch("src.plugins.github.plugin.requests.get", return_value=mock_response):
+            plugin._fetch_notifications_for_card("test", {"token": "ghp_test"})
+        rows = db.fetch_all("SELECT * FROM github_notifications", ())
+        assert len(rows) == 0
+        db.close()
+
+    def test_render_empty_web_url_without_anchor(self, tmp_path):
+        db = Database(tmp_path / "test.db")
+        GithubPlugin.init_schema(db)
+        db.execute(
+            """INSERT INTO github_notifications
+            (card_id, thread_id, repo_name, subject_title, subject_type, reason, updated_at, web_url)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            ("test", 1, "owner/repo", "Legacy row", "issue",
+             "mention", "2026-06-30T12:00:00Z", ""),
+        )
+        plugin = GithubPlugin()
+        i18n_dir = Path(__file__).resolve().parent.parent / "src" / "plugins" / "github" / "i18n"
+        plugin.set_translations(_load_translations(i18n_dir, "en"))
+        plugin._database = db
+        results = plugin.render([{"options": {"token": "ghp_test"}, "card_id": "test"}])
+        assert len(results) == 1
+        assert '<a href' not in results[0]
+        assert 'href=""' not in results[0]
+        assert "Legacy row" in results[0]
+        db.close()
+
 
 class TestImagePluginCache:  # pylint: disable=protected-access
     def test_download_failure_preserves_old_row(self, tmp_path):
