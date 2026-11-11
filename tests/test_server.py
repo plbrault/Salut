@@ -243,10 +243,16 @@ class TestServer:
             assert "replacePlaceholders(document.body)" in response.text
 
     def test_index_defines_theme_config(self):
-        with TestClient(app) as client:
-            response = client.get("/")
-            assert "window.themeConfig" in response.text
-            assert '"single": false' in response.text
+        def load_pair_theme():
+            config = load_config()
+            config["theme"] = {"light": "default-light", "dark": "default-dark"}
+            return config
+
+        with patch("src.main.load_config", side_effect=load_pair_theme):
+            with TestClient(app) as client:
+                response = client.get("/")
+                assert "window.themeConfig" in response.text
+                assert '"single": false' in response.text
 
     def test_theme_files_are_served(self):
         with TestClient(app) as client:
