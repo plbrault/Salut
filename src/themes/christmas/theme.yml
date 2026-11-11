@@ -2,8 +2,8 @@ name: "Christmas Sweater"
 extends: default-light
 
 colors:
-  bg: "#b3282d"
-  card_bg: "#1f6f43"
+  bg: "#8f2328"
+  card_bg: "#1d5237"
   text: "#fdf5e0"
   text_muted: "#cfe0cf"
   text_faint: "#a3c0a8"

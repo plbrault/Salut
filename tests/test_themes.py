@@ -756,8 +756,8 @@ class TestChristmasThemes:
 
     def test_christmas_owns_full_palette(self):
         resolved = load_resolved_theme("christmas")
-        assert resolved["colors"]["bg"] == "#b3282d"
-        assert resolved["colors"]["card_bg"] == "#1f6f43"
+        assert resolved["colors"]["bg"] == "#8f2328"
+        assert resolved["colors"]["card_bg"] == "#1d5237"
         assert resolved["colors"]["text"] == "#fdf5e0"
         assert resolved["colors"]["link"] == "#ffd166"
         assert resolved["colors"]["accent"] == "#f2b705"
@@ -775,7 +775,7 @@ class TestChristmasThemes:
         assert "url('/themes/default-light/Inter-Variable.woff2')" in styles.font_css
         assert styles.font_css.index("Inter-Variable") < styles.font_css.index("MountainsOfChristmas")
         assert "--font-page-heading: 'Mountains of Christmas', 'Inter', sans-serif;" in styles.css
-        assert "--card-bg: #1f6f43;" in styles.css
+        assert "--card-bg: #1d5237;" in styles.css
         assert "--card-radius: 0.75rem;" in styles.css
 
     def test_christmas_static_files_exist(self):
