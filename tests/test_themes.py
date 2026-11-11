@@ -901,6 +901,7 @@ class TestChristmasThemes:
         assert "requestAnimationFrame" in source
         assert "makeFlake" in source
         assert "arc(" in source
+        assert 'zIndex: "-1",' in source
 
     def test_christmas_children_import_shared_engine(self):
         base_entry = (theme_static_dir("christmas") / "theme.js").read_text(encoding="utf-8")

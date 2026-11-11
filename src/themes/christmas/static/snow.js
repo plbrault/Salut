@@ -10,7 +10,7 @@ export function runSnow(palette) {
         width: "100vw",
         height: "100vh",
         pointerEvents: "none",
-        zIndex: "60",
+        zIndex: "-1",
     });
     document.body.appendChild(canvas);
     const ctx = canvas.getContext("2d");
