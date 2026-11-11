@@ -19,7 +19,7 @@ cards:
     colspan: 4
     plugin: html
     options:
-      html: "Get started by coping <code>starter.yml</code> to <code>config.yml</code> and customizing it to your liking. Check out the <a target='_blank' href='https://github.com/plbrault/Salut/blob/main/docs/config.md'>documentation</a> for more information."
+      html: "Get started by copying <code>starter.yml</code> to <code>config.yml</code> and customizing it to your liking. Check out the <a target='_blank' href='https://github.com/plbrault/Salut/blob/main/docs/config.md'>documentation</a> for more information."
   - title: Web Search
     plugin: search
     colspan: 3
