@@ -785,12 +785,12 @@ class TestChristmasThemes:
 
     def test_christmas_light_overrides_full_palette(self):
         resolved = load_resolved_theme("christmas-light")
-        assert resolved["colors"]["bg"] == "#f4e9d3"
-        assert resolved["colors"]["card_bg"] == "#d9e6d2"
-        assert resolved["colors"]["text"] == "#2c4a38"
-        assert resolved["colors"]["border"] == "#8f2328"
-        assert resolved["colors"]["link"] == "#b3282d"
-        assert resolved["colors"]["accent_contrast"] == "#fdf5e0"
+        assert resolved["colors"]["bg"] == "#cdd3b7"
+        assert resolved["colors"]["card_bg"] == "#e6dcc2"
+        assert resolved["colors"]["text"] == "#33422f"
+        assert resolved["colors"]["border"] == "#7a3a2e"
+        assert resolved["colors"]["link"] == "#8a3c2c"
+        assert resolved["colors"]["accent_contrast"] == "#f4ecd8"
         assert palette_is_dark(resolved) is False
 
     def test_christmas_dark_overrides_only_surface_colors(self):
@@ -883,7 +883,7 @@ class TestChristmasThemes:
         assert "background: #ffd166;" in dark_css
         assert "text-shadow: 3px 3px 0 rgba(229, 72, 77, 0.35);" in dark_css
         light_css = (theme_static_dir("christmas-light") / "theme.css").read_text(encoding="utf-8")
-        assert "background: #b3282d;" in light_css
+        assert "background: #8a3c2b;" in light_css
 
     def test_christmas_js_has_no_forbidden_global(self):
         for name in ("christmas", "christmas-light", "christmas-dark"):
@@ -906,7 +906,7 @@ class TestChristmasThemes:
         assert "runSnow({ color: [255, 255, 255]" in base_entry
         light_entry = (theme_static_dir("christmas-light") / "theme.js").read_text(encoding="utf-8")
         assert 'import { runSnow } from "/themes/christmas/snow.js";' in light_entry
-        assert "runSnow({ color: [125, 160, 220]" in light_entry
+        assert "runSnow({ color: [120, 140, 180]" in light_entry
         dark_entry = (theme_static_dir("christmas-dark") / "theme.js").read_text(encoding="utf-8")
         assert 'import { runSnow } from "/themes/christmas/snow.js";' in dark_entry
         assert "runSnow({ color: [255, 255, 255]" in dark_entry

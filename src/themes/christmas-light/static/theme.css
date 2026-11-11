@@ -28,8 +28,8 @@ body header h1 {
 }
 
 ::selection {
-    background: #b3282d;
-    color: #fdf5e0;
+    background: #8a3c2b;
+    color: #f4ecd8;
 }
 
 @media (prefers-reduced-motion: no-preference) {
