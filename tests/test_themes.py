@@ -732,3 +732,98 @@ class TestNeubrutalistThemes:
             css = (theme_static_dir(name) / "theme.css").read_text(encoding="utf-8")
             assert "body .card {" in css
             assert "text-shadow" in css
+
+
+class TestChristmasThemes:
+    def test_christmas_theme_discovered(self):
+        names = discover_themes()
+        assert "christmas" in names
+        assert "christmas-light" not in names
+        assert "christmas-dark" not in names
+
+    def test_christmas_declares_own_includes(self):
+        resolved = load_resolved_theme("christmas")
+        assert resolved["includes"] == {"css": ["theme.css"], "js": ["theme.js"]}
+
+    def test_christmas_extends_default_light(self):
+        assert theme_chain("christmas") == ["default-light", "christmas"]
+
+    def test_christmas_sets_font_roles(self):
+        resolved = load_resolved_theme("christmas")
+        assert resolved["fonts"]["page_heading"] == "'Mountains of Christmas', 'Inter', sans-serif"
+        assert resolved["fonts"]["card_heading"] == "'Mountains of Christmas', 'Inter', sans-serif"
+        assert resolved["fonts"]["card_content"] == "'Inter', sans-serif"
+
+    def test_christmas_owns_full_palette(self):
+        resolved = load_resolved_theme("christmas")
+        assert resolved["colors"]["bg"] == "#b3282d"
+        assert resolved["colors"]["card_bg"] == "#1f6f43"
+        assert resolved["colors"]["text"] == "#fdf5e0"
+        assert resolved["colors"]["link"] == "#ffd166"
+        assert resolved["colors"]["accent"] == "#f2b705"
+        assert resolved["colors"]["danger_contrast"] == "#fdf5e0"
+        assert palette_is_dark(resolved) is True
+
+    def test_christmas_card_radius_is_soft(self):
+        assert load_resolved_theme("christmas")["radius"]["card"] == "0.75rem"
+
+    def test_christmas_font_css_inlines_mountains_of_christmas(self):
+        styles = generate_theme_css({"light": "christmas", "dark": "christmas"})
+        assert "Mountains of Christmas" in styles.font_css
+        assert "url('/themes/christmas/MountainsOfChristmas-Regular.woff2')" in styles.font_css
+        assert "url('/themes/christmas/MountainsOfChristmas-Bold.woff2')" in styles.font_css
+        assert "url('/themes/default-light/Inter-Variable.woff2')" in styles.font_css
+        assert styles.font_css.index("Inter-Variable") < styles.font_css.index("MountainsOfChristmas")
+        assert "--font-page-heading: 'Mountains of Christmas', 'Inter', sans-serif;" in styles.css
+        assert "--card-bg: #1f6f43;" in styles.css
+        assert "--card-radius: 0.75rem;" in styles.css
+
+    def test_christmas_static_files_exist(self):
+        static_dir = theme_static_dir("christmas")
+        for name in (
+            "theme.css",
+            "theme.js",
+            "snow.js",
+            "fonts.css",
+            "pattern.svg",
+            "MountainsOfChristmas-Regular.woff2",
+            "MountainsOfChristmas-Bold.woff2",
+        ):
+            assert (static_dir / name).is_file()
+        fonts_css = (static_dir / "fonts.css").read_text(encoding="utf-8")
+        assert "MountainsOfChristmas-Regular.woff2" in fonts_css
+        assert "MountainsOfChristmas-Bold.woff2" in fonts_css
+
+    def test_christmas_single_theme_reuses_includes_for_both_modes(self):
+        styles = generate_theme_css({"light": "christmas", "dark": "christmas"})
+        assert len(styles.light_css_texts) == 1
+        assert styles.light_css_texts == styles.dark_css_texts
+        assert styles.light_js_urls == ["/themes/christmas/theme.js"]
+        assert styles.dark_js_urls == ["/themes/christmas/theme.js"]
+        assert 'url("/themes/christmas/pattern.svg")' in styles.light_css_texts[0]
+
+    def test_christmas_css_holds_mid2000s_treatment(self):
+        css = (theme_static_dir("christmas") / "theme.css").read_text(encoding="utf-8")
+        assert "body .card {" in css
+        assert "border: 4px ridge var(--border);" in css
+        assert "underline wavy" in css
+        assert "text-shadow" in css
+        assert "pattern.svg" in css
+        assert "prefers-reduced-motion" in css
+        assert "lights-pulse" in css
+
+    def test_christmas_js_has_no_forbidden_global(self):
+        source = (theme_static_dir("christmas") / "theme.js").read_text(encoding="utf-8")
+        assert "themeInitConfig" not in source
+        assert "runSnow" in source
+
+    def test_christmas_engine_holds_snow_behavior(self):
+        source = (theme_static_dir("christmas") / "snow.js").read_text(encoding="utf-8")
+        assert "themeInitConfig" not in source
+        assert "prefers-reduced-motion" in source
+        assert "pointerEvents" in source
+        assert "requestAnimationFrame" in source
+        assert "makeFlake" in source
+        assert "arc(" in source
+        assert "ghost" not in source
+        assert "bat" not in source

@@ -1,0 +1,33 @@
+name: "Christmas Sweater"
+extends: default-light
+
+colors:
+  bg: "#b3282d"
+  card_bg: "#1f6f43"
+  text: "#fdf5e0"
+  text_muted: "#cfe0cf"
+  text_faint: "#a3c0a8"
+  border: "#f7edd8"
+  link: "#ffd166"
+  link_hover: "#ffe49b"
+  code_bg: "#17492e"
+  accent: "#f2b705"
+  accent_hover: "#ffd23f"
+  accent_contrast: "#143a26"
+  danger: "#e5484d"
+  danger_hover: "#f2706f"
+  danger_contrast: "#fdf5e0"
+
+fonts:
+  page_heading: "'Mountains of Christmas', 'Inter', sans-serif"
+  card_heading: "'Mountains of Christmas', 'Inter', sans-serif"
+  card_content: "'Inter', sans-serif"
+
+radius:
+  card: "0.75rem"
+
+includes:
+  css:
+    - "theme.css"
+  js:
+    - "theme.js"
