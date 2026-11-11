@@ -780,7 +780,7 @@ class TestChristmasThemes:
         assert resolved["colors"]["border"] == "#e9dab8"
         assert resolved["colors"]["link"] == "#eec95e"
         assert resolved["colors"]["accent_contrast"] == "#143a26"
-        assert resolved["colors"]["danger"] == "#e5484d"
+        assert resolved["colors"]["danger"] == "#c53035"
         assert palette_is_dark(resolved) is True
 
     def test_christmas_light_overrides_full_palette(self):
@@ -788,6 +788,8 @@ class TestChristmasThemes:
         assert resolved["colors"]["bg"] == "#cdd3b7"
         assert resolved["colors"]["card_bg"] == "#e6dcc2"
         assert resolved["colors"]["text"] == "#33422f"
+        assert resolved["colors"]["text_muted"] == "#4e5743"
+        assert resolved["colors"]["text_faint"] == "#565f4d"
         assert resolved["colors"]["border"] == "#7a3a2e"
         assert resolved["colors"]["link"] == "#8a3c2c"
         assert resolved["colors"]["accent_contrast"] == "#f4ecd8"
@@ -801,7 +803,7 @@ class TestChristmasThemes:
         assert resolved["colors"]["accent_contrast"] == "#241014"
         assert resolved["colors"]["border"] == "#e9dab8"
         assert resolved["colors"]["link"] == "#eec95e"
-        assert resolved["colors"]["danger"] == "#e5484d"
+        assert resolved["colors"]["danger"] == "#c53035"
         assert palette_is_dark(resolved) is True
 
     def test_christmas_themes_soft_card_radius(self):

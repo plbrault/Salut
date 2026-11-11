@@ -14,8 +14,8 @@ colors:
   accent: "#f2b705"
   accent_hover: "#ffd23f"
   accent_contrast: "#143a26"
-  danger: "#e5484d"
-  danger_hover: "#f2706f"
+  danger: "#c53035"
+  danger_hover: "#e5484d"
   danger_contrast: "#fdf5e0"
 
 fonts:
