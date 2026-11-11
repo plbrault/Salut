@@ -1,0 +1,14 @@
+name: "Christmas Dark"
+extends: christmas
+
+colors:
+  bg: "#241014"
+  card_bg: "#17301f"
+  code_bg: "#10261a"
+  accent_contrast: "#241014"
+
+includes:
+  css:
+    - "theme.css"
+  js:
+    - "theme.js"

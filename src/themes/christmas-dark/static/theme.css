@@ -1,0 +1,64 @@
+body {
+    background-image: url("/themes/christmas/pattern.svg");
+}
+
+body .card {
+    border: 4px ridge var(--border);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.45);
+    transition: translate 0.15s ease, box-shadow 0.15s ease;
+}
+
+body .card:hover {
+    translate: 1px 1px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.45);
+}
+
+body .card img {
+    border-radius: 0.4rem;
+}
+
+body .card h3 {
+    text-decoration: underline wavy var(--border);
+    text-decoration-thickness: 2px;
+    text-underline-offset: 5px;
+}
+
+body header h1 {
+    text-shadow: 3px 3px 0 rgba(229, 72, 77, 0.35);
+}
+
+::selection {
+    background: #ffd166;
+    color: #241014;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    body::after {
+        content: "";
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 16px;
+        pointer-events: none;
+        z-index: 60;
+        background-image:
+            radial-gradient(circle at 12px 8px, #ff5a5f 4px, transparent 5px),
+            radial-gradient(circle at 36px 8px, #ffd166 4px, transparent 5px),
+            radial-gradient(circle at 60px 8px, #3fae6a 4px, transparent 5px),
+            linear-gradient(to bottom, transparent 6px, rgba(0, 0, 0, 0.4) 7px, transparent 8px);
+        background-size: 72px 16px, 72px 16px, 72px 16px, 100% 16px;
+        background-repeat: repeat-x;
+        animation: lights-pulse 1.2s ease-in-out infinite alternate;
+    }
+}
+
+@keyframes lights-pulse {
+    from {
+        opacity: 0.65;
+    }
+
+    to {
+        opacity: 1;
+    }
+}

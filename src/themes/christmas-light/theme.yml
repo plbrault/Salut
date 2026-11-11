@@ -1,0 +1,25 @@
+name: "Christmas Light"
+extends: christmas
+
+colors:
+  bg: "#f4e9d3"
+  card_bg: "#d9e6d2"
+  text: "#2c4a38"
+  text_muted: "#5c7263"
+  text_faint: "#8aa08e"
+  border: "#8f2328"
+  link: "#b3282d"
+  link_hover: "#8f2328"
+  code_bg: "#e3eeda"
+  accent: "#b3282d"
+  accent_hover: "#8f2328"
+  accent_contrast: "#fdf5e0"
+  danger: "#7f1d1d"
+  danger_hover: "#9d2b2b"
+  danger_contrast: "#fdf5e0"
+
+includes:
+  css:
+    - "theme.css"
+  js:
+    - "theme.js"
